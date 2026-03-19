@@ -14,3 +14,24 @@
 			
 	}	
 }
+
+
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build Project Dynamically (Windows)",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-Command",
+                "& { mkdir bin -Force; g++ -g @(Get-ChildItem -Recurse -Filter '*.cpp' src | ForEach-Object { $_.FullName }) -Iinclude -Llib -lA -lB -o bin/project.exe }"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"]
+        }
+    ]
+}
