@@ -1,12 +1,12 @@
 {
 "App":{
 			"database":{
-					"vuln_path":"data/vuln.db"
-					"modules_path":"data/modules.db			
+					"vuln_path":"data/vuln.db",
+					"modules_path":"data/modules.db"		
 			}, 
 			"info":{
 					"version":"V1.0.1"
-			}, 
+			}
 	}, 
 	"environment":{
 			"os":"-1", 
