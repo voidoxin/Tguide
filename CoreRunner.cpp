@@ -13,6 +13,7 @@ int main ()
         string database_path=cfg.get()["App"]["database"]["db_path"];
         VulnD vuln(database_path);
         ModuD mod(database_path);
+        vuln.createTables();
         cout<<"every thing is ok"<<endl;
 return 0;
 }
