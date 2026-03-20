@@ -4,14 +4,11 @@
 #include <filesystem>
 
 namespace DBCache {
-
-static json        s_cache;
+                                                  static json        s_cache;
 static std::string s_cachePath;
 
-static constexpr int MAX_HISTORY = 3;
-
-static json buildDefault() {
-    return {
+static constexpr int MAX_HISTORY = 3;             
+static json buildDefault() {                          return {
         {
             "_notice",
             "DO NOT TOUCH — managed automatically by the application. "
@@ -72,6 +69,12 @@ bool load(const std::string& cachePath) {
     return true;
 }
 
+// save to internal s_cachePath — safe to call from resolveDatabase
+bool save() {
+    if (s_cachePath.empty()) return false;
+    return save(s_cachePath);
+}
+
 bool save(const std::string& cachePath) {
     std::ofstream out(cachePath);
     if (!out.is_open()) return false;
@@ -94,9 +97,9 @@ void recordAccess(const std::string& path, const std::string& hash) {
         history.erase(history.begin());
 }
 
-const std::vector<DBRecord>& getHistory() {
-    static std::vector<DBRecord> result;
-    result.clear();
+// returns by value — safe to store across calls
+std::vector<DBRecord> getHistory() {
+    std::vector<DBRecord> result;
 
     for (auto& entry : s_cache["history"]) {
         DBRecord r;
@@ -111,18 +114,15 @@ void setCurrentHash(const std::string& hash) {
     s_cache["meta"]["current_hash"] = hash;
 }
 
-const std::string& getCurrentHash() {
-    static std::string result;
-    result = s_cache["meta"].value("current_hash", "");
-    return result;
+// returns by value — safe to store across calls
+std::string getCurrentHash() {
+    return s_cache["meta"].value("current_hash", "");
 }
 
 bool isCurrentOfficial() {
     if (std::string(DB_OFFICIAL_HASH).empty()) return false;
-
-    const std::string& current = getCurrentHash();
+    const std::string current = getCurrentHash();
     if (current.empty()) return false;
-
     return current == DB_OFFICIAL_HASH;
 }
 

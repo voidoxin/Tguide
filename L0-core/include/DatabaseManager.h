@@ -11,10 +11,8 @@ struct Vulnerability {
 };
 
 struct Option {
-    int id;
-    int vuln_id;
-    std::string name;
-    std::string value;
+    int id;                                           int vuln_id;
+    std::string name;                                 std::string value;
 };
 
 struct Module {
@@ -70,6 +68,14 @@ private:
 };
 
 /*
+ * Tag struct for direct DB open — bypasses resolveDatabase().
+ * Used by data_adder only. Not for use in the main application.
+ *
+ * © voidoxin — Tools Guide
+ */
+struct DirectOpen {};
+
+/*
  * Returns true if a fatal error occurred during database initialization.
  * Must be checked after constructing any database class before proceeding.
  *
@@ -81,6 +87,7 @@ class VulnD {
     std::string db_path;
 public:
     VulnD(const std::string& path);
+    VulnD(const std::string& path, DirectOpen);   // bypasses resolveDatabase
 
     bool createTables();
 
@@ -101,6 +108,7 @@ class ModuD {
     std::string db_path;
 public:
     ModuD(const std::string& path);
+    ModuD(const std::string& path, DirectOpen);
 
     bool createTables();
     bool add(const Module& m);
@@ -116,6 +124,7 @@ class ToolD {
     std::string db_path;
 public:
     ToolD(const std::string& path);
+    ToolD(const std::string& path, DirectOpen);
 
     bool createTables();
     bool add(const Tool& t);
@@ -128,6 +137,7 @@ class ToolFlagD {
     std::string db_path;
 public:
     ToolFlagD(const std::string& path);
+    ToolFlagD(const std::string& path, DirectOpen);
 
     bool createTables();
     bool add(const ToolFlag& f);
@@ -140,6 +150,7 @@ class TemplateD {
     std::string db_path;
 public:
     TemplateD(const std::string& path);
+    TemplateD(const std::string& path, DirectOpen);
 
     bool createTables();
     bool add(const Template& t);

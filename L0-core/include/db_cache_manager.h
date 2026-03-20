@@ -12,8 +12,7 @@ using json = nlohmann::json;
  * Manages the .db_cache file which tracks:
  *   - The official database signature for integrity verification
  *   - The currently active database hash
- *   - A rolling history of the last 3 accessed databases
- *
+ *   - A rolling history of the last 3 accessed databases                                            *
  * This file is managed exclusively by the application.
  * Manual modification will corrupt integrity verification.
  *
@@ -53,6 +52,7 @@ namespace DBCache {
     /*
      * Initializes the cache system.
      * Creates the cache file and directories if they do not exist.
+     * Must be called before any DB class is constructed.
      *
      * @param cachePath  Absolute path to the .db_cache file.
      */
@@ -68,6 +68,14 @@ namespace DBCache {
 
     /*
      * Persists the current in-memory cache state to disk.
+     * Uses the path established by init() or load().
+     *
+     * @return  True if saved successfully, false otherwise.
+     */
+    bool save();
+
+    /*
+     * Persists the current in-memory cache state to a specific path.
      *
      * @param cachePath  Absolute path to the .db_cache file.
      * @return           True if saved successfully, false otherwise.
@@ -94,8 +102,9 @@ namespace DBCache {
 
     /*
      * Returns the SHA-256 hash of the currently active database.
+     * Returns by value — safe to store across calls.
      */
-    const std::string& getCurrentHash();
+    std::string getCurrentHash();
 
     /*
      * Compares the currently active database hash against
@@ -111,16 +120,14 @@ namespace DBCache {
      * the official database signature, regardless of file path.
      * Skips records pointing to files that no longer exist on disk.
      *
-     * Returns a copy of the matching record wrapped in std::optional,
-     * which is safe to use regardless of subsequent getHistory() calls.
-     *
      * @return  std::optional<DBRecord> containing the match, or std::nullopt.
      */
     std::optional<DBRecord> findOfficialInHistory();
 
     /*
      * Returns the full access history (up to 3 records).
+     * Returns by value — safe to store across calls.
      */
-    const std::vector<DBRecord>& getHistory();
+    std::vector<DBRecord> getHistory();
 
 } // namespace DBCache

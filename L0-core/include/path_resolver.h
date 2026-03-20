@@ -10,6 +10,10 @@
 #include <cstdlib>
 #include <string>
 
+#ifndef _WIN32
+#include <unistd.h>   // geteuid()
+#endif
+
 namespace fs = std::filesystem;
 
 namespace PathResolver {

@@ -6,6 +6,11 @@
 #include "../includes/UI_Engine.h"
 #include "../includes/UI_utils.h"
 #include "../includes/UI_colors.h"
+#include "../includes/UI_tools.h"
+#include "../includes/UI_generator.h"
+#include "../includes/UI_savedCommands.h"
+#include "../includes/UI_savedScripts.h"
+#include "../includes/UI_settings.h"
 #include <iostream>
 #include <string>
 #include <vector>
@@ -99,13 +104,13 @@ void UIEngine::start() {
 
     while (true) {
 
-        // TODO: replace placeholders with real actions when layers are ready
         vector<MenuItem> mainMenu = {
-            { "⚡", "Exploit Database",   "browse vulnerabilities & modules", nullptr },
-            { "⊞", "Tools Reference",    "flags, templates, usage",          nullptr },
-            { "◎", "Script Generator",   "build commands interactively",     nullptr },
-            { "◈", "Saved Commands",     "your personal command library",    nullptr },
-            { "✕", "Exit",               "",                                 nullptr },
+            { "⊞", "Tools",            "flags, templates, usage",       []() { UITools::show();         } },
+            { "◎", "Script Generator", "build commands interactively",   []() { UIGenerator::show();     } },
+            { "◈", "Saved Commands",   "your personal command library",  []() { UISavedCommands::show(); } },
+            { "▦", "Saved Scripts",    "your generated scripts",         []() { UISavedScripts::show();  } },
+            { "⊙", "Settings",         "configure tguide behavior",      []() { UISettings::show();      } },
+            { "✕", "Exit",             "",                               nullptr                          },
         };
 
         int choice = renderMenu("main menu", mainMenu);

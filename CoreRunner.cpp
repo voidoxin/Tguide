@@ -10,15 +10,17 @@
 #include "L0-core/include/DatabaseManager.h"
 #include "L0-core/include/config_manager.h"
 #include "L0-core/include/path_resolver.h"
-#include "L3-Interface_Engine/includes/UI_errorHandling.h"
-#include "L3-Interface_Engine/includes/UI_Engine.h"
-
-using namespace std;
+#include "L0-core/include/db_cache_manager.h"
+#include "L2-Interface_Engine/includes/UI_errorHandling.h"
+#include "L2-Interface_Engine/includes/UI_Engine.h"
+                                                  using namespace std;
 namespace fs = std::filesystem;
 
 int main(int argc, char* argv[]) {
 
     // ── check write access before touching anything ────────────────────────
+    // on Linux, /etc/ and /usr/share/ require root
+    // on Termux and Windows this always passes
     if (!PathResolver::hasWriteAccess()) {
         UI_fatal("tguide requires root privileges on Linux.\n"
                  "Please run with: sudo tguide");
@@ -35,10 +37,15 @@ int main(int argc, char* argv[]) {
     // ── load config ────────────────────────────────────────────────────────
     ConfigManager cfg(PathResolver::configFile().string());
 
-    // ── init backup manager (dev only) ─────────────────────────────────────
+    // ── init cache before any DB class is constructed ──────────────────────
+    // resolveDatabase() calls DBCache internally — must be ready first
+    DBCache::init(PathResolver::cacheFile().string());
+
+    // ── init backup manager (dev only — removed before release) ───────────
     BackupManager::init(PathResolver::backupFile().string());
 
     // ── bring up all db classes ────────────────────────────────────────────
+    // resolveDatabase() is idempotent — all classes share the same resolved path
     string db_path = PathResolver::dbFile().string();
 
     VulnD     vulnDB(db_path);

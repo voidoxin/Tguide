@@ -11,13 +11,10 @@
 #include <cstring>
 #include <fstream>
 #include <curl/curl.h>
-#include "path_resolver.h"
 
 extern char UI_attention(const std::string& msg);
-extern void UI_errors(const std::string& msg);
-extern void UI_fatal(const std::string& msg);
-
-static bool s_fatal          = false;
+extern void UI_errors(const std::string& msg);    extern void UI_fatal(const std::string& msg);
+                                                  static bool s_fatal          = false;
 static bool s_cacheValidated = false;
 
 bool DBFatal() { return s_fatal; }
@@ -34,15 +31,16 @@ class DBSession {
     std::string db_path;
 public:
     DBSession(const std::string& path) : db(nullptr), db_path(path) {
-    if (path.empty()) return;
-    if (sqlite3_open(db_path.c_str(), &db) != SQLITE_OK) {
-        UI_errors("Failed to open database: " + db_path);
-        db = nullptr;
-    } else {
-        sqlite3_exec(db, "PRAGMA foreign_keys = ON;", 0, 0, nullptr);
-        sqlite3_exec(db, "PRAGMA journal_mode = WAL;", 0, 0, nullptr);
+        if (path.empty()) return;
+        if (sqlite3_open(db_path.c_str(), &db) != SQLITE_OK) {
+            UI_errors("Failed to open database: " + db_path);
+            db = nullptr;
+        } else {
+            sqlite3_exec(db, "PRAGMA foreign_keys = ON;", 0, 0, nullptr);
+            sqlite3_exec(db, "PRAGMA journal_mode = WAL;", 0, 0, nullptr);
+        }
     }
-}
+
     ~DBSession() {
         if (db) sqlite3_close(db);
     }
@@ -79,15 +77,26 @@ public:
 
 // ==================== VALIDATION ====================
 
-static const std::string DEFAULT_DB_PATH = PathResolver::dbFile().string();
+static const std::string DEFAULT_DB_PATH = "data/database/tguide.db";
+
+// used for file paths — rejects shell metacharacters and path traversal
 static bool isSafePath(const std::string& s) {
     for (char c : s) {
-        if (c == ';' || c == '&' || c == '|' ||
+        if (c == ';' || c == '|' ||
             c == '`' || c == '$' || c == '\n' || c == '\r')
             return false;
     }
-    // Reject path traversal attempts
     if (s.find("..") != std::string::npos) return false;
+    return true;
+}
+
+// used for URLs — allows & which is common in query strings
+static bool isSafeURL(const std::string& s) {
+    for (char c : s) {
+        if (c == ';' || c == '|' ||
+            c == '`' || c == '$' || c == '\n' || c == '\r')
+            return false;
+    }
     return true;
 }
 
@@ -175,11 +184,11 @@ static size_t curlWriteCallback(void* ptr, size_t size,
 }
 
 static bool downloadDB(const std::string& url, const std::string& destPath) {
-    if (url.empty())           return false;
-    if (!isSafePath(url))      return false;
-    if (!isSafePath(destPath)) return false;
+    if (url.empty())            return false;
+    if (!isSafeURL(url))        return false;   // URL-safe check — allows &
+    if (!isSafePath(destPath))  return false;
 
-    // Reject non-HTTPS URLs — plain HTTP exposes downloads to MITM attacks
+    // reject non-HTTPS URLs — plain HTTP exposes downloads to MITM attacks
     if (url.rfind("https://", 0) != 0) return false;
 
     FILE* f = fopen(destPath.c_str(), "wb");
@@ -196,11 +205,11 @@ static bool downloadDB(const std::string& url, const std::string& destPath) {
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION,  curlWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA,      f);
     curl_easy_setopt(curl, CURLOPT_FAILONERROR,    1L);
-    // Abort if transfer takes longer than 30 seconds
+    // abort if transfer takes longer than 30 seconds
     curl_easy_setopt(curl, CURLOPT_TIMEOUT,        30L);
-    // Abort if connection takes longer than 10 seconds
+    // abort if connection takes longer than 10 seconds
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
-    // Reject files larger than 20MB
+    // reject files larger than 20MB
     curl_easy_setopt(curl, CURLOPT_MAXFILESIZE,    20971520L);
 
     CURLcode res = curl_easy_perform(curl);
@@ -213,7 +222,7 @@ static bool downloadDB(const std::string& url, const std::string& destPath) {
         return false;
     }
 
-    // Remove file if downloaded content is not a valid SQLite database
+    // remove file if downloaded content is not a valid SQLite database
     if (!isSQLiteFile(destPath)) {
         std::error_code ec;
         std::filesystem::remove(destPath, ec);
@@ -273,7 +282,7 @@ static std::string resolveDatabase(const std::string& configPath) {
     if (fileExists && isSQLite && schemaOk && (isOfficial || !officialHashSet)) {
         DBCache::setCurrentHash(hash);
         DBCache::recordAccess(configPath, hash);
-        DBCache::save(configPath);
+        DBCache::save();   // uses internal s_cachePath — safe
         s_resolvedCache[configPath] = configPath;
         return configPath;
     }
@@ -285,12 +294,13 @@ static std::string resolveDatabase(const std::string& configPath) {
             "Enter 'y' to revert to the official database, or 'n' to keep the external one."
         );
 
-        bool useExternal = (response == 'n' || response == 'N');
+        // treat 0 (no input / EOF) as keeping external — safe default
+        bool useExternal = (response == 0 || response == 'n' || response == 'N');
 
         if (useExternal) {
             DBCache::setCurrentHash(hash);
             DBCache::recordAccess(configPath, hash);
-            DBCache::save(configPath);
+            DBCache::save();
             s_resolvedCache[configPath] = configPath;
             return configPath;
         }
@@ -307,7 +317,7 @@ static std::string resolveDatabase(const std::string& configPath) {
                 if (!ec) {
                     DBCache::setCurrentHash(defaultHash);
                     DBCache::recordAccess(configPath, defaultHash);
-                    DBCache::save(configPath);
+                    DBCache::save();
                     s_resolvedCache[configPath] = configPath;
                     return configPath;
                 }
@@ -341,7 +351,7 @@ static std::string resolveDatabase(const std::string& configPath) {
                 std::string movedHash = SHA256::hashFile(configPath);
                 DBCache::setCurrentHash(movedHash);
                 DBCache::recordAccess(configPath, movedHash);
-                DBCache::save(configPath);
+                DBCache::save();
                 s_resolvedCache[configPath] = configPath;
                 return configPath;
             }
@@ -367,7 +377,7 @@ static std::string resolveDatabase(const std::string& configPath) {
             if (dlOk) {
                 std::string dlHash = SHA256::hashFile(configPath);
 
-                // Reject downloaded file if its hash does not match
+                // reject downloaded file if its hash does not match
                 // the official release — prevents accepting tampered databases
                 if (officialHashSet && dlHash != DB_OFFICIAL_HASH) {
                     std::error_code ec;
@@ -382,7 +392,7 @@ static std::string resolveDatabase(const std::string& configPath) {
 
                 DBCache::setCurrentHash(dlHash);
                 DBCache::recordAccess(configPath, dlHash);
-                DBCache::save(configPath);
+                DBCache::save();
                 s_resolvedCache[configPath] = configPath;
                 return configPath;
             }
@@ -435,6 +445,7 @@ void BackupManager::backupDatabase(const std::string& originalPath) {
 // ==================== VulnD ====================
 
 VulnD::VulnD(const std::string& path) : db_path(resolveDatabase(path)) {}
+VulnD::VulnD(const std::string& path, DirectOpen) : db_path(path) {}
 
 bool VulnD::createTables() {
     DBSession s(db_path);
@@ -617,6 +628,7 @@ VulnResults VulnD::getWhere(const std::vector<std::string>& columns,
 // ==================== ModuD ====================
 
 ModuD::ModuD(const std::string& path) : db_path(resolveDatabase(path)) {}
+ModuD::ModuD(const std::string& path, DirectOpen) : db_path(path) {}
 
 bool ModuD::createTables() {
     DBSession s(db_path);
@@ -739,6 +751,7 @@ ModuleResults ModuD::getWhere(const std::vector<std::string>& columns,
 // ==================== ToolD ====================
 
 ToolD::ToolD(const std::string& path) : db_path(resolveDatabase(path)) {}
+ToolD::ToolD(const std::string& path, DirectOpen) : db_path(path) {}
 
 bool ToolD::createTables() {
     DBSession s(db_path);
@@ -802,6 +815,7 @@ ToolResults ToolD::getAll() {
 // ==================== ToolFlagD ====================
 
 ToolFlagD::ToolFlagD(const std::string& path) : db_path(resolveDatabase(path)) {}
+ToolFlagD::ToolFlagD(const std::string& path, DirectOpen) : db_path(path) {}
 
 bool ToolFlagD::createTables() {
     DBSession s(db_path);
@@ -875,6 +889,7 @@ ToolFlagResults ToolFlagD::getWhere(int tool_id) {
 // ==================== TemplateD ====================
 
 TemplateD::TemplateD(const std::string& path) : db_path(resolveDatabase(path)) {}
+TemplateD::TemplateD(const std::string& path, DirectOpen) : db_path(path) {}
 
 bool TemplateD::createTables() {
     DBSession s(db_path);

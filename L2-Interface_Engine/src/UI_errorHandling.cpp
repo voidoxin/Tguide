@@ -6,16 +6,16 @@
 #include "../includes/UI_errorHandling.h"
 #include "../includes/UI_colors.h"
 #include <iostream>
+#include <limits>
 
 using namespace std;
 
 void pause() {
 #ifdef _WIN32
-    system("pause");
-#else
-    cout << Color::DIM << "  press enter to continue..." << Color::RESET;
-    cin.ignore();
-    cin.get();
+    system("pause");                              #else
+    if (!cin.eof()) {                                     cout << Color::DIM << "  press enter to continue..." << Color::RESET;
+        cin.get();
+    }
 #endif
 }
 
@@ -25,7 +25,7 @@ void UI_fatal(const std::string& msg) {
          << Color::RED << msg << Color::RESET
          << "\n\n";
     pause();
-    // caller handles exit
+    // caller handles exit — don't call exit() here
 }
 
 void UI_errors(const std::string& msg) {
@@ -37,9 +37,15 @@ char UI_attention(const std::string& msg) {
     cout << "\n"
          << Color::YELLOW << Color::BOLD << "  [!] " << Color::RESET
          << msg << "\n"
-         << Color::DIM   << "  → " << Color::RESET;
-    char c;
-    cin >> c;
-    cin.ignore();
+         << Color::DIM << "  → " << Color::RESET;
+
+    // initialize to 0 — caller must treat 0 as "no input / invalid"
+    char c = 0;
+    if (!(cin >> c)) {
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        return 0;
+    }
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
     return c;
 }

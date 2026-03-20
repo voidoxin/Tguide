@@ -100,7 +100,8 @@ endif()
 set(LIBS_DIR   ${CMAKE_SOURCE_DIR}/libs)
 set(L0_INC     ${CMAKE_SOURCE_DIR}/L0-core/include)
 set(L1_INC     ${CMAKE_SOURCE_DIR}/L1-services/includes)
-set(L3_INC     ${CMAKE_SOURCE_DIR}/L3-Interface_Engine/includes)
+set(L2_INC     ${CMAKE_SOURCE_DIR}/L2-services/includes)
+set(L3_INC     ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/includes)
 set(OBJECT_DIR ${CMAKE_SOURCE_DIR}/object)
 
 # ==============================================================
@@ -172,19 +173,40 @@ target_link_libraries(L0_core
 # target_link_libraries(L1_services PRIVATE L0_core)
 
 # ==============================================================
-# L3-Interface_Engine — UI and error handling
+# L2-services — service / business logic layer (empty for now)
+# bridges L2-Interface_Engine screens to L0-core queries
+# ==============================================================
+# set(L2_SOURCES
+#     ${CMAKE_SOURCE_DIR}/L2-services/src/svc_tools.cpp
+#     ${CMAKE_SOURCE_DIR}/L2-services/src/svc_generator.cpp
+#     ${CMAKE_SOURCE_DIR}/L2-services/src/svc_savedCommands.cpp
+#     ${CMAKE_SOURCE_DIR}/L2-services/src/svc_savedScripts.cpp
+#     ${CMAKE_SOURCE_DIR}/L2-services/src/svc_settings.cpp
+# )
+# add_library(L2_services STATIC ${L2_SOURCES})
+# target_include_directories(L2_services PUBLIC ${L2_INC})
+# target_link_libraries(L2_services PRIVATE L0_core)
+
+# ==============================================================
+# L2-Interface_Engine — UI and error handling
 # Implements UI_attention(), UI_errors(), UI_fatal()
 # ==============================================================
 set(L3_SOURCES
-    ${CMAKE_SOURCE_DIR}/L3-Interface_Engine/src/UI_Engine.cpp
-    ${CMAKE_SOURCE_DIR}/L3-Interface_Engine/src/UI_errorHandling.cpp
-    ${CMAKE_SOURCE_DIR}/L3-Interface_Engine/src/UI_utils.cpp
+    ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/src/UI_Engine.cpp
+    ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/src/UI_errorHandling.cpp
+    ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/src/UI_utils.cpp
+    ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/src/UI_tools.cpp
+    ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/src/UI_generator.cpp
+    ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/src/UI_savedCommands.cpp
+    ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/src/UI_savedScripts.cpp
+    ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/src/UI_settings.cpp
 )
 
 add_library(L3_interface STATIC ${L3_SOURCES})
 
 target_include_directories(L3_interface PUBLIC
     ${L3_INC}
+    ${L2_INC}
     ${L0_INC}
     ${LIBS_DIR}
 )
@@ -220,6 +242,7 @@ set_target_properties(tguide PROPERTIES OUTPUT_NAME "tguide")
 target_include_directories(tguide PRIVATE
     ${L0_INC}
     ${L1_INC}
+    ${L2_INC}
     ${L3_INC}
     ${LIBS_DIR}
 )
@@ -227,6 +250,7 @@ target_include_directories(tguide PRIVATE
 target_link_libraries(tguide
     PRIVATE L0_core
     # PRIVATE L1_services
+    # PRIVATE L2_services
     PRIVATE L3_interface
 )
 
@@ -292,6 +316,8 @@ endif()
 foreach(EMPTY_DIR
     ${CMAKE_SOURCE_DIR}/L1-services/includes
     ${CMAKE_SOURCE_DIR}/L1-services/src
+    ${CMAKE_SOURCE_DIR}/L2-services/includes
+    ${CMAKE_SOURCE_DIR}/L2-services/src
     ${CMAKE_SOURCE_DIR}/data/backup
     ${CMAKE_SOURCE_DIR}/scripts
     ${OBJECT_DIR}
