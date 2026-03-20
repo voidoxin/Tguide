@@ -11,6 +11,7 @@
 #include "L0-core/include/config_manager.h"
 #include "L0-core/include/path_resolver.h"
 #include "L3-Interface_Engine/includes/UI_errorHandling.h"
+#include "L3-Interface_Engine/includes/UI_Engine.h"
 
 using namespace std;
 namespace fs = std::filesystem;
@@ -18,8 +19,6 @@ namespace fs = std::filesystem;
 int main(int argc, char* argv[]) {
 
     // ── check write access before touching anything ────────────────────────
-    // on Linux, /etc/ and /usr/share/ require root
-    // on Termux and Windows this always passes
     if (!PathResolver::hasWriteAccess()) {
         UI_fatal("tguide requires root privileges on Linux.\n"
                  "Please run with: sudo tguide");
@@ -55,9 +54,8 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // ── hand off to UI layer ───────────────────────────────────────────────
-    // TODO: UI_Engine::start()
-    cout << "[tguide] ready.\n";
+    // ── hand off to UI ─────────────────────────────────────────────────────
+    UIEngine::start();
 
     return 0;
 }
