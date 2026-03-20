@@ -19,7 +19,6 @@ public:
     bool save() const;
 
     const json& get() const;
-
     template<typename T>
     T get(const std::string& keyPath, T defaultValue) const;
 

@@ -29,7 +29,15 @@ void ConfigManager::clean(json& target, const json& defaults) {
 
 bool ConfigManager::load() {
     std::ifstream in(path);
-    if (in.is_open()) in >> config;
+
+    if (in.is_open()) {
+        try {
+            in >> config;
+        } catch (...) {
+            // File exists but contains invalid JSON — reset to empty
+            config = json::object();
+        }
+    }
 
     if (config.is_null())
         config = json::object();
@@ -37,7 +45,7 @@ bool ConfigManager::load() {
     json defaultConfig = {
         {"App", {
             {"database", {
-                {"db_path", "data/database/tguide.db"},
+                {"db_path",     "data/database/tguide.db"},
                 {"backup_path", "data/backup/tguide_bkp.db"}
             }},
             {"info", {
@@ -45,15 +53,21 @@ bool ConfigManager::load() {
             }}
         }},
         {"environment", {
-            {"os", "-1"},
+            {"os",   "-1"},
             {"root", "unknown"}
         }}
     };
 
+    // Snapshot before merge/clean to detect changes
+    json before = config;
+
     clean(config, defaultConfig);
     merge(config, defaultConfig);
 
-    save();
+    // Only write to disk if something actually changed
+    if (config != before)
+        return save();
+
     return true;
 }
 
@@ -97,10 +111,10 @@ void ConfigManager::set(const std::string& keyPath, T value) {
         ptr = &(*ptr)[key];
         start = end + 1;
     }
-    std::string lastKey = keyPath.substr(start);
-    (*ptr)[lastKey] = value;
+    (*ptr)[keyPath.substr(start)] = value;
 }
 
+// Explicit instantiations
 template void ConfigManager::set<int>(const std::string&, int);
 template void ConfigManager::set<bool>(const std::string&, bool);
 template void ConfigManager::set<double>(const std::string&, double);

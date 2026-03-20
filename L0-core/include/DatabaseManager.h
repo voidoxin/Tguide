@@ -9,7 +9,7 @@ struct Vulnerability {
     int id;
     std::string name, metasploit, discovered_date, discoverer;
     std::string severity, access, platform, service, description;
-    std::string danger; // جديد
+    std::string danger;
 };
 
 struct Option {
@@ -59,22 +59,29 @@ struct Template {
 
 // ==================== RESULTS STRUCTS ====================
 
-struct VulnResults { std::vector<Vulnerability> items; };
-struct ModuleResults { std::vector<Module> items; };
-struct ToolResults { std::vector<Tool> items; };
-struct ToolFlagResults { std::vector<ToolFlag> items; };
-struct TemplateResults { std::vector<Template> items; };
+struct VulnResults     { std::vector<Vulnerability> items; };
+struct ModuleResults   { std::vector<Module>        items; };
+struct ToolResults     { std::vector<Tool>           items; };
+struct ToolFlagResults { std::vector<ToolFlag>       items; };
+struct TemplateResults { std::vector<Template>       items; };
+
+// ==================== BackupManager ====================
+// Call BackupManager::init() once at app startup with the absolute backup path
+
+class BackupManager {
+public:
+    static void init(const std::string& backupPath);
+    static void backupDatabase(const std::string& originalPath);
+private:
+    static std::string s_backupPath;
+};
 
 // ==================== VulnD ====================
 
 class VulnD {
-private:
-    sqlite3* db;
     std::string db_path;
-
 public:
     VulnD(const std::string& path);
-    ~VulnD();
 
     bool createTables();
 
@@ -85,7 +92,7 @@ public:
     bool delOption(int option_id);
 
     std::vector<Vulnerability> getAll();
-    std::vector<Option> getOptions(int vuln_id);
+    std::vector<Option>        getOptions(int vuln_id);
 
     VulnResults getWhere(const std::vector<std::string>& columns,
                          const std::vector<std::string>& values);
@@ -94,16 +101,12 @@ public:
 // ==================== ModuD ====================
 
 class ModuD {
-private:
-    sqlite3* db;
     std::string db_path;
-
 public:
     ModuD(const std::string& path);
-    ~ModuD();
 
     bool createTables();
-    bool add(Module m);
+    bool add(const Module& m);
     bool del(int id);
 
     std::vector<Module> getAll();
@@ -115,16 +118,11 @@ public:
 // ==================== ToolD ====================
 
 class ToolD {
-private:
-    sqlite3* db;
     std::string db_path;
-
 public:
     ToolD(const std::string& path);
-    ~ToolD();
 
     bool createTables();
-
     bool add(const Tool& t);
     bool del(int id);
 
@@ -134,16 +132,11 @@ public:
 // ==================== ToolFlagD ====================
 
 class ToolFlagD {
-private:
-    sqlite3* db;
     std::string db_path;
-
 public:
     ToolFlagD(const std::string& path);
-    ~ToolFlagD();
 
     bool createTables();
-
     bool add(const ToolFlag& f);
     bool del(int id);
 
@@ -153,22 +146,13 @@ public:
 // ==================== TemplateD ====================
 
 class TemplateD {
-private:
-    sqlite3* db;
     std::string db_path;
-
 public:
     TemplateD(const std::string& path);
-    ~TemplateD();
 
     bool createTables();
-
     bool add(const Template& t);
     bool del(int id);
 
     TemplateResults getWhere(int tool_id);
-};
-class BackupManager {
-public:
-    static void backupDatabase(const std::string& originalPath);
 };
