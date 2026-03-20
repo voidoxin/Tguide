@@ -157,4 +157,4 @@ std::string hashFile(const std::string& filepath) {
     return finalize(s);
 }
 
-} // namespace SHA256
+} // namespace SHA256 

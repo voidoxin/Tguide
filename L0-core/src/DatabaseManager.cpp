@@ -11,6 +11,7 @@
 #include <cstring>
 #include <fstream>
 #include <curl/curl.h>
+#include "path_resolver.h"
 
 extern char UI_attention(const std::string& msg);
 extern void UI_errors(const std::string& msg);
@@ -33,15 +34,15 @@ class DBSession {
     std::string db_path;
 public:
     DBSession(const std::string& path) : db(nullptr), db_path(path) {
-        if (path.empty()) return;
-        if (sqlite3_open(db_path.c_str(), &db) != SQLITE_OK) {
-            UI_errors("Failed to open database: " + db_path);
-            db = nullptr;
-        } else {
-            sqlite3_exec(db, "PRAGMA foreign_keys = ON;", 0, 0, nullptr);
-        }
+    if (path.empty()) return;
+    if (sqlite3_open(db_path.c_str(), &db) != SQLITE_OK) {
+        UI_errors("Failed to open database: " + db_path);
+        db = nullptr;
+    } else {
+        sqlite3_exec(db, "PRAGMA foreign_keys = ON;", 0, 0, nullptr);
+        sqlite3_exec(db, "PRAGMA journal_mode = WAL;", 0, 0, nullptr);
     }
-
+}
     ~DBSession() {
         if (db) sqlite3_close(db);
     }
@@ -78,14 +79,15 @@ public:
 
 // ==================== VALIDATION ====================
 
-static const std::string DEFAULT_DB_PATH = "data/database/tguide.db";
-
+static const std::string DEFAULT_DB_PATH = PathResolver::dbFile().string();
 static bool isSafePath(const std::string& s) {
     for (char c : s) {
         if (c == ';' || c == '&' || c == '|' ||
             c == '`' || c == '$' || c == '\n' || c == '\r')
             return false;
     }
+    // Reject path traversal attempts
+    if (s.find("..") != std::string::npos) return false;
     return true;
 }
 
@@ -177,6 +179,9 @@ static bool downloadDB(const std::string& url, const std::string& destPath) {
     if (!isSafePath(url))      return false;
     if (!isSafePath(destPath)) return false;
 
+    // Reject non-HTTPS URLs — plain HTTP exposes downloads to MITM attacks
+    if (url.rfind("https://", 0) != 0) return false;
+
     FILE* f = fopen(destPath.c_str(), "wb");
     if (!f) return false;
 
@@ -191,6 +196,12 @@ static bool downloadDB(const std::string& url, const std::string& destPath) {
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION,  curlWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA,      f);
     curl_easy_setopt(curl, CURLOPT_FAILONERROR,    1L);
+    // Abort if transfer takes longer than 30 seconds
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT,        30L);
+    // Abort if connection takes longer than 10 seconds
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
+    // Reject files larger than 20MB
+    curl_easy_setopt(curl, CURLOPT_MAXFILESIZE,    20971520L);
 
     CURLcode res = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
@@ -355,6 +366,20 @@ static std::string resolveDatabase(const std::string& configPath) {
 
             if (dlOk) {
                 std::string dlHash = SHA256::hashFile(configPath);
+
+                // Reject downloaded file if its hash does not match
+                // the official release — prevents accepting tampered databases
+                if (officialHashSet && dlHash != DB_OFFICIAL_HASH) {
+                    std::error_code ec;
+                    std::filesystem::remove(configPath, ec);
+                    UI_fatal(
+                        "Downloaded database hash does not match the official release. "
+                        "The file may have been tampered with. Aborting."
+                    );
+                    s_fatal = true;
+                    return "";
+                }
+
                 DBCache::setCurrentHash(dlHash);
                 DBCache::recordAccess(configPath, dlHash);
                 DBCache::save(configPath);
