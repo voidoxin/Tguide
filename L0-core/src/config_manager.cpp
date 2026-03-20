@@ -7,7 +7,9 @@ ConfigManager::ConfigManager(const std::string& filepath) : path(filepath) {
 
 void ConfigManager::merge(json& target, const json& defaults) {
     for (auto& [key, value] : defaults.items()) {
-        if (!target.contains(key)) {
+        if (!target.contains(key)
+            || target[key].is_null()
+            || (target[key].is_string() && target[key].get<std::string>().empty())) {
             target[key] = value;
         } else if (value.is_object()) {
             merge(target[key], value);
@@ -34,7 +36,6 @@ bool ConfigManager::load() {
         try {
             in >> config;
         } catch (...) {
-            // File exists but contains invalid JSON — reset to empty
             config = json::object();
         }
     }
@@ -46,7 +47,8 @@ bool ConfigManager::load() {
         {"App", {
             {"database", {
                 {"db_path",     "data/database/tguide.db"},
-                {"backup_path", "data/backup/tguide_bkp.db"}
+                {"backup_path", "data/backup/tguide_bkp.db"},
+                {"cache_path",  "data/database/.db_cache"}
             }},
             {"info", {
                 {"version", "V1.0.1"}
@@ -58,13 +60,11 @@ bool ConfigManager::load() {
         }}
     };
 
-    // Snapshot before merge/clean to detect changes
     json before = config;
 
     clean(config, defaultConfig);
     merge(config, defaultConfig);
 
-    // Only write to disk if something actually changed
     if (config != before)
         return save();
 
@@ -114,7 +114,6 @@ void ConfigManager::set(const std::string& keyPath, T value) {
     (*ptr)[keyPath.substr(start)] = value;
 }
 
-// Explicit instantiations
 template void ConfigManager::set<int>(const std::string&, int);
 template void ConfigManager::set<bool>(const std::string&, bool);
 template void ConfigManager::set<double>(const std::string&, double);

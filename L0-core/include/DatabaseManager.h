@@ -3,8 +3,6 @@
 #include <vector>
 #include <sqlite3.h>
 
-// ==================== STRUCTS ====================
-
 struct Vulnerability {
     int id;
     std::string name, metasploit, discovered_date, discoverer;
@@ -57,16 +55,11 @@ struct Template {
     bool flag;
 };
 
-// ==================== RESULTS STRUCTS ====================
-
 struct VulnResults     { std::vector<Vulnerability> items; };
 struct ModuleResults   { std::vector<Module>        items; };
 struct ToolResults     { std::vector<Tool>           items; };
 struct ToolFlagResults { std::vector<ToolFlag>       items; };
 struct TemplateResults { std::vector<Template>       items; };
-
-// ==================== BackupManager ====================
-// Call BackupManager::init() once at app startup with the absolute backup path
 
 class BackupManager {
 public:
@@ -76,7 +69,13 @@ private:
     static std::string s_backupPath;
 };
 
-// ==================== VulnD ====================
+/*
+ * Returns true if a fatal error occurred during database initialization.
+ * Must be checked after constructing any database class before proceeding.
+ *
+ * © voidoxin — Tools Guide
+ */
+bool DBFatal();
 
 class VulnD {
     std::string db_path;
@@ -98,8 +97,6 @@ public:
                          const std::vector<std::string>& values);
 };
 
-// ==================== ModuD ====================
-
 class ModuD {
     std::string db_path;
 public:
@@ -115,8 +112,6 @@ public:
                            const std::vector<std::string>& values);
 };
 
-// ==================== ToolD ====================
-
 class ToolD {
     std::string db_path;
 public:
@@ -129,8 +124,6 @@ public:
     ToolResults getAll();
 };
 
-// ==================== ToolFlagD ====================
-
 class ToolFlagD {
     std::string db_path;
 public:
@@ -142,8 +135,6 @@ public:
 
     ToolFlagResults getWhere(int tool_id);
 };
-
-// ==================== TemplateD ====================
 
 class TemplateD {
     std::string db_path;
