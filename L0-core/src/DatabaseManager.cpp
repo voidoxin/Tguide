@@ -13,8 +13,10 @@
 #include <curl/curl.h>
 
 extern char UI_attention(const std::string& msg);
-extern void UI_errors(const std::string& msg);    extern void UI_fatal(const std::string& msg);
-                                                  static bool s_fatal          = false;
+extern void UI_errors(const std::string& msg);
+extern void UI_fatal(const std::string& msg);
+
+static bool s_fatal          = false;
 static bool s_cacheValidated = false;
 
 bool DBFatal() { return s_fatal; }
@@ -54,7 +56,10 @@ public:
                  std::function<void(sqlite3_stmt*)> binder = nullptr) {
         if (!db) return false;
         sqlite3_stmt* stmt;
-        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) return false;
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+            UI_errors(std::string("DB prepare failed: ") + sqlite3_errmsg(db));
+            return false;
+        }
         if (binder) binder(stmt);
         bool result = sqlite3_step(stmt) == SQLITE_DONE;
         sqlite3_finalize(stmt);
@@ -66,10 +71,20 @@ public:
                std::function<void(sqlite3_stmt*)> reader) {
         if (!db) return false;
         sqlite3_stmt* stmt;
-        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) return false;
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+            UI_errors(std::string("DB prepare failed: ") + sqlite3_errmsg(db));
+            return false;
+        }
         if (binder) binder(stmt);
-        while (sqlite3_step(stmt) == SQLITE_ROW)
+        int rc;
+        while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
             if (reader) reader(stmt);
+        }
+        if (rc == SQLITE_ERROR || rc == SQLITE_CORRUPT) {
+            UI_errors(std::string("DB query error: ") + sqlite3_errmsg(db));
+            sqlite3_finalize(stmt);
+            return false;
+        }
         sqlite3_finalize(stmt);
         return true;
     }

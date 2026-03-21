@@ -18,7 +18,11 @@ static bool writeJson(const std::string& path, const json& data) {
     std::ofstream out(path);
     if (!out.is_open()) return false;
     out << data.dump(4);
-    return out.good();
+    if (!out.good()) {
+        UI_errors("UserDataManager: write failed for: " + path);
+        return false;
+    }
+    return true;
 }
 
 static json readJson(const std::string& path) {
@@ -50,6 +54,7 @@ bool UserDataManager::load() {
         json data = readJson(m_commandsPath);
         m_commands.clear();
 
+        // empty file or missing root key — treat as first run, auto-create
         if (!data.contains("commands") || !data["commands"].is_array()) {
             if (!writeJson(m_commandsPath, { {"commands", json::array()} }))
                 ok = false;
@@ -74,6 +79,7 @@ bool UserDataManager::load() {
         json data = readJson(m_scriptsPath);
         m_scripts.clear();
 
+        // empty file or missing root key — treat as first run, auto-create
         if (!data.contains("scripts") || !data["scripts"].is_array()) {
             if (!writeJson(m_scriptsPath, { {"scripts", json::array()} }))
                 ok = false;
@@ -117,10 +123,10 @@ bool UserDataManager::save() {
         });
     }
 
+    // writeJson already calls UI_errors on write failure
     bool ok = writeJson(m_commandsPath, { {"commands", cmdArray} });
     ok     &= writeJson(m_scriptsPath,  { {"scripts",  scrArray} });
 
-    if (!ok) UI_errors("UserDataManager: failed to write user data files.");
     return ok;
 }
 
@@ -146,6 +152,9 @@ int UserDataManager::nextScriptId() const {
 
 int UserDataManager::saveCommand(int tool_id, const std::string& command,
                                  const std::string& note) {
+    // empty path means user data dir was unavailable — fail immediately
+    if (m_commandsPath.empty()) return -1;
+
     SavedCommand c;
     c.id      = nextCommandId();
     c.tool_id = tool_id;
@@ -163,6 +172,7 @@ int UserDataManager::saveCommand(int tool_id, const std::string& command,
 bool UserDataManager::deleteCommand(int id) {
     auto it = std::find_if(m_commands.begin(), m_commands.end(),
         [id](const SavedCommand& c) { return c.id == id; });
+    // id not found — silent false, no UI_errors (caller handles display)
     if (it == m_commands.end()) return false;
 
     SavedCommand backup = *it;
@@ -183,6 +193,9 @@ std::vector<SavedCommand> UserDataManager::getCommands() {
 
 int UserDataManager::saveScript(const std::string& name, const std::string& path,
                                 const std::string& note) {
+    // empty path means user data dir was unavailable — fail immediately
+    if (m_scriptsPath.empty()) return -1;
+
     SavedScript s;
     s.id   = nextScriptId();
     s.name = name;
@@ -200,6 +213,7 @@ int UserDataManager::saveScript(const std::string& name, const std::string& path
 bool UserDataManager::deleteScript(int id) {
     auto it = std::find_if(m_scripts.begin(), m_scripts.end(),
         [id](const SavedScript& s) { return s.id == id; });
+    // id not found — silent false, no UI_errors (caller handles display)
     if (it == m_scripts.end()) return false;
 
     SavedScript backup = *it;

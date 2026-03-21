@@ -17,9 +17,14 @@ using namespace std;
 
 // ==================== NORMALIZE ====================
 
-// trim leading/trailing whitespace and lowercase — identical logic to UI_disclaimer
+// strip control chars, then trim whitespace and lowercase
 string normalize(const string& input) {
     string out = input;
+
+    // strip ASCII control characters (< 32) except tab — keeps UTF-8 intact
+    out.erase(remove_if(out.begin(), out.end(),
+        [](unsigned char c) { return c < 32 && c != '\t'; }), out.end());
+
     size_t start = out.find_first_not_of(" \t\r\n");
     if (start == string::npos) return "";
     out = out.substr(start);
@@ -31,7 +36,8 @@ string normalize(const string& input) {
 
 // ==================== INPUT ====================
 
-// print prompt in green, read one line, trim whitespace, return empty on EOF
+// print prompt in green, read one line, trim whitespace, truncate to 256 chars
+// returns empty string on EOF
 string readInput(const string& prompt) {
     cout << (colorsEnabled() ? Color::GREEN : "")
          << prompt
@@ -43,7 +49,13 @@ string readInput(const string& prompt) {
     size_t start = line.find_first_not_of(" \t\r\n");
     if (start == string::npos) return "";
     size_t end = line.find_last_not_of(" \t\r\n");
-    return line.substr(start, end - start + 1);
+    string trimmed = line.substr(start, end - start + 1);
+
+    // cap at 256 characters to prevent abuse on any prompt
+    if (trimmed.size() > 256)
+        trimmed = trimmed.substr(0, 256);
+
+    return trimmed;
 }
 
 // ==================== CHECKS ====================
@@ -94,6 +106,9 @@ int toNumber(const string& input) {
 //   2. exact name (case-insensitive)
 //   3. prefix match — returns -1 if ambiguous (multiple matches)
 int matchOption(const string& input, const vector<string>& options) {
+    // empty list — nothing to match against
+    if (options.empty()) return -1;
+
     string norm = normalize(input);
     if (norm.empty()) return -1;
 
