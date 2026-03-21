@@ -60,6 +60,7 @@ struct ToolResults     { std::vector<Tool>           items; };
 struct ToolFlagResults { std::vector<ToolFlag>       items; };
 struct TemplateResults { std::vector<Template>       items; };
 
+#ifdef TGUIDE_DEV_MODE
 class BackupManager {
 public:
     static void init(const std::string& backupPath);
@@ -67,6 +68,7 @@ public:
 private:
     static std::string s_backupPath;
 };
+#endif
 
 /*
  * Tag struct for direct DB open — bypasses resolveDatabase().

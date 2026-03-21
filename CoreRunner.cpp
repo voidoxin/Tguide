@@ -31,12 +31,14 @@ int main(int argc, char* argv[]) {
     }
 
     // ── create required directories ────────────────────────────────────────
+    // fatal — /etc/tguide and /usr/share/tguide require root on Linux
     if (!PathResolver::createSystemDirs()) {
         UI_fatal("Failed to create required directories.\n"
                  "Check permissions or run with sudo.");
         return 1;
     }
 
+    // non-fatal — user data dir is always writable, app runs without it
     if (!PathResolver::createUserDirs())
         UI_errors("Failed to create user data directories. "
                   "Saved commands and scripts may be unavailable.");
@@ -69,10 +71,13 @@ int main(int argc, char* argv[]) {
     DBCache::init(PathResolver::cacheFile().string());
 
     // ── init backup manager (dev only — removed before release) ───────────
+#ifdef TGUIDE_DEV_MODE
     BackupManager::init(PathResolver::backupFile().string());
+#endif
 
     // ── bring up all db classes ────────────────────────────────────────────
-    // resolveDatabase() is idempotent — all classes share the same resolved path
+    // resolveDatabase() is idempotent — s_resolvedCache short-circuits
+    // calls 2–5. s_fatal set by the first failure blocks all remaining.
     string db_path = PathResolver::dbFile().string();
 
     VulnD     vulnDB(db_path);

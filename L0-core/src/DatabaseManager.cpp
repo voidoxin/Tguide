@@ -14,10 +14,8 @@
 
 extern char UI_attention(const std::string& msg);
 extern void UI_errors(const std::string& msg);
-extern void UI_fatal(const std::string& msg);
-
-static bool s_fatal          = false;
-static bool s_cacheValidated = false;
+extern void UI_fatal(const std::string& msg);     
+static bool s_fatal          = false;             static bool s_cacheValidated = false;
 
 bool DBFatal() { return s_fatal; }
 
@@ -366,7 +364,7 @@ static std::string resolveDatabase(const std::string& configPath) {
     std::string downloadUrl = std::string(DB_DOWNLOAD_URL);
 
     if (!downloadUrl.empty()) {
-        UI_errors("Database not found locally. Attempting download from GitHub.");
+        std::cout << "  database not found \u2014 attempting download from GitHub...\n" << std::flush;
 
         if (downloadDB(downloadUrl, configPath)) {
             sqlite3* db   = nullptr;
@@ -420,6 +418,7 @@ static std::string resolveDatabase(const std::string& configPath) {
 
 // ==================== BackupManager ====================
 
+#ifdef TGUIDE_DEV_MODE
 std::string BackupManager::s_backupPath;
 
 void BackupManager::init(const std::string& backupPath) {
@@ -442,6 +441,7 @@ void BackupManager::backupDatabase(const std::string& originalPath) {
         UI_errors("Backup failed: unknown error.");
     }
 }
+#endif
 
 // ==================== VulnD ====================
 
@@ -490,7 +490,9 @@ bool VulnD::add(const Vulnerability& v) {
             sqlite3_bind_text(stmt, 10, v.danger.c_str(),          -1, SQLITE_TRANSIENT);
         }
     );
+#ifdef TGUIDE_DEV_MODE
     if (ok) BackupManager::backupDatabase(db_path);
+#endif
     return ok;
 }
 
@@ -502,7 +504,9 @@ bool VulnD::del(int id) {
         "DELETE FROM vulnerabilities WHERE id=?",
         [&](sqlite3_stmt* stmt) { sqlite3_bind_int(stmt, 1, id); }
     );
+#ifdef TGUIDE_DEV_MODE
     if (ok) BackupManager::backupDatabase(db_path);
+#endif
     return ok;
 }
 
@@ -518,7 +522,9 @@ bool VulnD::addOption(const Option& o) {
             sqlite3_bind_text(stmt, 3, o.value.c_str(), -1, SQLITE_TRANSIENT);
         }
     );
+#ifdef TGUIDE_DEV_MODE
     if (ok) BackupManager::backupDatabase(db_path);
+#endif
     return ok;
 }
 
@@ -530,7 +536,9 @@ bool VulnD::delOption(int option_id) {
         "DELETE FROM options WHERE id=?",
         [&](sqlite3_stmt* stmt) { sqlite3_bind_int(stmt, 1, option_id); }
     );
+#ifdef TGUIDE_DEV_MODE
     if (ok) BackupManager::backupDatabase(db_path);
+#endif
     return ok;
 }
 
@@ -665,7 +673,9 @@ bool ModuD::add(const Module& m) {
             sqlite3_bind_text(stmt, 9, copy.output.c_str(),      -1, SQLITE_TRANSIENT);
         }
     );
+#ifdef TGUIDE_DEV_MODE
     if (ok) BackupManager::backupDatabase(db_path);
+#endif
     return ok;
 }
 
@@ -677,7 +687,9 @@ bool ModuD::del(int id) {
         "DELETE FROM modules WHERE id=?",
         [&](sqlite3_stmt* stmt) { sqlite3_bind_int(stmt, 1, id); }
     );
+#ifdef TGUIDE_DEV_MODE
     if (ok) BackupManager::backupDatabase(db_path);
+#endif
     return ok;
 }
 
@@ -778,7 +790,9 @@ bool ToolD::add(const Tool& t) {
             sqlite3_bind_text(stmt, 4, t.flags_all.c_str(),   -1, SQLITE_TRANSIENT);
         }
     );
+#ifdef TGUIDE_DEV_MODE
     if (ok) BackupManager::backupDatabase(db_path);
+#endif
     return ok;
 }
 
@@ -790,7 +804,9 @@ bool ToolD::del(int id) {
         "DELETE FROM tools WHERE id=?",
         [&](sqlite3_stmt* stmt) { sqlite3_bind_int(stmt, 1, id); }
     );
+#ifdef TGUIDE_DEV_MODE
     if (ok) BackupManager::backupDatabase(db_path);
+#endif
     return ok;
 }
 
@@ -884,7 +900,9 @@ bool ToolFlagD::add(const ToolFlag& f) {
             sqlite3_bind_text(stmt, 6, f.protocols.c_str(),   -1, SQLITE_TRANSIENT);
         }
     );
+#ifdef TGUIDE_DEV_MODE
     if (ok) BackupManager::backupDatabase(db_path);
+#endif
     return ok;
 }
 
@@ -896,7 +914,9 @@ bool ToolFlagD::del(int id) {
         "DELETE FROM tool_flags WHERE id=?",
         [&](sqlite3_stmt* stmt) { sqlite3_bind_int(stmt, 1, id); }
     );
+#ifdef TGUIDE_DEV_MODE
     if (ok) BackupManager::backupDatabase(db_path);
+#endif
     return ok;
 }
 
@@ -958,7 +978,9 @@ bool TemplateD::add(const Template& t) {
             sqlite3_bind_int (stmt, 6, t.flag ? 1 : 0);
         }
     );
+#ifdef TGUIDE_DEV_MODE
     if (ok) BackupManager::backupDatabase(db_path);
+#endif
     return ok;
 }
 
@@ -970,7 +992,9 @@ bool TemplateD::del(int id) {
         "DELETE FROM templates WHERE id=?",
         [&](sqlite3_stmt* stmt) { sqlite3_bind_int(stmt, 1, id); }
     );
+#ifdef TGUIDE_DEV_MODE
     if (ok) BackupManager::backupDatabase(db_path);
+#endif
     return ok;
 }
 

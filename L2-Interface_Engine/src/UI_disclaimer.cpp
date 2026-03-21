@@ -4,6 +4,7 @@
  */
 
 #include "../includes/UI_disclaimer.h"
+#include "../includes/UI_input.h"
 #include "../includes/UI_colors.h"
 #include "../includes/UI_utils.h"
 #include <iostream>
@@ -11,19 +12,6 @@
 #include <algorithm>
 
 using namespace std;
-
-// ==================== HELPERS ====================
-
-static string normalize(const string& s) {
-    string out = s;
-    size_t start = out.find_first_not_of(" \t\r\n");
-    if (start == string::npos) return "";
-    out = out.substr(start);
-    size_t end = out.find_last_not_of(" \t\r\n");
-    if (end != string::npos) out = out.substr(0, end + 1);
-    transform(out.begin(), out.end(), out.begin(), ::tolower);
-    return out;
-}
 
 // ==================== UIDisclaimer ====================
 

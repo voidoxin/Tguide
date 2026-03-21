@@ -10,15 +10,38 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
-
-# ==============================================================
-# Build Type
+                                                  # ==============================================================                                    # Build Type
 # Default to Release if not specified
 # ==============================================================
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+
+# ==============================================================
+# Dev Mode
+# enable dev-only features (BackupManager, data_adder)
+# remove before release build
+# ==============================================================
+option(TGUIDE_DEV_MODE "Enable dev-only features" ON)
+if(TGUIDE_DEV_MODE)
+    add_compile_definitions(TGUIDE_DEV_MODE)
+    message(STATUS "Dev mode: ON — BackupManager active")
+else()
+    message(STATUS "Dev mode: OFF — release build")
+endif()
+
+# ==============================================================
+# Dev Mode — enable dev-only features (BackupManager, data_adder)
+# remove before release build
+# ==============================================================
+option(TGUIDE_DEV_MODE "Enable dev-only features" ON)
+if(TGUIDE_DEV_MODE)
+    add_compile_definitions(TGUIDE_DEV_MODE)
+    message(STATUS "Dev mode: ON — BackupManager active")
+else()
+    message(STATUS "Dev mode: OFF — release build")
+endif()
 
 # ==============================================================
 # Compiler Flags

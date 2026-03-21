@@ -30,7 +30,7 @@ void pause() {
 // prints [FATAL] and waits with "press enter to exit..." — does NOT call exit()
 // clearScreen() must NEVER be called by any caller after this returns
 void UI_fatal(const std::string& msg) {
-    cerr << "\n"
+    cout << "\n"
          << (colorsEnabled() ? Color::RED  : "")
          << (colorsEnabled() ? Color::BOLD : "")
          << "  [FATAL] "
@@ -41,7 +41,7 @@ void UI_fatal(const std::string& msg) {
          << "\n\n";
 
     if (!cin.eof()) {
-        cerr << (colorsEnabled() ? Color::DIM : "")
+        cout << (colorsEnabled() ? Color::DIM : "")
              << "  press enter to exit..."
              << (colorsEnabled() ? Color::RESET : "")
              << flush;
@@ -49,7 +49,7 @@ void UI_fatal(const std::string& msg) {
         cin.get();
     }
 
-    cerr << "\n";
+    cout << "\n";
     // caller returns 1 from main() — do not call exit() here
 }
 
@@ -58,7 +58,7 @@ void UI_fatal(const std::string& msg) {
 // prints [error] and waits for acknowledgement — pause is built in
 // callers do NOT need a separate pause() call after this
 void UI_errors(const std::string& msg) {
-    cerr << (colorsEnabled() ? Color::YELLOW : "")
+    cout << (colorsEnabled() ? Color::YELLOW : "")
          << "  [error] "
          << (colorsEnabled() ? Color::RESET : "")
          << msg << "\n";
