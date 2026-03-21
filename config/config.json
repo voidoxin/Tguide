@@ -12,5 +12,7 @@
     "environment": {
         "os":   "-1",
         "root": "unknown"
-    }
+    },
+    "colors":              1,
+    "disclaimer_accepted": 0
 }

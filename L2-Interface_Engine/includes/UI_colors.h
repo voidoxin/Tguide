@@ -28,3 +28,28 @@ namespace Color {
     constexpr const char* RESET   = "\033[0m";
 #endif
 }
+
+// ==================== RUNTIME COLOR TOGGLE ====================
+//
+// initColors() is called once at startup from CoreRunner after config loads.
+// colorsEnabled() is used at every output site via the pattern:
+//   cout << (colorsEnabled() ? Color::RED : "") << msg
+//        << (colorsEnabled() ? Color::RESET : "");
+//
+// Windows and macOS always return false — no ANSI support assumed.
+// Linux and Termux honor the value passed to initColors().
+
+inline bool g_colorsEnabled = false;
+
+inline void initColors(bool enabled) {
+#if defined(_WIN32) || defined(__APPLE__)
+    (void)enabled;          // forced off on Windows and macOS
+    g_colorsEnabled = false;
+#else
+    g_colorsEnabled = enabled;
+#endif
+}
+
+inline bool colorsEnabled() {
+    return g_colorsEnabled;
+}

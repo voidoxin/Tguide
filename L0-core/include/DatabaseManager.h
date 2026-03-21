@@ -29,7 +29,8 @@ struct Module {
 struct Tool {
     int id;
     std::string name;
-    std::string description;
+    std::string short_desc;    // one sentence shown under tool name in list views
+    std::string description;   // full detailed text shown in tool detail view
     std::string flags_all;
 };
 
@@ -47,7 +48,7 @@ struct Template {
     int id;
     int tool_id;
     std::string template_name;
-    std::string description;
+    std::string description;   // short explanation of what the template does
     bool root;
     std::string protocols;
     bool flag;
@@ -87,7 +88,7 @@ class VulnD {
     std::string db_path;
 public:
     VulnD(const std::string& path);
-    VulnD(const std::string& path, DirectOpen);   // bypasses resolveDatabase
+    VulnD(const std::string& path, DirectOpen);
 
     bool createTables();
 
@@ -131,6 +132,9 @@ public:
     bool del(int id);
 
     ToolResults getAll();
+
+    ToolResults getWhere(const std::vector<std::string>& columns,
+                         const std::vector<std::string>& values);
 };
 
 class ToolFlagD {

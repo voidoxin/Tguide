@@ -1,0 +1,113 @@
+/*
+ *  tguide — UI_disclaimer.cpp
+ *  written by voidoxin
+ */
+
+#include "../includes/UI_disclaimer.h"
+#include "../includes/UI_colors.h"
+#include "../includes/UI_utils.h"
+#include <iostream>
+#include <string>
+#include <algorithm>
+
+using namespace std;
+
+// ==================== HELPERS ====================
+
+static string normalize(const string& s) {
+    string out = s;
+    size_t start = out.find_first_not_of(" \t\r\n");
+    if (start == string::npos) return "";
+    out = out.substr(start);
+    size_t end = out.find_last_not_of(" \t\r\n");
+    if (end != string::npos) out = out.substr(0, end + 1);
+    transform(out.begin(), out.end(), out.begin(), ::tolower);
+    return out;
+}
+
+// ==================== UIDisclaimer ====================
+
+bool UIDisclaimer::show(ConfigManager& cfg) {
+    while (true) {
+        UI::clearScreen();
+
+        // ── header ────────────────────────────────────────────────────────
+        cout << (colorsEnabled() ? Color::CYAN : "")
+             << (colorsEnabled() ? Color::BOLD : "");
+        cout << "  \u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550"
+                "\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550"
+                "\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550"
+                "\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550"
+                "\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550"
+                "\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557\n";
+        cout << "  \u2551               TGUIDE  \u2014  LEGAL DISCLAIMER"
+                "                   \u2551\n";
+        cout << "  \u255a\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550"
+                "\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550"
+                "\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550"
+                "\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550"
+                "\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550"
+                "\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255d\n";
+        cout << (colorsEnabled() ? Color::RESET : "");
+
+        // ── body ──────────────────────────────────────────────────────────
+        cout << "\n"
+             << "  This tool is intended solely for authorized security testing,\n"
+             << "  educational purposes, and lawful penetration testing activities.\n"
+             << "\n"
+             << "  By using tguide, you confirm that:\n"
+             << "\n"
+             << "    \u2192  You have explicit written permission to test the target systems.\n"
+             << "    \u2192  You are not using this tool for unauthorized access, surveillance,\n"
+             << "       or any activity that violates local, national, or international law.\n"
+             << "    \u2192  You accept full responsibility for any actions performed\n"
+             << "       using this tool.\n"
+             << "\n"
+             << "  The author (voidoxin) provides this software \"as is\" without warranty\n"
+             << "  of any kind and bears no liability for damages, legal consequences,\n"
+             << "  or misuse arising from the use of this tool.\n"
+             << "\n"
+             << "  Unauthorized use of this tool against systems you do not own\n"
+             << "  or have explicit permission to test is illegal and punishable by law.\n"
+             << "\n";
+
+        // ── divider ───────────────────────────────────────────────────────
+        cout << (colorsEnabled() ? Color::DIM : "");
+        cout << "  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
+                "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
+                "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
+                "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
+                "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
+                "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n";
+        cout << (colorsEnabled() ? Color::RESET : "");
+
+        // ── prompt ────────────────────────────────────────────────────────
+        cout << "  Type  \"agree\"  to accept and continue.\n"
+             << "  Type  \"exit\"   to quit.\n"
+             << (colorsEnabled() ? Color::GREEN : "")
+             << "  \u2192  "
+             << (colorsEnabled() ? Color::RESET : "");
+
+        string line;
+        if (!getline(cin, line)) {
+            cout << "\n";
+            return false;
+        }
+
+        string input = normalize(line);
+
+        if (input == "agree") {
+            cfg.set<int>("disclaimer_accepted", 1);
+            cfg.save();
+            UI::clearScreen();
+            return true;
+        }
+
+        if (input == "exit" || input == "q" || input == "quit") {
+            cout << "\n";
+            return false;
+        }
+
+        // any other input — redisplay without error message
+    }
+}

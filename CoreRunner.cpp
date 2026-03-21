@@ -11,7 +11,10 @@
 #include "L0-core/include/config_manager.h"
 #include "L0-core/include/path_resolver.h"
 #include "L0-core/include/db_cache_manager.h"
+#include "L0-core/include/UserDataManager.h"
 #include "L2-Interface_Engine/includes/UI_errorHandling.h"
+#include "L2-Interface_Engine/includes/UI_colors.h"
+#include "L2-Interface_Engine/includes/UI_disclaimer.h"
 #include "L2-Interface_Engine/includes/UI_Engine.h"
                                                   using namespace std;
 namespace fs = std::filesystem;
@@ -20,7 +23,7 @@ int main(int argc, char* argv[]) {
 
     // ── check write access before touching anything ────────────────────────
     // on Linux, /etc/ and /usr/share/ require root
-    // on Termux and Windows this always passes
+    // on Termux, Windows, and macOS this always passes
     if (!PathResolver::hasWriteAccess()) {
         UI_fatal("tguide requires root privileges on Linux.\n"
                  "Please run with: sudo tguide");
@@ -28,14 +31,38 @@ int main(int argc, char* argv[]) {
     }
 
     // ── create required directories ────────────────────────────────────────
-    if (!PathResolver::createDirs()) {
+    if (!PathResolver::createSystemDirs()) {
         UI_fatal("Failed to create required directories.\n"
                  "Check permissions or run with sudo.");
         return 1;
     }
 
+    if (!PathResolver::createUserDirs())
+        UI_errors("Failed to create user data directories. "
+                  "Saved commands and scripts may be unavailable.");
+
     // ── load config ────────────────────────────────────────────────────────
     ConfigManager cfg(PathResolver::configFile().string());
+
+    // ── init color toggle from config ──────────────────────────────────────
+    // must happen before any UI output so the correct mode is in effect
+    bool colors = cfg.get<int>("colors", 1) == 1;
+    initColors(colors);
+
+    // ── init user data storage ─────────────────────────────────────────────
+    // non-fatal: missing or unreadable files are recreated automatically
+    UserDataManager userData(
+        PathResolver::savedCommandsFile().string(),
+        PathResolver::savedScriptsFile().string()
+    );
+    if (!userData.load())
+        UI_errors("Failed to load user data files. Saved data may be unavailable.");
+
+    // ── legal disclaimer — first run only ──────────────────────────────────
+    if (cfg.get<int>("disclaimer_accepted", 0) == 0) {
+        if (!UIDisclaimer::show(cfg))
+            return 0;
+    }
 
     // ── init cache before any DB class is constructed ──────────────────────
     // resolveDatabase() calls DBCache internally — must be ready first

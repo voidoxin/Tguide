@@ -57,7 +57,9 @@ bool ConfigManager::load() {
         {"environment", {
             {"os",   "-1"},
             {"root", "unknown"}
-        }}
+        }},
+        {"colors",              1},   // 1 = ANSI on, 0 = plain output
+        {"disclaimer_accepted", 0}    // 0 = not accepted, 1 = accepted
     };
 
     json before = config;

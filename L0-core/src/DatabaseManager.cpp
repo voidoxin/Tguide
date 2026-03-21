@@ -79,7 +79,6 @@ public:
 
 static const std::string DEFAULT_DB_PATH = "data/database/tguide.db";
 
-// used for file paths — rejects shell metacharacters and path traversal
 static bool isSafePath(const std::string& s) {
     for (char c : s) {
         if (c == ';' || c == '|' ||
@@ -90,7 +89,6 @@ static bool isSafePath(const std::string& s) {
     return true;
 }
 
-// used for URLs — allows & which is common in query strings
 static bool isSafeURL(const std::string& s) {
     for (char c : s) {
         if (c == ';' || c == '|' ||
@@ -124,7 +122,7 @@ static bool validateSchema(sqlite3* db) {
         { "options",         { "id","vuln_id","option_name","option_value" } },
         { "modules",         { "id","name","path","platform","type","description",
                                "API","mode","loud","output" } },
-        { "tools",           { "id","name","description","flags_all" } },
+        { "tools",           { "id","name","short_desc","description","flags_all" } },
         { "tool_flags",      { "id","tool_id","name","description","loud","root","protocols" } },
         { "templates",       { "id","tool_id","template_name","description",
                                "root","protocols","flag" } }
@@ -185,10 +183,9 @@ static size_t curlWriteCallback(void* ptr, size_t size,
 
 static bool downloadDB(const std::string& url, const std::string& destPath) {
     if (url.empty())            return false;
-    if (!isSafeURL(url))        return false;   // URL-safe check — allows &
+    if (!isSafeURL(url))        return false;
     if (!isSafePath(destPath))  return false;
 
-    // reject non-HTTPS URLs — plain HTTP exposes downloads to MITM attacks
     if (url.rfind("https://", 0) != 0) return false;
 
     FILE* f = fopen(destPath.c_str(), "wb");
@@ -205,11 +202,8 @@ static bool downloadDB(const std::string& url, const std::string& destPath) {
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION,  curlWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA,      f);
     curl_easy_setopt(curl, CURLOPT_FAILONERROR,    1L);
-    // abort if transfer takes longer than 30 seconds
     curl_easy_setopt(curl, CURLOPT_TIMEOUT,        30L);
-    // abort if connection takes longer than 10 seconds
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
-    // reject files larger than 20MB
     curl_easy_setopt(curl, CURLOPT_MAXFILESIZE,    20971520L);
 
     CURLcode res = curl_easy_perform(curl);
@@ -222,7 +216,6 @@ static bool downloadDB(const std::string& url, const std::string& destPath) {
         return false;
     }
 
-    // remove file if downloaded content is not a valid SQLite database
     if (!isSQLiteFile(destPath)) {
         std::error_code ec;
         std::filesystem::remove(destPath, ec);
@@ -278,23 +271,20 @@ static std::string resolveDatabase(const std::string& configPath) {
     const bool officialHashSet = !std::string(DB_OFFICIAL_HASH).empty();
     const bool isOfficial      = officialHashSet && hash == DB_OFFICIAL_HASH;
 
-    // Case 1 — valid, schema ok, hash matches official (or not set yet)
     if (fileExists && isSQLite && schemaOk && (isOfficial || !officialHashSet)) {
         DBCache::setCurrentHash(hash);
         DBCache::recordAccess(configPath, hash);
-        DBCache::save();   // uses internal s_cachePath — safe
+        DBCache::save();
         s_resolvedCache[configPath] = configPath;
         return configPath;
     }
 
-    // Case 2 — valid SQLite, correct schema, has data, hash differs from official
     if (fileExists && isSQLite && schemaOk && hasData && officialHashSet && !isOfficial) {
         char response = UI_attention(
             "The database at the configured path does not match the official release. "
             "Enter 'y' to revert to the official database, or 'n' to keep the external one."
         );
 
-        // treat 0 (no input / EOF) as keeping external — safe default
         bool useExternal = (response == 0 || response == 'n' || response == 'N');
 
         if (useExternal) {
@@ -327,7 +317,6 @@ static std::string resolveDatabase(const std::string& configPath) {
         fileExists = false;
     }
 
-    // Case 3a — locate valid DB at default path and move it to config path
     if (std::filesystem::exists(DEFAULT_DB_PATH) &&
         isSQLiteFile(DEFAULT_DB_PATH)) {
         sqlite3* db        = nullptr;
@@ -359,7 +348,6 @@ static std::string resolveDatabase(const std::string& configPath) {
         }
     }
 
-    // Case 3b — download from GitHub via libcurl
     std::string downloadUrl = std::string(DB_DOWNLOAD_URL);
 
     if (!downloadUrl.empty()) {
@@ -377,8 +365,6 @@ static std::string resolveDatabase(const std::string& configPath) {
             if (dlOk) {
                 std::string dlHash = SHA256::hashFile(configPath);
 
-                // reject downloaded file if its hash does not match
-                // the official release — prevents accepting tampered databases
                 if (officialHashSet && dlHash != DB_OFFICIAL_HASH) {
                     std::error_code ec;
                     std::filesystem::remove(configPath, ec);
@@ -760,7 +746,7 @@ bool ToolD::createTables() {
     return s.execute(
         "CREATE TABLE IF NOT EXISTS tools ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "name TEXT, description TEXT, flags_all TEXT);"
+        "name TEXT, short_desc TEXT, description TEXT, flags_all TEXT);"
     );
 }
 
@@ -769,11 +755,12 @@ bool ToolD::add(const Tool& t) {
     if (!s.ok()) return false;
 
     bool ok = s.execute(
-        "INSERT INTO tools(name, description, flags_all) VALUES(?,?,?)",
+        "INSERT INTO tools(name, short_desc, description, flags_all) VALUES(?,?,?,?)",
         [&](sqlite3_stmt* stmt) {
             sqlite3_bind_text(stmt, 1, t.name.c_str(),        -1, SQLITE_TRANSIENT);
-            sqlite3_bind_text(stmt, 2, t.description.c_str(), -1, SQLITE_TRANSIENT);
-            sqlite3_bind_text(stmt, 3, t.flags_all.c_str(),   -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(stmt, 2, t.short_desc.c_str(),  -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(stmt, 3, t.description.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(stmt, 4, t.flags_all.c_str(),   -1, SQLITE_TRANSIENT);
         }
     );
     if (ok) BackupManager::backupDatabase(db_path);
@@ -798,14 +785,50 @@ ToolResults ToolD::getAll() {
     if (!s.ok()) return results;
 
     s.query(
-        "SELECT id, name, description, flags_all FROM tools",
+        "SELECT id, name, short_desc, description, flags_all FROM tools",
         nullptr,
         [&](sqlite3_stmt* stmt) {
             Tool t;
             t.id          = sqlite3_column_int(stmt, 0);
             t.name        = col_text(stmt, 1);
-            t.description = col_text(stmt, 2);
-            t.flags_all   = col_text(stmt, 3);
+            t.short_desc  = col_text(stmt, 2);
+            t.description = col_text(stmt, 3);
+            t.flags_all   = col_text(stmt, 4);
+            results.items.push_back(t);
+        }
+    );
+    return results;
+}
+
+ToolResults ToolD::getWhere(const std::vector<std::string>& columns,
+                             const std::vector<std::string>& values) {
+    ToolResults results;
+    if (columns.size() != values.size() || columns.empty()) return results;
+    DBSession s(db_path);
+    if (!s.ok()) return results;
+
+    std::stringstream ss;
+    ss << "SELECT id, name, short_desc, description, flags_all FROM tools WHERE ";
+    for (size_t i = 0; i < columns.size(); i++) {
+        ss << columns[i] << "=?";
+        if (i < columns.size() - 1) ss << " AND ";
+    }
+    std::string sql = ss.str();
+
+    s.query(
+        sql.c_str(),
+        [&](sqlite3_stmt* stmt) {
+            for (size_t i = 0; i < values.size(); i++)
+                sqlite3_bind_text(stmt, (int)i + 1,
+                    values[i].c_str(), -1, SQLITE_TRANSIENT);
+        },
+        [&](sqlite3_stmt* stmt) {
+            Tool t;
+            t.id          = sqlite3_column_int(stmt, 0);
+            t.name        = col_text(stmt, 1);
+            t.short_desc  = col_text(stmt, 2);
+            t.description = col_text(stmt, 3);
+            t.flags_all   = col_text(stmt, 4);
             results.items.push_back(t);
         }
     );

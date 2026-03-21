@@ -78,8 +78,9 @@ static void viewLastTools(const std::string& db_path) {
     for (int i = start; i < (int)all.size(); i++) {
         auto& t = all[i];
         std::cout << "  [" << t.id << "] " << t.name << "\n"
-                  << "       desc: "  << t.description << "\n"
-                  << "       flags: " << t.flags_all   << "\n\n";
+                  << "       short:  " << t.short_desc  << "\n"
+                  << "       desc:   " << t.description << "\n"
+                  << "       flags:  " << t.flags_all   << "\n\n";
     }
 }
 
@@ -289,7 +290,8 @@ static void addTool(const std::string& db_path) {
     Tool t;
     t.id          = 0;
     t.name        = prompt("Name");
-    t.description = prompt("Description");
+    t.short_desc  = prompt("Short description (one sentence)");
+    t.description = prompt("Full description");
     t.flags_all   = prompt("All flags (summary)");
     ToolD db(db_path);
     if (db.add(t))

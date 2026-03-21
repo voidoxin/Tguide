@@ -88,7 +88,6 @@ elseif(IS_LINUX)
     set(TGUIDE_INSTALL_DATA   "/usr/share/tguide")
     set(TGUIDE_INSTALL_CONFIG "/etc/tguide")
 elseif(IS_WINDOWS)
-    # Windows paths resolved at runtime via %APPDATA% — no install targets needed
     set(TGUIDE_INSTALL_BIN    "bin")
     set(TGUIDE_INSTALL_DATA   "data")
     set(TGUIDE_INSTALL_CONFIG "config")
@@ -148,6 +147,7 @@ set(L0_SOURCES
     ${CMAKE_SOURCE_DIR}/L0-core/src/config_manager.cpp
     ${CMAKE_SOURCE_DIR}/L0-core/src/db_cache_manager.cpp
     ${CMAKE_SOURCE_DIR}/L0-core/src/sha256.cpp
+    ${CMAKE_SOURCE_DIR}/L0-core/src/UserDataManager.cpp
 )
 
 add_library(L0_core STATIC ${L0_SOURCES})
@@ -195,11 +195,14 @@ set(L3_SOURCES
     ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/src/UI_Engine.cpp
     ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/src/UI_errorHandling.cpp
     ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/src/UI_utils.cpp
+    ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/src/UI_input.cpp
+    ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/src/UI_paginator.cpp
     ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/src/UI_tools.cpp
     ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/src/UI_generator.cpp
     ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/src/UI_savedCommands.cpp
     ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/src/UI_savedScripts.cpp
     ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/src/UI_settings.cpp
+    ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/src/UI_disclaimer.cpp
 )
 
 add_library(L3_interface STATIC ${L3_SOURCES})
