@@ -11,10 +11,8 @@
 #include <cstring>
 #include <fstream>
 #include <curl/curl.h>
-
-extern char UI_attention(const std::string& msg);
-extern void UI_errors(const std::string& msg);
-extern void UI_fatal(const std::string& msg);     
+                                                  extern char UI_attention(const std::string& msg);
+extern void UI_errors(const std::string& msg);    extern void UI_fatal(const std::string& msg);
 static bool s_fatal          = false;             static bool s_cacheValidated = false;
 
 bool DBFatal() { return s_fatal; }
@@ -135,7 +133,7 @@ static bool validateSchema(sqlite3* db) {
         { "options",         { "id","vuln_id","option_name","option_value" } },
         { "modules",         { "id","name","path","platform","type","description",
                                "API","mode","loud","output" } },
-        { "tools",           { "id","name","short_desc","description","flags_all" } },
+        { "tools",           { "id","name","category","short_desc","description","flags_all" } },
         { "tool_flags",      { "id","tool_id","name","description","loud","root","protocols" } },
         { "templates",       { "id","tool_id","template_name","description",
                                "root","protocols","flag" } }
@@ -773,7 +771,7 @@ bool ToolD::createTables() {
     return s.execute(
         "CREATE TABLE IF NOT EXISTS tools ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "name TEXT, short_desc TEXT, description TEXT, flags_all TEXT);"
+        "name TEXT, category TEXT, short_desc TEXT, description TEXT, flags_all TEXT);"
     );
 }
 
@@ -782,12 +780,14 @@ bool ToolD::add(const Tool& t) {
     if (!s.ok()) return false;
 
     bool ok = s.execute(
-        "INSERT INTO tools(name, short_desc, description, flags_all) VALUES(?,?,?,?)",
+        "INSERT INTO tools(name, category, short_desc, description, flags_all)"
+        " VALUES(?,?,?,?,?)",
         [&](sqlite3_stmt* stmt) {
             sqlite3_bind_text(stmt, 1, t.name.c_str(),        -1, SQLITE_TRANSIENT);
-            sqlite3_bind_text(stmt, 2, t.short_desc.c_str(),  -1, SQLITE_TRANSIENT);
-            sqlite3_bind_text(stmt, 3, t.description.c_str(), -1, SQLITE_TRANSIENT);
-            sqlite3_bind_text(stmt, 4, t.flags_all.c_str(),   -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(stmt, 2, t.category.c_str(),    -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(stmt, 3, t.short_desc.c_str(),  -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(stmt, 4, t.description.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(stmt, 5, t.flags_all.c_str(),   -1, SQLITE_TRANSIENT);
         }
     );
 #ifdef TGUIDE_DEV_MODE
@@ -816,15 +816,16 @@ ToolResults ToolD::getAll() {
     if (!s.ok()) return results;
 
     s.query(
-        "SELECT id, name, short_desc, description, flags_all FROM tools",
+        "SELECT id, name, category, short_desc, description, flags_all FROM tools",
         nullptr,
         [&](sqlite3_stmt* stmt) {
             Tool t;
             t.id          = sqlite3_column_int(stmt, 0);
             t.name        = col_text(stmt, 1);
-            t.short_desc  = col_text(stmt, 2);
-            t.description = col_text(stmt, 3);
-            t.flags_all   = col_text(stmt, 4);
+            t.category    = col_text(stmt, 2);
+            t.short_desc  = col_text(stmt, 3);
+            t.description = col_text(stmt, 4);
+            t.flags_all   = col_text(stmt, 5);
             results.items.push_back(t);
         }
     );
@@ -839,7 +840,7 @@ ToolResults ToolD::getWhere(const std::vector<std::string>& columns,
     if (!s.ok()) return results;
 
     std::stringstream ss;
-    ss << "SELECT id, name, short_desc, description, flags_all FROM tools WHERE ";
+    ss << "SELECT id, name, category, short_desc, description, flags_all FROM tools WHERE ";
     for (size_t i = 0; i < columns.size(); i++) {
         ss << columns[i] << "=?";
         if (i < columns.size() - 1) ss << " AND ";
@@ -857,9 +858,10 @@ ToolResults ToolD::getWhere(const std::vector<std::string>& columns,
             Tool t;
             t.id          = sqlite3_column_int(stmt, 0);
             t.name        = col_text(stmt, 1);
-            t.short_desc  = col_text(stmt, 2);
-            t.description = col_text(stmt, 3);
-            t.flags_all   = col_text(stmt, 4);
+            t.category    = col_text(stmt, 2);
+            t.short_desc  = col_text(stmt, 3);
+            t.description = col_text(stmt, 4);
+            t.flags_all   = col_text(stmt, 5);
             results.items.push_back(t);
         }
     );

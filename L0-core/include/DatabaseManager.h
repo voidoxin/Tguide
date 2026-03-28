@@ -29,6 +29,7 @@ struct Module {
 struct Tool {
     int id;
     std::string name;
+    std::string category;      // group this tool belongs to (DB-1)
     std::string short_desc;    // one sentence shown under tool name in list views
     std::string description;   // full detailed text shown in tool detail view
     std::string flags_all;

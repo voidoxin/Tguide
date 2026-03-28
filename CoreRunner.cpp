@@ -16,7 +16,7 @@
 #include "L2-Interface_Engine/includes/UI_colors.h"
 #include "L2-Interface_Engine/includes/UI_disclaimer.h"
 #include "L2-Interface_Engine/includes/UI_Engine.h"
-                                                  using namespace std;
+using namespace std;
 namespace fs = std::filesystem;
 
 int main(int argc, char* argv[]) {

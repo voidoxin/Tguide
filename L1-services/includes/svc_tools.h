@@ -1,18 +1,24 @@
 /*
  *  tguide — svc_tools.h
- *  written by voidoxin
+ *  service layer for the Tools screen — bridges UI_tools to L0-core
  *
- *  Service layer for the Tools screen.
- *  Handles all business logic between UI_tools and L0-core:
- *    - fetch tool list with optional search filter
- *    - fetch flags for a specific tool (ToolFlagD queries)
- *    - fetch usage templates for a specific tool (TemplateD queries)
- *    - resolve platform-specific notes
- *  Implementation pending.
+ *  written by voidoxin
  */
 
 #pragma once
 
+#include "../../L0-core/include/DatabaseManager.h"
+#include <string>
+#include <vector>
+
 namespace SvcTools {
 
-    // placeholder — implementation pending
+    // returns sorted distinct category strings from all tools, skipping empty
+    std::vector<std::string> getCategories(ToolD& db);
+
+    // returns all tools whose category matches the given string (case-sensitive DB match)
+    std::vector<Tool> getToolsByCategory(ToolD& db, const std::string& category);
+
+    // TODO: implement search algorithm
+    // returns empty vector until algorithm is ready
+    std::vector<Tool> searchTools(ToolD& db, const std::string& query);

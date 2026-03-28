@@ -19,19 +19,6 @@ endif()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 # ==============================================================
-# Dev Mode
-# enable dev-only features (BackupManager, data_adder)
-# remove before release build
-# ==============================================================
-option(TGUIDE_DEV_MODE "Enable dev-only features" ON)
-if(TGUIDE_DEV_MODE)
-    add_compile_definitions(TGUIDE_DEV_MODE)
-    message(STATUS "Dev mode: ON — BackupManager active")
-else()
-    message(STATUS "Dev mode: OFF — release build")
-endif()
-
-# ==============================================================
 # Dev Mode — enable dev-only features (BackupManager, data_adder)
 # remove before release build
 # ==============================================================
@@ -186,14 +173,19 @@ target_link_libraries(L0_core
 )
 
 # ==============================================================
-# L1-services — business logic layer (empty for now)
+# L1-services — business logic layer
 # ==============================================================
-# set(L1_SOURCES
-#     ${CMAKE_SOURCE_DIR}/L1-services/src/example.cpp
-# )
-# add_library(L1_services STATIC ${L1_SOURCES})
-# target_include_directories(L1_services PUBLIC ${L1_INC})
-# target_link_libraries(L1_services PRIVATE L0_core)
+set(L1_SOURCES
+    ${CMAKE_SOURCE_DIR}/L1-services/src/svc_tools.cpp
+    ${CMAKE_SOURCE_DIR}/L1-services/src/svc_generator.cpp
+    ${CMAKE_SOURCE_DIR}/L1-services/src/svc_savedCommands.cpp
+    ${CMAKE_SOURCE_DIR}/L1-services/src/svc_savedScripts.cpp
+    ${CMAKE_SOURCE_DIR}/L1-services/src/svc_settings.cpp
+)
+
+add_library(L1_services STATIC ${L1_SOURCES})
+target_include_directories(L1_services PUBLIC ${L1_INC} ${L0_INC} ${LIBS_DIR})
+target_link_libraries(L1_services PRIVATE L0_core)
 
 # ==============================================================
 # L2-services — service / business logic layer (empty for now)
@@ -233,11 +225,12 @@ add_library(L3_interface STATIC ${L3_SOURCES})
 target_include_directories(L3_interface PUBLIC
     ${L3_INC}
     ${L2_INC}
+    ${L1_INC}
     ${L0_INC}
     ${LIBS_DIR}
 )
 
-target_link_libraries(L3_interface PRIVATE L0_core)
+target_link_libraries(L3_interface PRIVATE L0_core PRIVATE L1_services)
 
 # ==============================================================
 # data_adder — dev-only utility to populate the database
@@ -275,7 +268,7 @@ target_include_directories(tguide PRIVATE
 
 target_link_libraries(tguide
     PRIVATE L0_core
-    # PRIVATE L1_services
+    PRIVATE L1_services
     # PRIVATE L2_services
     PRIVATE L3_interface
 )
