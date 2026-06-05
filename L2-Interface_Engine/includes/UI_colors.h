@@ -5,6 +5,13 @@
 
 #pragma once
 
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
+#include <cstdio>
+
 namespace Color {
 #if defined(_WIN32) || defined(__APPLE__)
     constexpr const char* RED     = "";
@@ -39,17 +46,29 @@ namespace Color {
 // Windows and macOS always return false — no ANSI support assumed.
 // Linux and Termux honor the value passed to initColors().
 
-inline bool g_colorsEnabled = false;
+inline bool& colorFlag() {
+    static bool flag = false;
+    return flag;
+}
+
+// returns true when stdout is a real terminal (not piped / redirected)
+inline bool isTerminal() {
+#ifdef _WIN32
+    return _isatty(_fileno(stdout));
+#else
+    return isatty(fileno(stdout));
+#endif
+}
 
 inline void initColors(bool enabled) {
 #if defined(_WIN32) || defined(__APPLE__)
     (void)enabled;          // forced off on Windows and macOS
-    g_colorsEnabled = false;
+    colorFlag() = false;
 #else
-    g_colorsEnabled = enabled;
+    colorFlag() = enabled;
 #endif
 }
 
 inline bool colorsEnabled() {
-    return g_colorsEnabled;
+    return colorFlag() && isTerminal();
 }

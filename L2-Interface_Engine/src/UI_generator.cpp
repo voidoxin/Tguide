@@ -13,7 +13,13 @@
 #include "../includes/UI_utils.h"
 #include "../includes/UI_colors.h"
 #include "../includes/UI_errorHandling.h"
+#include "../includes/UI_input.h"
 #include <iostream>
+
+// SECURITY: all placeholder inputs MUST be wrapped with
+// sanitizeInput() from svc_generator.h before being
+// passed to any command-building function.
+// See: .ai/security.md — sanitizeInput rule
 
 using namespace std;
 
@@ -37,5 +43,5 @@ void UIGenerator::show() {
     UI::printDivider();
     cout << "\n";
 
-    pause();
+    waitForEnter();
 }

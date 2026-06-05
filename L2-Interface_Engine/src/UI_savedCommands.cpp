@@ -37,5 +37,5 @@ void UISavedCommands::show() {
     UI::printDivider();
     cout << "\n";
 
-    pause();
+    waitForEnter();
 }

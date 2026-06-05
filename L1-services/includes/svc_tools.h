@@ -11,14 +11,18 @@
 #include <string>
 #include <vector>
 
+// clear the in-memory search index — safe to call before rebuild or at shutdown
+void clearSearchIndex();
+
 namespace SvcTools {
 
     // returns sorted distinct category strings from all tools, skipping empty
-    std::vector<std::string> getCategories(ToolD& db);
+    std::vector<std::string> getCategories();
 
     // returns all tools whose category matches the given string (case-sensitive DB match)
-    std::vector<Tool> getToolsByCategory(ToolD& db, const std::string& category);
+    std::vector<Tool> getToolsByCategory(const std::string& category);
 
     // TODO: implement search algorithm
     // returns empty vector until algorithm is ready
-    std::vector<Tool> searchTools(ToolD& db, const std::string& query);
+    std::vector<Tool> searchTools(const std::string& query);
+} // namespace SvcTools

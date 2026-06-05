@@ -1,34 +1,23 @@
 #include <iostream>
 #include <string>
-#include <limits>
 #include <algorithm>
 #include "../include/config_manager.h"
 #include "DatabaseManager.h"
-
-static void clearInput() {
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-}
+#include "L2-Interface_Engine/includes/UI_input.h"
 
 static std::string prompt(const std::string& label) {
-    std::string val;
-    std::cout << "  " << label << ": ";
-    std::getline(std::cin, val);
-    return val;
+    return readInput("  " + label + ": ");
 }
 
 static bool promptBool(const std::string& label) {
-    std::string val;
-    std::cout << "  " << label << " (y/n): ";
-    std::getline(std::cin, val);
+    std::string val = readInput("  " + label + " (y/n): ");
     return val == "y" || val == "Y";
 }
 
 static int promptInt(const std::string& label) {
-    int val;
-    std::cout << "  " << label << ": ";
-    std::cin >> val;
-    clearInput();
-    return val;
+    std::string input = readInput("  " + label + ": ");
+    int n = toNumber(input);
+    return n >= 0 ? n : 0;
 }
 
 // ==================== VIEW ====================
@@ -400,9 +389,8 @@ int main() {
         std::cout << "==========================\n";
         std::cout << "Choice: ";
 
-        int choice;
-        std::cin >> choice;
-        clearInput();
+        std::string choiceStr = readInput("");
+        int choice = toNumber(choiceStr);
 
         switch (choice) {
             case 1:  addVulnerability(db_path);  break;

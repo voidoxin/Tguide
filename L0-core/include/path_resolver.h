@@ -146,3 +146,5 @@ namespace PathResolver {
         return isRoot();
 #endif
     }
+
+} // namespace PathResolver

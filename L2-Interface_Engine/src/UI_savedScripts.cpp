@@ -37,5 +37,5 @@ void UISavedScripts::show() {
     UI::printDivider();
     cout << "\n";
 
-    pause();
+    waitForEnter();
 }

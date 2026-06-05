@@ -11,8 +11,8 @@
 // ==================== PAUSE ====================
 
 // waits for user to press enter — use when the screen must not advance yet
-// prints "  press enter to continue..." then blocks on cin.get()
-void pause();
+// prints "  press enter to continue..." then blocks on readInput
+void waitForEnter();
 
 // ==================== FATAL ====================
 
@@ -25,7 +25,7 @@ void UI_fatal(const std::string& msg);
 // ==================== RECOVERABLE ====================
 
 // recoverable error: prints [error] message and waits for acknowledgement
-// pause is built in — callers do NOT need a separate pause() call after this
+// waitForEnter is built in — callers do NOT need a separate waitForEnter() call after this
 // do NOT call clearScreen() immediately after UI_errors() in the same call frame
 void UI_errors(const std::string& msg);
 

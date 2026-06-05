@@ -38,5 +38,5 @@ void UISettings::show() {
     UI::printDivider();
     cout << "\n";
 
-    pause();
+    waitForEnter();
 }

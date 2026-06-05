@@ -4,11 +4,10 @@
  */
 
 #include "UserDataManager.h"
+#include "ErrorHandler.h"
 #include "../../libs/json.hpp"
 #include <fstream>
 #include <algorithm>
-
-extern void UI_errors(const std::string& msg);
 
 using json = nlohmann::json;
 
@@ -19,7 +18,7 @@ static bool writeJson(const std::string& path, const json& data) {
     if (!out.is_open()) return false;
     out << data.dump(4);
     if (!out.good()) {
-        UI_errors("UserDataManager: write failed for: " + path);
+        if (g_errorHandler.error) g_errorHandler.error("UserDataManager: write failed for: " + path);
         return false;
     }
     return true;
@@ -68,7 +67,7 @@ bool UserDataManager::load() {
                     c.note    = item.at("note").get<std::string>();
                     m_commands.push_back(c);
                 } catch (...) {
-                    UI_errors("UserDataManager: skipped malformed command entry.");
+                    if (g_errorHandler.error) g_errorHandler.error("UserDataManager: skipped malformed command entry.");
                 }
             }
         }
@@ -93,7 +92,7 @@ bool UserDataManager::load() {
                     s.note = item.at("note").get<std::string>();
                     m_scripts.push_back(s);
                 } catch (...) {
-                    UI_errors("UserDataManager: skipped malformed script entry.");
+                    if (g_errorHandler.error) g_errorHandler.error("UserDataManager: skipped malformed script entry.");
                 }
             }
         }

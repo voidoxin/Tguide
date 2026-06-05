@@ -12,6 +12,11 @@
  */
 
 #pragma once
+#include <string>
+
+// strips shell metacharacters from user input; safe to use from any layer
+// see: .ai/security.md — sanitizeInput rule
+std::string sanitizeInput(const std::string& input);
 
 namespace SvcGenerator {
 

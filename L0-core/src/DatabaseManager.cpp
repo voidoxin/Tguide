@@ -1,4 +1,5 @@
 #include "DatabaseManager.h"
+#include "ErrorHandler.h"
 #include "db_cache_manager.h"
 #include "sha256.h"
 #include <iostream>
@@ -11,11 +12,14 @@
 #include <cstring>
 #include <fstream>
 #include <curl/curl.h>
-                                                  extern char UI_attention(const std::string& msg);
-extern void UI_errors(const std::string& msg);    extern void UI_fatal(const std::string& msg);
-static bool s_fatal          = false;             static bool s_cacheValidated = false;
+struct DBContext {
+    bool fatal = false;
+    bool cacheValidated = false;
+    std::unordered_map<std::string, std::string> resolvedCache;
+};
+static DBContext s_ctx;
 
-bool DBFatal() { return s_fatal; }
+bool DBFatal() { return s_ctx.fatal; }
 
 static std::string col_text(sqlite3_stmt* stmt, int col) {
     const char* t = reinterpret_cast<const char*>(sqlite3_column_text(stmt, col));
@@ -31,7 +35,7 @@ public:
     DBSession(const std::string& path) : db(nullptr), db_path(path) {
         if (path.empty()) return;
         if (sqlite3_open(db_path.c_str(), &db) != SQLITE_OK) {
-            UI_errors("Failed to open database: " + db_path);
+            if (g_errorHandler.error) g_errorHandler.error("Failed to open database: " + db_path);
             db = nullptr;
         } else {
             sqlite3_exec(db, "PRAGMA foreign_keys = ON;", 0, 0, nullptr);
@@ -53,7 +57,7 @@ public:
         if (!db) return false;
         sqlite3_stmt* stmt;
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
-            UI_errors(std::string("DB prepare failed: ") + sqlite3_errmsg(db));
+            if (g_errorHandler.error) g_errorHandler.error(std::string("DB prepare failed: ") + sqlite3_errmsg(db));
             return false;
         }
         if (binder) binder(stmt);
@@ -68,7 +72,7 @@ public:
         if (!db) return false;
         sqlite3_stmt* stmt;
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
-            UI_errors(std::string("DB prepare failed: ") + sqlite3_errmsg(db));
+            if (g_errorHandler.error) g_errorHandler.error(std::string("DB prepare failed: ") + sqlite3_errmsg(db));
             return false;
         }
         if (binder) binder(stmt);
@@ -77,7 +81,7 @@ public:
             if (reader) reader(stmt);
         }
         if (rc == SQLITE_ERROR || rc == SQLITE_CORRUPT) {
-            UI_errors(std::string("DB query error: ") + sqlite3_errmsg(db));
+            if (g_errorHandler.error) g_errorHandler.error(std::string("DB query error: ") + sqlite3_errmsg(db));
             sqlite3_finalize(stmt);
             return false;
         }
@@ -89,6 +93,18 @@ public:
 // ==================== VALIDATION ====================
 
 static const std::string DEFAULT_DB_PATH = "data/database/tguide.db";
+
+// column whitelists for getWhere() — prevents SQL injection via column names
+static const std::set<std::string> SAFE_VULN_COLS = {
+    "id","name","metasploit_name","discovered_date","discoverer",
+    "severity","access","platform","service","description","danger"
+};
+static const std::set<std::string> SAFE_MODULE_COLS = {
+    "id","name","path","platform","type","description","API","mode","loud","output"
+};
+static const std::set<std::string> SAFE_TOOL_COLS = {
+    "id","name","category","short_desc","description","flags_all"
+};
 
 static bool isSafePath(const std::string& s) {
     for (char c : s) {
@@ -238,179 +254,201 @@ static bool downloadDB(const std::string& url, const std::string& destPath) {
 
 // ==================== RESOLVER ====================
 
-static std::unordered_map<std::string, std::string> s_resolvedCache;
-
 static void invalidateCacheIfMissing() {
-    if (s_cacheValidated) return;
-    for (auto it = s_resolvedCache.begin(); it != s_resolvedCache.end(); ) {
+    if (s_ctx.cacheValidated) return;
+    for (auto it = s_ctx.resolvedCache.begin(); it != s_ctx.resolvedCache.end(); ) {
         if (!std::filesystem::exists(it->second))
-            it = s_resolvedCache.erase(it);
+            it = s_ctx.resolvedCache.erase(it);
         else
             ++it;
     }
-    s_cacheValidated = true;
+    s_ctx.cacheValidated = true;
+}
+
+static std::string cacheResult(const std::string& configPath,
+                                const std::string& resolvedPath,
+                                const std::string& hash) {
+    DBCache::setCurrentHash(hash);
+    DBCache::recordAccess(configPath, hash);
+    DBCache::save();
+    s_ctx.resolvedCache[configPath] = resolvedPath;
+    return resolvedPath;
+}
+
+static bool openAndValidate(const std::string& path, bool& isSQLite,
+                             bool& schemaOk, bool& hasData,
+                             std::string& hash) {
+    bool fileExists = std::filesystem::exists(path);
+    isSQLite = fileExists && isSQLiteFile(path);
+    schemaOk = false;
+    hasData  = false;
+    hash.clear();
+    if (isSQLite) {
+        sqlite3* db = nullptr;
+        if (sqlite3_open(path.c_str(), &db) == SQLITE_OK) {
+            schemaOk = validateSchema(db);
+            hasData  = schemaOk && dbHasData(db);
+            sqlite3_close(db);
+        }
+        hash = SHA256::hashFile(path);
+    }
+    return fileExists;
+}
+
+static std::string copyDefaultToConfig(const std::string& configPath) {
+    if (!std::filesystem::exists(DEFAULT_DB_PATH) ||
+        !isSQLiteFile(DEFAULT_DB_PATH))
+        return {};
+
+    sqlite3* db = nullptr;
+    bool defaultOk = false;
+    if (sqlite3_open(DEFAULT_DB_PATH.c_str(), &db) == SQLITE_OK) {
+        defaultOk = validateSchema(db);
+        sqlite3_close(db);
+    }
+    if (!defaultOk) return {};
+
+    std::error_code ec;
+    std::filesystem::rename(DEFAULT_DB_PATH, configPath, ec);
+    if (ec) {
+        std::filesystem::copy_file(DEFAULT_DB_PATH, configPath,
+            std::filesystem::copy_options::overwrite_existing, ec);
+        if (!ec) std::filesystem::remove(DEFAULT_DB_PATH);
+    }
+    if (ec) {
+        if (g_errorHandler.error) g_errorHandler.error(
+            "Failed to move default database to configured path.");
+        return {};
+    }
+    std::string movedHash = SHA256::hashFile(configPath);
+    return cacheResult(configPath, configPath, movedHash);
+}
+
+static std::string resolveHashMismatch(const std::string& configPath,
+                                        const std::string& hash,
+                                        bool officialHashSet) {
+    if (!std::filesystem::exists(DEFAULT_DB_PATH) ||
+        !isSQLiteFile(DEFAULT_DB_PATH))
+        return {};
+
+    std::string defaultHash = SHA256::hashFile(DEFAULT_DB_PATH);
+    if (!officialHashSet || defaultHash != DB_OFFICIAL_HASH)
+        return {};
+
+    std::error_code ec;
+    std::filesystem::copy_file(DEFAULT_DB_PATH, configPath,
+        std::filesystem::copy_options::overwrite_existing, ec);
+    if (ec) {
+        if (g_errorHandler.error) g_errorHandler.error(
+            "Failed to copy official database. Attempting recovery.");
+        return {};
+    }
+    std::string newHash = SHA256::hashFile(configPath);
+    return cacheResult(configPath, configPath, newHash);
 }
 
 static std::string resolveDatabase(const std::string& configPath) {
-    if (s_fatal) return "";
+    if (s_ctx.fatal) return "";
 
     invalidateCacheIfMissing();
 
-    auto it = s_resolvedCache.find(configPath);
-    if (it != s_resolvedCache.end()) return it->second;
+    // TOCTOU: re-validate cached path before returning
+    {
+        auto it = s_ctx.resolvedCache.find(configPath);
+        if (it != s_ctx.resolvedCache.end()) {
+            if (std::filesystem::exists(it->second))
+                return it->second;
+            s_ctx.resolvedCache.erase(it);
+        }
+    }
 
     std::filesystem::create_directories(
         std::filesystem::path(configPath).parent_path()
     );
 
-    bool        fileExists = std::filesystem::exists(configPath);
-    bool        isSQLite   = fileExists && isSQLiteFile(configPath);
-    bool        schemaOk   = false;
-    bool        hasData    = false;
+    bool        isSQLite, schemaOk, hasData;
     std::string hash;
-
-    if (isSQLite) {
-        sqlite3* db = nullptr;
-        if (sqlite3_open(configPath.c_str(), &db) == SQLITE_OK) {
-            schemaOk = validateSchema(db);
-            hasData  = schemaOk && dbHasData(db);
-            sqlite3_close(db);
-        }
-        hash = SHA256::hashFile(configPath);
-    }
+    bool fileExists = openAndValidate(configPath, isSQLite, schemaOk,
+                                       hasData, hash);
 
     const bool officialHashSet = !std::string(DB_OFFICIAL_HASH).empty();
     const bool isOfficial      = officialHashSet && hash == DB_OFFICIAL_HASH;
 
-    if (fileExists && isSQLite && schemaOk && (isOfficial || !officialHashSet)) {
-        DBCache::setCurrentHash(hash);
-        DBCache::recordAccess(configPath, hash);
-        DBCache::save();
-        s_resolvedCache[configPath] = configPath;
-        return configPath;
-    }
+    // Step 1 — existing file is valid → use it
+    if (fileExists && isSQLite && schemaOk && (isOfficial || !officialHashSet))
+        return cacheResult(configPath, configPath, hash);
 
-    if (fileExists && isSQLite && schemaOk && hasData && officialHashSet && !isOfficial) {
-        char response = UI_attention(
+    // Step 2 — hash mismatch with valid data → ask user
+    if (fileExists && isSQLite && schemaOk && hasData &&
+        officialHashSet && !isOfficial) {
+        char response = g_errorHandler.attention ? g_errorHandler.attention(
             "The database at the configured path does not match the official release. "
             "Enter 'y' to revert to the official database, or 'n' to keep the external one."
-        );
+        ) : 0;
 
-        bool useExternal = (response == 0 || response == 'n' || response == 'N');
+        if (response == 0 || response == 'n' || response == 'N')
+            return cacheResult(configPath, configPath, hash);
 
-        if (useExternal) {
-            DBCache::setCurrentHash(hash);
-            DBCache::recordAccess(configPath, hash);
-            DBCache::save();
-            s_resolvedCache[configPath] = configPath;
-            return configPath;
-        }
+        std::string result = resolveHashMismatch(configPath, hash,
+                                                  officialHashSet);
+        if (!result.empty()) return result;
+        fileExists = false;  // file consumed — fall through
+    }
 
-        if (std::filesystem::exists(DEFAULT_DB_PATH) &&
-            isSQLiteFile(DEFAULT_DB_PATH)) {
-            std::string defaultHash     = SHA256::hashFile(DEFAULT_DB_PATH);
-            bool        defaultOfficial = officialHashSet &&
-                                          defaultHash == DB_OFFICIAL_HASH;
-            if (defaultOfficial) {
+    // Step 3 — try default DB
+    {
+        std::string result = copyDefaultToConfig(configPath);
+        if (!result.empty()) return result;
+    }
+
+    // Step 4 — try download
+    {
+        std::string downloadUrl = std::string(DB_DOWNLOAD_URL);
+        if (!downloadUrl.empty()) {
+            std::cout << "  database not found \u2014 attempting download from GitHub...\n"
+                      << std::flush;
+
+            if (downloadDB(downloadUrl, configPath)) {
+                sqlite3* db   = nullptr;
+                bool     dlOk = false;
+                if (sqlite3_open(configPath.c_str(), &db) == SQLITE_OK) {
+                    dlOk = validateSchema(db);
+                    sqlite3_close(db);
+                }
+
+                if (dlOk) {
+                    std::string dlHash = SHA256::hashFile(configPath);
+                    if (officialHashSet && dlHash != DB_OFFICIAL_HASH) {
+                        std::error_code ec;
+                        std::filesystem::remove(configPath, ec);
+                        if (g_errorHandler.fatal) g_errorHandler.fatal(
+                            "Downloaded database hash does not match the official release. "
+                            "The file may have been tampered with. Aborting."
+                        );
+                        s_ctx.fatal = true;
+                        return "";
+                    }
+                    return cacheResult(configPath, configPath, dlHash);
+                }
+
                 std::error_code ec;
-                std::filesystem::copy_file(DEFAULT_DB_PATH, configPath,
-                    std::filesystem::copy_options::overwrite_existing, ec);
-                if (!ec) {
-                    DBCache::setCurrentHash(defaultHash);
-                    DBCache::recordAccess(configPath, defaultHash);
-                    DBCache::save();
-                    s_resolvedCache[configPath] = configPath;
-                    return configPath;
-                }
-                UI_errors("Failed to copy official database. Attempting recovery.");
-            }
-        }
-        fileExists = false;
-    }
-
-    if (std::filesystem::exists(DEFAULT_DB_PATH) &&
-        isSQLiteFile(DEFAULT_DB_PATH)) {
-        sqlite3* db        = nullptr;
-        bool     defaultOk = false;
-
-        if (sqlite3_open(DEFAULT_DB_PATH.c_str(), &db) == SQLITE_OK) {
-            defaultOk = validateSchema(db);
-            sqlite3_close(db);
-        }
-
-        if (defaultOk) {
-            std::error_code ec;
-            std::filesystem::rename(DEFAULT_DB_PATH, configPath, ec);
-            if (ec) {
-                std::filesystem::copy_file(DEFAULT_DB_PATH, configPath,
-                    std::filesystem::copy_options::overwrite_existing, ec);
-                if (!ec) std::filesystem::remove(DEFAULT_DB_PATH);
+                std::filesystem::remove(configPath, ec);
             }
 
-            if (!ec) {
-                std::string movedHash = SHA256::hashFile(configPath);
-                DBCache::setCurrentHash(movedHash);
-                DBCache::recordAccess(configPath, movedHash);
-                DBCache::save();
-                s_resolvedCache[configPath] = configPath;
-                return configPath;
-            }
-            UI_errors("Failed to move default database to configured path.");
+            if (g_errorHandler.fatal) g_errorHandler.fatal(
+                "Failed to download or validate the official database. "
+                "Please check your internet connection or verify "
+                "DB_DOWNLOAD_URL in db_cache_manager.h."
+            );
+        } else {
+            if (g_errorHandler.fatal) g_errorHandler.fatal(
+                "Database not found and DB_DOWNLOAD_URL is not configured. "
+                "Set DB_DOWNLOAD_URL in db_cache_manager.h before release."
+            );
         }
     }
 
-    std::string downloadUrl = std::string(DB_DOWNLOAD_URL);
-
-    if (!downloadUrl.empty()) {
-        std::cout << "  database not found \u2014 attempting download from GitHub...\n" << std::flush;
-
-        if (downloadDB(downloadUrl, configPath)) {
-            sqlite3* db   = nullptr;
-            bool     dlOk = false;
-
-            if (sqlite3_open(configPath.c_str(), &db) == SQLITE_OK) {
-                dlOk = validateSchema(db);
-                sqlite3_close(db);
-            }
-
-            if (dlOk) {
-                std::string dlHash = SHA256::hashFile(configPath);
-
-                if (officialHashSet && dlHash != DB_OFFICIAL_HASH) {
-                    std::error_code ec;
-                    std::filesystem::remove(configPath, ec);
-                    UI_fatal(
-                        "Downloaded database hash does not match the official release. "
-                        "The file may have been tampered with. Aborting."
-                    );
-                    s_fatal = true;
-                    return "";
-                }
-
-                DBCache::setCurrentHash(dlHash);
-                DBCache::recordAccess(configPath, dlHash);
-                DBCache::save();
-                s_resolvedCache[configPath] = configPath;
-                return configPath;
-            }
-
-            std::error_code ec;
-            std::filesystem::remove(configPath, ec);
-        }
-
-        UI_fatal(
-            "Failed to download or validate the official database. "
-            "Please check your internet connection or verify "
-            "DB_DOWNLOAD_URL in db_cache_manager.h."
-        );
-    } else {
-        UI_fatal(
-            "Database not found and DB_DOWNLOAD_URL is not configured. "
-            "Set DB_DOWNLOAD_URL in db_cache_manager.h before release."
-        );
-    }
-
-    s_fatal = true;
+    s_ctx.fatal = true;
     return "";
 }
 
@@ -433,10 +471,10 @@ void BackupManager::backupDatabase(const std::string& originalPath) {
             std::filesystem::copy_options::overwrite_existing);
     }
     catch (const std::exception& e) {
-        UI_errors(std::string("Backup failed: ") + e.what());
+        if (g_errorHandler.error) g_errorHandler.error(std::string("Backup failed: ") + e.what());
     }
     catch (...) {
-        UI_errors("Backup failed: unknown error.");
+        if (g_errorHandler.error) g_errorHandler.error("Backup failed: unknown error.");
     }
 }
 #endif
@@ -596,6 +634,9 @@ VulnResults VulnD::getWhere(const std::vector<std::string>& columns,
     DBSession s(db_path);
     if (!s.ok()) return results;
 
+    for (auto& col : columns) {
+        if (SAFE_VULN_COLS.find(col) == SAFE_VULN_COLS.end()) return results;
+    }
     std::stringstream ss;
     ss << "SELECT id, name, metasploit_name, discovered_date, discoverer,"
           " severity, access, platform, service, description, danger"
@@ -725,6 +766,9 @@ ModuleResults ModuD::getWhere(const std::vector<std::string>& columns,
     DBSession s(db_path);
     if (!s.ok()) return results;
 
+    for (auto& col : columns) {
+        if (SAFE_MODULE_COLS.find(col) == SAFE_MODULE_COLS.end()) return results;
+    }
     std::stringstream ss;
     ss << "SELECT id, name, path, platform, type, description, API, mode, loud, output"
           " FROM modules WHERE ";
@@ -839,6 +883,9 @@ ToolResults ToolD::getWhere(const std::vector<std::string>& columns,
     DBSession s(db_path);
     if (!s.ok()) return results;
 
+    for (auto& col : columns) {
+        if (SAFE_TOOL_COLS.find(col) == SAFE_TOOL_COLS.end()) return results;
+    }
     std::stringstream ss;
     ss << "SELECT id, name, category, short_desc, description, flags_all FROM tools WHERE ";
     for (size_t i = 0; i < columns.size(); i++) {

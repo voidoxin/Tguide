@@ -11,6 +11,7 @@
 #include <iostream>
 #include <algorithm>
 #include <cctype>
+#include <charconv>
 #include <stdexcept>
 
 using namespace std;
@@ -89,14 +90,17 @@ bool isPrev(const string& input) {
 // returns the integer value for a pure digit string, -1 on any non-digit or overflow
 int toNumber(const string& input) {
     if (input.empty()) return -1;
-    for (char c : input) {
-        if (!isdigit(static_cast<unsigned char>(c))) return -1;
-    }
-    try {
-        return stoi(input);
-    } catch (...) {
+    int result = 0;
+    auto [ptr, ec] = std::from_chars(
+        input.data(),
+        input.data() + input.size(),
+        result
+    );
+    if (ec != std::errc() ||
+        ptr != input.data() + input.size())
         return -1;
-    }
+    if (result < 0) return -1;
+    return result;
 }
 
 // ==================== MATCH ====================

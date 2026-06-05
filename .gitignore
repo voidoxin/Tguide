@@ -35,6 +35,7 @@ dist/
 guide
 guide.out
 a.out
+
 # IDE
 .vscode/
 .idea/
@@ -45,3 +46,21 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Project governance & agent configuration (excluded from version control)
+.ai/
+.ai.zip
+.opencode/
+
+# Project management artifacts (generated docs, not core codebase)
+ARCHITECTURE_AUDIT.md
+BLOCKER_ANALYSIS.md
+IMPLEMENTATION_SEQUENCE.md
+PRIORITY_MATRIX.md
+PROJECT_MAP.md
+PROJECT_STATUS.md
+REQUIREMENTS_MATRIX.md
+TECHNICAL_DEBT_REPORT.md
+TEST_REPORT.md
+todo-now
+roadmap_structure.md

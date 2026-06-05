@@ -11,10 +11,10 @@
 #include "../includes/UI_savedCommands.h"
 #include "../includes/UI_savedScripts.h"
 #include "../includes/UI_settings.h"
+#include "../includes/UI_input.h"
 #include <iostream>
 #include <string>
 #include <vector>
-#include <limits>
 
 using namespace std;
 
@@ -62,17 +62,10 @@ int UIEngine::renderMenu(
         cout << "\n"
              << Color::DIM << "  ─── " << Color::RESET
              << Color::BOLD << "choose" << Color::RESET
-             << Color::DIM << " ──────────────────────\n" << Color::RESET
-             << Color::GREEN << "  → " << Color::RESET;
+             << Color::DIM << " ──────────────────────\n" << Color::RESET;
 
-        int choice;
-        if (!(cin >> choice)) {
-            cin.clear();
-            cin.ignore(numeric_limits<streamsize>::max(), '\n');
-            printInvalidInput();
-            continue;
-        }
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        string input = readInput("  → ");
+        int choice = toNumber(input);
 
         if (choice < 1 || choice > static_cast<int>(items.size())) {
             printInvalidInput();

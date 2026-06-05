@@ -13,3 +13,4 @@ namespace UITools {
 
     // render the Tools screen — blocks until user navigates back
     void show();
+} // namespace UITools

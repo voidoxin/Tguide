@@ -11,18 +11,18 @@
 #include "../includes/UI_errorHandling.h"
 #include "../includes/UI_input.h"
 #include "../includes/UI_paginator.h"
-#include "../../L0-core/include/DatabaseManager.h"
-#include "../../L0-core/include/path_resolver.h"
-#include "../../L1-services/includes/svc_tools.h" #include <iostream>
-#include <string>                                 #include <vector>
+#include "../../L1-services/includes/svc_tools.h"
+#include <iostream>
+#include <string>
+#include <vector>
 
 using namespace std;
 
 // ── forward declarations ────────────────────────────────────────────────────
 static void showToolDetail(const Tool& tool);
-static void showToolsByCategory(ToolD& db, const string& category);
-static void showCategories(ToolD& db);
-static void showSearch(ToolD& db);
+static void showToolsByCategory(const string& category);
+static void showCategories();
+static void showSearch();
 
 // ==================== HELPERS ====================
 
@@ -67,13 +67,13 @@ static void showToolDetail(const Tool& tool) {
          << "\n\n";
     UI::printDivider();
     cout << "\n";
-    pause();
+    waitForEnter();
 }
 
 // ==================== TOOL LIST ====================
 
-static void showToolsByCategory(ToolD& db, const string& category) {
-    vector<Tool> tools = SvcTools::getToolsByCategory(db, category);
+static void showToolsByCategory(const string& category) {
+    vector<Tool> tools = SvcTools::getToolsByCategory(category);
 
     if (tools.empty()) {
         cout << "\n  no tools in this category.\n\n";
@@ -123,7 +123,12 @@ static void showToolsByCategory(ToolD& db, const string& category) {
 
         int idx = pager.select(input);
         if (idx == -1) {
-            // name-based selection degrades for ANSI items; just report invalid
+            vector<string> clean;
+            clean.reserve(tools.size());
+            for (const auto& t : tools) clean.push_back(t.name);
+            idx = matchOption(input, clean);
+        }
+        if (idx == -1) {
             cout << "  invalid choice \u2014 try again.\n";
             continue;
         }
@@ -134,8 +139,8 @@ static void showToolsByCategory(ToolD& db, const string& category) {
 
 // ==================== CATEGORY BROWSER ====================
 
-static void showCategories(ToolD& db) {
-    vector<string> cats = SvcTools::getCategories(db);
+static void showCategories() {
+    vector<string> cats = SvcTools::getCategories();
 
     if (cats.empty()) {
         cout << "\n  no categories found.\n\n";
@@ -172,13 +177,13 @@ static void showCategories(ToolD& db) {
             continue;
         }
 
-        showToolsByCategory(db, cats[static_cast<size_t>(idx)]);
+        showToolsByCategory(cats[static_cast<size_t>(idx)]);
     }
 }
 
 // ==================== SEARCH ====================
 
-static void showSearch(ToolD& db) {
+static void showSearch() {
     while (true) {
         UI::clearScreen();
         UI::printBanner();
@@ -217,7 +222,7 @@ static void showSearch(ToolD& db) {
              << "\n\n";
         UI::printDivider();
         cout << "\n";
-        pause();
+        waitForEnter();
         // loop returns to search prompt
     }
 }
@@ -225,9 +230,6 @@ static void showSearch(ToolD& db) {
 // ==================== TOOLS ENTRY ====================
 
 void UITools::show() {
-    // DB owned locally — temporary until a session context object exists
-    ToolD db(PathResolver::dbFile().string());
-
     const vector<string> opts = {"Browse by Category", "Search", "Filter"};
 
     while (true) {
@@ -256,9 +258,9 @@ void UITools::show() {
         int idx = matchOption(input, opts);
 
         if (idx == 0) {
-            showCategories(db);
+            showCategories();
         } else if (idx == 1) {
-            showSearch(db);
+            showSearch();
         } else if (idx == 2) {
             UI::clearScreen();
             UI::printBanner();
@@ -271,7 +273,7 @@ void UITools::show() {
                  << "\n\n";
             UI::printDivider();
             cout << "\n";
-            pause();
+            waitForEnter();
         } else {
             if (isAmbiguous(input, opts))
                 cout << "  ambiguous \u2014 be more specific.\n";

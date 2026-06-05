@@ -7,22 +7,21 @@
 
 #include "../includes/UI_errorHandling.h"
 #include "../includes/UI_colors.h"
+#include "../includes/UI_input.h"
 #include <iostream>
-#include <limits>
 
 using namespace std;
 
-// ==================== PAUSE ====================
+// ==================== WAIT ====================
 
 // standalone wait — used when no message is needed but screen must not advance
-void pause() {
+void waitForEnter() {
     if (cin.eof()) return;
     cout << (colorsEnabled() ? Color::DIM : "")
          << "  press enter to continue..."
          << (colorsEnabled() ? Color::RESET : "")
          << flush;
-    cin.clear();
-    cin.get();
+    readInput("");
 }
 
 // ==================== FATAL ====================
@@ -45,8 +44,7 @@ void UI_fatal(const std::string& msg) {
              << "  press enter to exit..."
              << (colorsEnabled() ? Color::RESET : "")
              << flush;
-        cin.clear();
-        cin.get();
+        readInput("");
     }
 
     cout << "\n";
@@ -56,13 +54,13 @@ void UI_fatal(const std::string& msg) {
 // ==================== RECOVERABLE ====================
 
 // prints [error] and waits for acknowledgement — pause is built in
-// callers do NOT need a separate pause() call after this
+// callers do NOT need a separate waitForEnter() call after this
 void UI_errors(const std::string& msg) {
     cout << (colorsEnabled() ? Color::YELLOW : "")
          << "  [error] "
          << (colorsEnabled() ? Color::RESET : "")
          << msg << "\n";
-    pause();
+    waitForEnter();
 }
 
 // ==================== ATTENTION ====================
@@ -74,18 +72,9 @@ char UI_attention(const std::string& msg) {
          << (colorsEnabled() ? Color::BOLD   : "")
          << "  [!] "
          << (colorsEnabled() ? Color::RESET  : "")
-         << msg << "\n"
-         << (colorsEnabled() ? Color::DIM    : "")
-         << "  → "
-         << (colorsEnabled() ? Color::RESET  : "");
+         << msg << "\n";
 
-    // initialize to 0 — caller must treat 0 as "no input / invalid"
-    char c = 0;
-    if (!(cin >> c)) {
-        cin.clear();
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');
-        return 0;
-    }
-    cin.ignore(numeric_limits<streamsize>::max(), '\n');
-    return c;
+    string input = readInput("  → ");
+    if (input.empty()) return 0;
+    return input[0];
 }

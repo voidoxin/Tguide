@@ -61,4 +61,4 @@ private:
 
     int nextCommandId() const;
     int nextScriptId()  const;
-};;
+};

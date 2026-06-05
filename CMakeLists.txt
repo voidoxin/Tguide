@@ -154,6 +154,7 @@ message(STATUS "libcurl: ${CURL_VERSION_STRING}")
 # ==============================================================
 set(L0_SOURCES
     ${CMAKE_SOURCE_DIR}/L0-core/src/DatabaseManager.cpp
+    ${CMAKE_SOURCE_DIR}/L0-core/src/ErrorHandler.cpp
     ${CMAKE_SOURCE_DIR}/L0-core/src/config_manager.cpp
     ${CMAKE_SOURCE_DIR}/L0-core/src/db_cache_manager.cpp
     ${CMAKE_SOURCE_DIR}/L0-core/src/sha256.cpp
@@ -184,7 +185,8 @@ set(L1_SOURCES
 )
 
 add_library(L1_services STATIC ${L1_SOURCES})
-target_include_directories(L1_services PUBLIC ${L1_INC} ${L0_INC} ${LIBS_DIR})
+target_include_directories(L1_services PUBLIC ${L1_INC})
+target_include_directories(L1_services PRIVATE ${L0_INC} ${LIBS_DIR})
 target_link_libraries(L1_services PRIVATE L0_core)
 
 # ==============================================================
@@ -224,13 +226,10 @@ add_library(L3_interface STATIC ${L3_SOURCES})
 
 target_include_directories(L3_interface PUBLIC
     ${L3_INC}
-    ${L2_INC}
     ${L1_INC}
-    ${L0_INC}
-    ${LIBS_DIR}
 )
 
-target_link_libraries(L3_interface PRIVATE L0_core PRIVATE L1_services)
+target_link_libraries(L3_interface PRIVATE L1_services)
 
 # ==============================================================
 # data_adder — dev-only utility to populate the database

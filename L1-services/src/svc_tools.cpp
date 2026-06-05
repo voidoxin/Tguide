@@ -6,15 +6,37 @@
  */
 
 #include "../includes/svc_tools.h"
+#include "../../L0-core/include/path_resolver.h"
 #include <algorithm>
-#include <set>
 #include <cctype>
+#include <set>
 
 using namespace std;
 
+// ── search index — held in memory for the session ─────────────────────────
+// searchTools() stub does not populate this yet; clearSearchIndex() exists
+// so callers can reset state before a future reloadDatabase() call.
+struct SearchIndex {
+    vector<string> index;
+    vector<Tool> tools;
+    bool ready = false;
+};
+
+static SearchIndex& getIndex() {
+    static SearchIndex idx;
+    return idx;
+}
+
+void clearSearchIndex() {
+    getIndex().index.clear();
+    getIndex().tools.clear();
+    getIndex().ready = false;
+}
+
 namespace SvcTools {                              
 // ── CATEGORIES ──────────────────────────────────────────────────────────────
-                                                  vector<string> getCategories(ToolD& db) {
+                                                   vector<string> getCategories() {
+    ToolD db(PathResolver::dbFile().string());
     ToolResults res = db.getAll();
 
     set<string>    seen;   // lowercased keys for case-insensitive dedup
@@ -40,7 +62,8 @@ namespace SvcTools {
 
 // ── TOOLS BY CATEGORY ───────────────────────────────────────────────────────
 
-vector<Tool> getToolsByCategory(ToolD& db, const string& category) {
+vector<Tool> getToolsByCategory(const string& category) {
+    ToolD db(PathResolver::dbFile().string());
     ToolResults res = db.getWhere({"category"}, {category});
     return res.items;
 }
@@ -48,8 +71,8 @@ vector<Tool> getToolsByCategory(ToolD& db, const string& category) {
 // ── SEARCH ──────────────────────────────────────────────────────────────────
 
 // TODO: implement search algorithm
-vector<Tool> searchTools(ToolD& db, const string& query) {
-    (void)db; (void)query; return {};
+vector<Tool> searchTools(const string& query) {
+    (void)query; return {};
 }
 
 } // namespace SvcTools

@@ -69,20 +69,16 @@ bool UIDisclaimer::show(ConfigManager& cfg) {
                 "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n";
         cout << (colorsEnabled() ? Color::RESET : "");
 
-        // ── prompt ────────────────────────────────────────────────────────
-        cout << "  Type  \"agree\"  to accept and continue.\n"
-             << "  Type  \"exit\"   to quit.\n"
-             << (colorsEnabled() ? Color::GREEN : "")
-             << "  \u2192  "
-             << (colorsEnabled() ? Color::RESET : "");
+        string input = readInput("  Type  \"agree\"  to accept and continue.\n"
+                                  "  Type  \"exit\"   to quit.\n"
+                                  "  \u2192  ");
 
-        string line;
-        if (!getline(cin, line)) {
+        if (input.empty() && cin.eof()) {
             cout << "\n";
             return false;
         }
 
-        string input = normalize(line);
+        input = normalize(input);
 
         if (input == "agree") {
             cfg.set<int>("disclaimer_accepted", 1);

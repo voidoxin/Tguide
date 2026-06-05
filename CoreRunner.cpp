@@ -8,6 +8,7 @@
 #include <iostream>
 #include <filesystem>
 #include "L0-core/include/DatabaseManager.h"
+#include "L0-core/include/ErrorHandler.h"
 #include "L0-core/include/config_manager.h"
 #include "L0-core/include/path_resolver.h"
 #include "L0-core/include/db_cache_manager.h"
@@ -20,15 +21,6 @@ using namespace std;
 namespace fs = std::filesystem;
 
 int main(int argc, char* argv[]) {
-
-    // ── check write access before touching anything ────────────────────────
-    // on Linux, /etc/ and /usr/share/ require root
-    // on Termux, Windows, and macOS this always passes
-    if (!PathResolver::hasWriteAccess()) {
-        UI_fatal("tguide requires root privileges on Linux.\n"
-                 "Please run with: sudo tguide");
-        return 1;
-    }
 
     // ── create required directories ────────────────────────────────────────
     // fatal — /etc/tguide and /usr/share/tguide require root on Linux
@@ -74,6 +66,11 @@ int main(int argc, char* argv[]) {
 #ifdef TGUIDE_DEV_MODE
     BackupManager::init(PathResolver::backupFile().string());
 #endif
+
+    // ── register error callbacks (L0 → L2 bridge) ─────────────────────────
+    // L0-core uses these instead of calling UI functions directly,
+    // keeping the layer boundary clean.
+    g_errorHandler = { UI_fatal, UI_errors, UI_attention };
 
     // ── bring up all db classes ────────────────────────────────────────────
     // resolveDatabase() is idempotent — s_resolvedCache short-circuits
