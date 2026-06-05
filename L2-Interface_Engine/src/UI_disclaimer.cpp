@@ -4,6 +4,7 @@
  */
 
 #include "../includes/UI_disclaimer.h"
+#include "../../L0-core/include/config_manager.h"
 #include "../includes/UI_input.h"
 #include "../includes/UI_colors.h"
 #include "../includes/UI_utils.h"

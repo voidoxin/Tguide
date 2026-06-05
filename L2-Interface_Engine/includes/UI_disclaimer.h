@@ -1,5 +1,6 @@
 #pragma once
-#include "../../L0-core/include/config_manager.h"
+
+class ConfigManager;
 
 namespace UIDisclaimer {
     // returns true if accepted, false if user chose to exit
