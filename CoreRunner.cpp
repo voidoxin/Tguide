@@ -72,16 +72,12 @@ int main(int argc, char* argv[]) {
     // keeping the layer boundary clean.
     g_errorHandler = { UI_fatal, UI_errors, UI_attention };
 
-    // ── bring up all db classes ────────────────────────────────────────────
-    // resolveDatabase() is idempotent — s_resolvedCache short-circuits
-    // calls 2–5. s_fatal set by the first failure blocks all remaining.
-    string db_path = PathResolver::dbFile().string();
-
-    VulnD     vulnDB(db_path);
-    ModuD     moduDB(db_path);
-    ToolD     toolDB(db_path);
-    ToolFlagD flagDB(db_path);
-    TemplateD tmplDB(db_path);
+    // ── verify database accessibility at boot ──────────────────────────────
+    // A single ToolD construction validates the database path + triggers
+    // resolveDatabase(). The old 5-instance pattern was redundant — service
+    // layer creates its own ToolD/ModuD/etc when needed.
+    ToolD _bootCheck(PathResolver::dbFile().string());
+    (void)_bootCheck;
 
     // ── abort on fatal db error ────────────────────────────────────────────
     if (DBFatal()) {
