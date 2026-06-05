@@ -22,6 +22,12 @@ namespace fs = std::filesystem;
 
 int main(int argc, char* argv[]) {
 
+    // ── register error callbacks before any L0 calls ─────────────────────
+    // L0-core (DatabaseManager, UserDataManager, ConfigManager, PathResolver)
+    // uses g_errorHandler to report errors. Must be set up first so that no
+    // error is silently swallowed due to a null std::function member.
+    g_errorHandler = { UI_fatal, UI_errors, UI_attention };
+
     // ── create required directories ────────────────────────────────────────
     // fatal — /etc/tguide and /usr/share/tguide require root on Linux
     if (!PathResolver::createSystemDirs()) {
@@ -66,11 +72,6 @@ int main(int argc, char* argv[]) {
 #ifdef TGUIDE_DEV_MODE
     BackupManager::init(PathResolver::backupFile().string());
 #endif
-
-    // ── register error callbacks (L0 → L2 bridge) ─────────────────────────
-    // L0-core uses these instead of calling UI functions directly,
-    // keeping the layer boundary clean.
-    g_errorHandler = { UI_fatal, UI_errors, UI_attention };
 
     // ── verify database accessibility at boot ──────────────────────────────
     // A single ToolD construction validates the database path + triggers
