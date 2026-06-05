@@ -66,7 +66,7 @@ int main(int argc, char* argv[]) {
 
     // ── init cache before any DB class is constructed ──────────────────────
     // resolveDatabase() calls DBCache internally — must be ready first
-    DBCache::init(PathResolver::cacheFile().string());
+    DBCacheManager::instance().init(PathResolver::cacheFile().string());
 
     // ── init backup manager (dev only — removed before release) ───────────
 #ifdef TGUIDE_DEV_MODE

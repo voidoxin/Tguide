@@ -39,8 +39,8 @@ static constexpr const char* DB_DOWNLOAD_URL = "";
 
 // =============================================================
 
-namespace DBCache {
-
+class DBCacheManager {
+public:
     /*
      * Represents a single database access record stored in history.
      */
@@ -49,6 +49,10 @@ namespace DBCache {
         std::string hash;
     };
 
+    // Singleton access — used by current call sites
+    static DBCacheManager& instance();
+
+    // Lifecycle
     /*
      * Initializes the cache system.
      * Creates the cache file and directories if they do not exist.
@@ -66,6 +70,14 @@ namespace DBCache {
      */
     bool load(const std::string& cachePath);
 
+#ifndef NDEBUG
+    /*
+     * Reset all internal state — for test isolation.
+     */
+    void resetForTesting();
+#endif
+
+    // Persistence
     /*
      * Persists the current in-memory cache state to disk.
      * Uses the path established by init() or load().
@@ -82,6 +94,7 @@ namespace DBCache {
      */
     bool save(const std::string& cachePath);
 
+    // History
     /*
      * Records a database access in the rolling history.
      * Consecutive duplicate entries are deduplicated.
@@ -92,6 +105,22 @@ namespace DBCache {
      */
     void recordAccess(const std::string& path, const std::string& hash);
 
+    /*
+     * Returns the full access history (up to 3 records).
+     * Returns by value — safe to store across calls.
+     */
+    std::vector<DBRecord> getHistory();
+
+    /*
+     * Searches the access history for any record whose hash matches
+     * the official database signature, regardless of file path.
+     * Skips records pointing to files that no longer exist on disk.
+     *
+     * @return  std::optional<DBRecord> containing the match, or std::nullopt.
+     */
+    std::optional<DBRecord> findOfficialInHistory();
+
+    // Current hash
     /*
      * Updates the hash of the currently active database in the cache.
      * Should be called whenever the active database changes.
@@ -115,19 +144,13 @@ namespace DBCache {
      */
     bool isCurrentOfficial();
 
-    /*
-     * Searches the access history for any record whose hash matches
-     * the official database signature, regardless of file path.
-     * Skips records pointing to files that no longer exist on disk.
-     *
-     * @return  std::optional<DBRecord> containing the match, or std::nullopt.
-     */
-    std::optional<DBRecord> findOfficialInHistory();
+private:
+    DBCacheManager() = default;
 
-    /*
-     * Returns the full access history (up to 3 records).
-     * Returns by value — safe to store across calls.
-     */
-    std::vector<DBRecord> getHistory();
+    json        cache_;
+    std::string cachePath_;
 
-} // namespace DBCache
+    static constexpr int MAX_HISTORY_ = 3;
+    json buildDefault();
+    void repairSchema();
+};

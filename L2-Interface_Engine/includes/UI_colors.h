@@ -46,12 +46,9 @@ namespace Color {
 // Windows and macOS always return false — no ANSI support assumed.
 // Linux and Termux honor the value passed to initColors().
 
-inline bool& colorFlag() {
-    static bool flag = false;
-    return flag;
-}
-
 // returns true when stdout is a real terminal (not piped / redirected)
+inline bool g_colorEnabled = false;
+
 inline bool isTerminal() {
 #ifdef _WIN32
     return _isatty(_fileno(stdout));
@@ -63,12 +60,12 @@ inline bool isTerminal() {
 inline void initColors(bool enabled) {
 #if defined(_WIN32) || defined(__APPLE__)
     (void)enabled;          // forced off on Windows and macOS
-    colorFlag() = false;
+    g_colorEnabled = false;
 #else
-    colorFlag() = enabled;
+    g_colorEnabled = enabled;
 #endif
 }
 
 inline bool colorsEnabled() {
-    return colorFlag() && isTerminal();
+    return g_colorEnabled && isTerminal();
 }

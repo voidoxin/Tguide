@@ -11,9 +11,6 @@
 #include <string>
 #include <vector>
 
-// clear the in-memory search index — safe to call before rebuild or at shutdown
-void clearSearchIndex();
-
 namespace SvcTools {
 
     // returns sorted distinct category strings from all tools, skipping empty

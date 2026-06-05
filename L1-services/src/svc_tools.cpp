@@ -28,26 +28,6 @@ static std::vector<SvcDTO::ToolDTO> toDTOs(const std::vector<Tool>& tools) {
     return result;
 }
 
-// ── search index — held in memory for the session ─────────────────────────
-// searchTools() stub does not populate this yet; clearSearchIndex() exists
-// so callers can reset state before a future reloadDatabase() call.
-struct SearchIndex {
-    vector<string> index;
-    vector<Tool> tools;
-    bool ready = false;
-};
-
-static SearchIndex& getIndex() {
-    static SearchIndex idx;
-    return idx;
-}
-
-void clearSearchIndex() {
-    getIndex().index.clear();
-    getIndex().tools.clear();
-    getIndex().ready = false;
-}
-
 namespace SvcTools {                              
 // ── CATEGORIES ──────────────────────────────────────────────────────────────
                                                    vector<string> getCategories() {

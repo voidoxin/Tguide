@@ -3,12 +3,13 @@
 #include <fstream>
 #include <filesystem>
 
-namespace DBCache {
-                                                  static json        s_cache;
-static std::string s_cachePath;
+DBCacheManager& DBCacheManager::instance() {
+    static DBCacheManager m;
+    return m;
+}
 
-static constexpr int MAX_HISTORY = 3;             
-static json buildDefault() {                          return {
+json DBCacheManager::buildDefault() {
+    return {
         {
             "_notice",
             "DO NOT TOUCH — managed automatically by the application. "
@@ -25,42 +26,42 @@ static json buildDefault() {                          return {
     };
 }
 
-static void repairSchema() {
+void DBCacheManager::repairSchema() {
     json def = buildDefault();
     for (auto& [key, val] : def.items()) {
-        if (!s_cache.contains(key))
-            s_cache[key] = val;
+        if (!cache_.contains(key))
+            cache_[key] = val;
     }
     for (auto& [key, val] : def["meta"].items()) {
-        if (!s_cache["meta"].contains(key))
-            s_cache["meta"][key] = val;
+        if (!cache_["meta"].contains(key))
+            cache_["meta"][key] = val;
     }
 }
 
-void init(const std::string& cachePath) {
-    s_cachePath = cachePath;
+void DBCacheManager::init(const std::string& cachePath) {
+    cachePath_ = cachePath;
 
     std::filesystem::create_directories(
         std::filesystem::path(cachePath).parent_path()
     );
 
     if (!std::filesystem::exists(cachePath)) {
-        s_cache = buildDefault();
+        cache_ = buildDefault();
         save(cachePath);
     } else {
         load(cachePath);
     }
 }
 
-bool load(const std::string& cachePath) {
-    s_cachePath = cachePath;
+bool DBCacheManager::load(const std::string& cachePath) {
+    cachePath_ = cachePath;
     std::ifstream in(cachePath);
     if (!in.is_open()) return false;
 
     try {
-        in >> s_cache;
+        in >> cache_;
     } catch (...) {
-        s_cache = buildDefault();
+        cache_ = buildDefault();
         save(cachePath);
         return false;
     }
@@ -69,21 +70,28 @@ bool load(const std::string& cachePath) {
     return true;
 }
 
-// save to internal s_cachePath — safe to call from resolveDatabase
-bool save() {
-    if (s_cachePath.empty()) return false;
-    return save(s_cachePath);
+#ifndef NDEBUG
+void DBCacheManager::resetForTesting() {
+    cache_ = buildDefault();
+    cachePath_.clear();
+}
+#endif
+
+// save to internal cachePath_ — safe to call from resolveDatabase
+bool DBCacheManager::save() {
+    if (cachePath_.empty()) return false;
+    return save(cachePath_);
 }
 
-bool save(const std::string& cachePath) {
+bool DBCacheManager::save(const std::string& cachePath) {
     std::ofstream out(cachePath);
     if (!out.is_open()) return false;
-    out << s_cache.dump(4);
+    out << cache_.dump(4);
     return true;
 }
 
-void recordAccess(const std::string& path, const std::string& hash) {
-    auto& history = s_cache["history"];
+void DBCacheManager::recordAccess(const std::string& path, const std::string& hash) {
+    auto& history = cache_["history"];
 
     if (!history.empty()) {
         auto& last = history.back();
@@ -93,15 +101,15 @@ void recordAccess(const std::string& path, const std::string& hash) {
 
     history.push_back({ {"path", path}, {"hash", hash} });
 
-    while ((int)history.size() > MAX_HISTORY)
+    while ((int)history.size() > MAX_HISTORY_)
         history.erase(history.begin());
 }
 
 // returns by value — safe to store across calls
-std::vector<DBRecord> getHistory() {
+std::vector<DBCacheManager::DBRecord> DBCacheManager::getHistory() {
     std::vector<DBRecord> result;
 
-    for (auto& entry : s_cache["history"]) {
+    for (auto& entry : cache_["history"]) {
         DBRecord r;
         r.path = entry.value("path", "");
         r.hash = entry.value("hash", "");
@@ -110,23 +118,23 @@ std::vector<DBRecord> getHistory() {
     return result;
 }
 
-void setCurrentHash(const std::string& hash) {
-    s_cache["meta"]["current_hash"] = hash;
+void DBCacheManager::setCurrentHash(const std::string& hash) {
+    cache_["meta"]["current_hash"] = hash;
 }
 
 // returns by value — safe to store across calls
-std::string getCurrentHash() {
-    return s_cache["meta"].value("current_hash", "");
+std::string DBCacheManager::getCurrentHash() {
+    return cache_["meta"].value("current_hash", "");
 }
 
-bool isCurrentOfficial() {
+bool DBCacheManager::isCurrentOfficial() {
     if (std::string(DB_OFFICIAL_HASH).empty()) return false;
     const std::string current = getCurrentHash();
     if (current.empty()) return false;
     return current == DB_OFFICIAL_HASH;
 }
 
-std::optional<DBRecord> findOfficialInHistory() {
+std::optional<DBCacheManager::DBRecord> DBCacheManager::findOfficialInHistory() {
     if (std::string(DB_OFFICIAL_HASH).empty()) return std::nullopt;
 
     for (auto& record : getHistory()) {
@@ -137,5 +145,3 @@ std::optional<DBRecord> findOfficialInHistory() {
 
     return std::nullopt;
 }
-
-} // namespace DBCache

@@ -154,6 +154,7 @@ message(STATUS "libcurl: ${CURL_VERSION_STRING}")
 # ==============================================================
 set(L0_SOURCES
     ${CMAKE_SOURCE_DIR}/L0-core/src/DatabaseManager.cpp
+    ${CMAKE_SOURCE_DIR}/L0-core/src/DBResolver.cpp
     ${CMAKE_SOURCE_DIR}/L0-core/src/ErrorHandler.cpp
     ${CMAKE_SOURCE_DIR}/L0-core/src/config_manager.cpp
     ${CMAKE_SOURCE_DIR}/L0-core/src/db_cache_manager.cpp
