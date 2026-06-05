@@ -19,7 +19,7 @@
 using namespace std;
 
 // ── forward declarations ────────────────────────────────────────────────────
-static void showToolDetail(const Tool& tool);
+static void showToolDetail(const SvcDTO::ToolDTO& tool);
 static void showToolsByCategory(const string& category);
 static void showCategories();
 static void showSearch();
@@ -55,7 +55,7 @@ static bool isAmbiguous(const string& input, const vector<string>& opts) {
 // ==================== TOOL DETAIL (STUB) ====================
 
 // TODO: implement full detail screen in Task 4
-static void showToolDetail(const Tool& tool) {
+static void showToolDetail(const SvcDTO::ToolDTO& tool) {
     UI::clearScreen();
     UI::printBanner();
     UI::printBreadcrumb("tools \u203a " + tool.name);
@@ -73,7 +73,7 @@ static void showToolDetail(const Tool& tool) {
 // ==================== TOOL LIST ====================
 
 static void showToolsByCategory(const string& category) {
-    vector<Tool> tools = SvcTools::getToolsByCategory(category);
+    std::vector<SvcDTO::ToolDTO> tools = SvcTools::getToolsByCategory(category);
 
     if (tools.empty()) {
         cout << "\n  no tools in this category.\n\n";
@@ -86,7 +86,7 @@ static void showToolsByCategory(const string& category) {
     //       falls back to -1 for ANSI-prefixed items — number selection is primary
     vector<string> lines;
     lines.reserve(tools.size());
-    for (const Tool& t : tools) {
+    for (const SvcDTO::ToolDTO& t : tools) {
         string line;
         if (colorsEnabled()) {
             line += string(Color::RESET) + Color::BOLD + Color::CYAN;

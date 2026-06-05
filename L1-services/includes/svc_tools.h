@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "../../L0-core/include/DatabaseManager.h"
+#include "svc_dto.h"
 #include <string>
 #include <vector>
 
@@ -20,9 +20,9 @@ namespace SvcTools {
     std::vector<std::string> getCategories();
 
     // returns all tools whose category matches the given string (case-sensitive DB match)
-    std::vector<Tool> getToolsByCategory(const std::string& category);
+    std::vector<SvcDTO::ToolDTO> getToolsByCategory(const std::string& category);
 
     // TODO: implement search algorithm
     // returns empty vector until algorithm is ready
-    std::vector<Tool> searchTools(const std::string& query);
+    std::vector<SvcDTO::ToolDTO> searchTools(const std::string& query);
 } // namespace SvcTools

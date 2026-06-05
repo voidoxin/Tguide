@@ -6,12 +6,27 @@
  */
 
 #include "../includes/svc_tools.h"
+#include "../../L0-core/include/DatabaseManager.h"
 #include "../../L0-core/include/path_resolver.h"
 #include <algorithm>
 #include <cctype>
 #include <set>
 
 using namespace std;
+
+// ── L0→DTO mappers ────────────────────────────────────────────────────
+// These convert L0-core types to L1 DTOs, keeping L0 types internal to L1.
+
+static SvcDTO::ToolDTO toDTO(const Tool& t) {
+    return { t.id, t.name, t.category, t.short_desc, t.description, t.flags_all };
+}
+
+static std::vector<SvcDTO::ToolDTO> toDTOs(const std::vector<Tool>& tools) {
+    std::vector<SvcDTO::ToolDTO> result;
+    result.reserve(tools.size());
+    for (const auto& t : tools) result.push_back(toDTO(t));
+    return result;
+}
 
 // ── search index — held in memory for the session ─────────────────────────
 // searchTools() stub does not populate this yet; clearSearchIndex() exists
@@ -62,16 +77,16 @@ namespace SvcTools {
 
 // ── TOOLS BY CATEGORY ───────────────────────────────────────────────────────
 
-vector<Tool> getToolsByCategory(const string& category) {
+vector<SvcDTO::ToolDTO> getToolsByCategory(const string& category) {
     ToolD db(PathResolver::dbFile().string());
     ToolResults res = db.getWhere({"category"}, {category});
-    return res.items;
+    return toDTOs(res.items);
 }
 
 // ── SEARCH ──────────────────────────────────────────────────────────────────
 
 // TODO: implement search algorithm
-vector<Tool> searchTools(const string& query) {
+vector<SvcDTO::ToolDTO> searchTools(const string& query) {
     (void)query; return {};
 }
 
