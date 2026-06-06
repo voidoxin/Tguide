@@ -39,6 +39,10 @@ namespace PathResolver {
         const char* appdata = getenv("APPDATA");
         if (appdata) return fs::path(appdata) / "tguide";
         return fs::path(".");
+#elif defined(__APPLE__)
+        const char* home = getenv("HOME");
+        if (home) return fs::path(home) / "Library/Application Support/tguide";
+        return fs::path(".");
 #else
         if (isTermux()) {
             const char* prefix = getenv("PREFIX");
@@ -54,6 +58,10 @@ namespace PathResolver {
 #ifdef _WIN32
         const char* appdata = getenv("APPDATA");
         if (appdata) return fs::path(appdata) / "tguide";
+        return fs::path(".");
+#elif defined(__APPLE__)
+        const char* home = getenv("HOME");
+        if (home) return fs::path(home) / "Library/Application Support/tguide";
         return fs::path(".");
 #else
         if (isTermux()) {
@@ -140,7 +148,7 @@ namespace PathResolver {
 #ifdef _WIN32
         return true;          // APPDATA is always writable
 #elif defined(__APPLE__)
-        return true;          // user space on macOS, no root needed
+        return true;          // ~/Library/Application Support/ is always writable
 #else
         if (isTermux()) return true;   // PREFIX is always writable
         return isRoot();

@@ -1,9 +1,9 @@
 #include <iostream>
 #include <string>
 #include <algorithm>
-#include "../include/config_manager.h"
+#include "config_manager.h"
 #include "DatabaseManager.h"
-#include "L2-Interface_Engine/includes/UI_input.h"
+#include "UI_input.h"
 
 static std::string prompt(const std::string& label) {
     return readInput("  " + label + ": ");

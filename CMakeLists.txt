@@ -101,6 +101,10 @@ elseif(IS_WINDOWS)
     set(TGUIDE_INSTALL_BIN    "bin")
     set(TGUIDE_INSTALL_DATA   "data")
     set(TGUIDE_INSTALL_CONFIG "config")
+elseif(IS_MACOS)
+    set(TGUIDE_INSTALL_BIN    "/usr/local/bin")
+    set(TGUIDE_INSTALL_DATA   "data")
+    set(TGUIDE_INSTALL_CONFIG "config")
 endif()
 
 # ==============================================================
@@ -171,7 +175,7 @@ target_include_directories(L0_core PUBLIC
 
 target_link_libraries(L0_core
     PRIVATE sqlite3_obj
-    PRIVATE CURL::libcurl
+    PUBLIC  CURL::libcurl
 )
 
 # ==============================================================
@@ -279,31 +283,33 @@ target_link_libraries(tguide
 # run: sudo cmake --install . (Linux)
 #           cmake --install . (Termux)
 # ==============================================================
-if(IS_LINUX OR IS_TERMUX)
+if(IS_LINUX OR IS_TERMUX OR IS_MACOS)
 
-    # binary
+    # binary — install on all Unix-like platforms
     install(TARGETS tguide
         RUNTIME DESTINATION ${TGUIDE_INSTALL_BIN}
     )
 
-    # database — shipped pre-populated
-    if(EXISTS ${CMAKE_SOURCE_DIR}/data/database/tguide.db)
-        install(FILES ${CMAKE_SOURCE_DIR}/data/database/tguide.db
-            DESTINATION ${TGUIDE_INSTALL_DATA}
-        )
-    else()
-        message(WARNING
-            "tguide.db not found in data/database/ — "
-            "it will not be included in the install. "
-            "The app will attempt to download it on first run."
-        )
-    endif()
+    # database & config — only for Linux/Termux where system paths are expected
+    # macOS provisions these at runtime in ~/Library/Application Support/tguide/
+    if(IS_LINUX OR IS_TERMUX)
+        if(EXISTS ${CMAKE_SOURCE_DIR}/data/database/tguide.db)
+            install(FILES ${CMAKE_SOURCE_DIR}/data/database/tguide.db
+                DESTINATION ${TGUIDE_INSTALL_DATA}
+            )
+        else()
+            message(WARNING
+                "tguide.db not found in data/database/ — "
+                "it will not be included in the install. "
+                "The app will attempt to download it on first run."
+            )
+        endif()
 
-    # default config
-    if(EXISTS ${CMAKE_SOURCE_DIR}/config/config.json)
-        install(FILES ${CMAKE_SOURCE_DIR}/config/config.json
-            DESTINATION ${TGUIDE_INSTALL_CONFIG}
-        )
+        if(EXISTS ${CMAKE_SOURCE_DIR}/config/config.json)
+            install(FILES ${CMAKE_SOURCE_DIR}/config/config.json
+                DESTINATION ${TGUIDE_INSTALL_CONFIG}
+            )
+        endif()
     endif()
 
 endif()
@@ -326,6 +332,22 @@ if(IS_LINUX)
     set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
     set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
     set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
+    include(CPack)
+endif()
+
+# ==============================================================
+# CPack — macOS Bundle generation
+# usage: cpack -G Bundle
+# ==============================================================
+if(IS_MACOS)
+    set(CPACK_GENERATOR "Bundle")
+    set(CPACK_PACKAGE_NAME "tguide")
+    set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+    set(CPACK_PACKAGE_CONTACT "voidoxin")
+    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
+        "tguide — security tools reference for penetration testers"
+    )
+    set(CPACK_BUNDLE_NAME "tguide")
     include(CPack)
 endif()
 

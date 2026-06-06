@@ -13,7 +13,7 @@
 #include <cstdio>
 
 namespace Color {
-#if defined(_WIN32) || defined(__APPLE__)
+#if defined(_WIN32)
     constexpr const char* RED     = "";
     constexpr const char* GREEN   = "";
     constexpr const char* YELLOW  = "";
@@ -43,8 +43,8 @@ namespace Color {
 //   cout << (colorsEnabled() ? Color::RED : "") << msg
 //        << (colorsEnabled() ? Color::RESET : "");
 //
-// Windows and macOS always return false — no ANSI support assumed.
-// Linux and Termux honor the value passed to initColors().
+// Windows always returns false — no native ANSI support in legacy console.
+// macOS, Linux, and Termux honor the user's color preference from config.
 
 // returns true when stdout is a real terminal (not piped / redirected)
 inline bool g_colorEnabled = false;
@@ -58,11 +58,11 @@ inline bool isTerminal() {
 }
 
 inline void initColors(bool enabled) {
-#if defined(_WIN32) || defined(__APPLE__)
-    (void)enabled;          // forced off on Windows and macOS
+#if defined(_WIN32)
+    (void)enabled;          // forced off on Windows — no native ANSI in legacy console
     g_colorEnabled = false;
 #else
-    g_colorEnabled = enabled;
+    g_colorEnabled = enabled; // Linux, macOS, Termux: honor user preference
 #endif
 }
 

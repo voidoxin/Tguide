@@ -17,10 +17,13 @@
 #include "L2-Interface_Engine/includes/UI_colors.h"
 #include "L2-Interface_Engine/includes/UI_disclaimer.h"
 #include "L2-Interface_Engine/includes/UI_Engine.h"
+#include <curl/curl.h>
 using namespace std;
 namespace fs = std::filesystem;
 
 int main(int argc, char* argv[]) {
+    // ensure curl_global_cleanup() is called on all exit paths
+    struct CurlGuard { ~CurlGuard() { curl_global_cleanup(); } } curlGuard;
 
     // ── register error callbacks before any L0 calls ─────────────────────
     // L0-core (DatabaseManager, UserDataManager, ConfigManager, PathResolver)
@@ -28,11 +31,14 @@ int main(int argc, char* argv[]) {
     // error is silently swallowed due to a null std::function member.
     g_errorHandler = { UI_fatal, UI_errors, UI_attention };
 
+    // ── init libcurl before any L0 calls ─────────────────────────
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+
     // ── create required directories ────────────────────────────────────────
     // fatal — /etc/tguide and /usr/share/tguide require root on Linux
     if (!PathResolver::createSystemDirs()) {
         UI_fatal("Failed to create required directories.\n"
-                 "Check permissions or run with sudo.");
+                 "Check filesystem permissions.");
         return 1;
     }
 
