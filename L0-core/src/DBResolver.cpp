@@ -152,12 +152,27 @@ bool DBResolver::downloadDB(const std::string& url, const std::string& destPath)
 
     curl_easy_setopt(curl, CURLOPT_URL,            url.c_str());
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_MAXREDIRS,       5L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION,  curlWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA,      f);
     curl_easy_setopt(curl, CURLOPT_FAILONERROR,    1L);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT,        30L);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
     curl_easy_setopt(curl, CURLOPT_MAXFILESIZE,    20971520L);
+
+    // --- SSL/TLS security options ---
+    // CA bundle path is intentionally not set — we rely on libcurl's
+    // compiled-in default, which is correct per target platform.
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER,  1L);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST,  2L);
+    curl_easy_setopt(curl, CURLOPT_SSLVERSION,      CURL_SSLVERSION_TLSv1_2);
+#if LIBCURL_VERSION_NUM >= 0x075500  // curl >= 7.85.0: _STR variants
+    curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR,       "https");
+    curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS_STR, "https");
+#else
+    curl_easy_setopt(curl, CURLOPT_PROTOCOLS,        CURLPROTO_HTTPS);
+    curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS,  CURLPROTO_HTTPS);
+#endif
 
     CURLcode res = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
@@ -166,6 +181,17 @@ bool DBResolver::downloadDB(const std::string& url, const std::string& destPath)
     if (res != CURLE_OK) {
         std::error_code ec;
         std::filesystem::remove(destPath, ec);
+
+        // Distinguish common SSL failures from generic download errors
+        if (res == CURLE_SSL_CONNECT_ERROR ||
+            res == CURLE_PEER_FAILED_VERIFICATION ||
+            res == CURLE_SSL_CERTPROBLEM) {
+            if (g_errorHandler.error)
+                g_errorHandler.error(
+                    "SSL/TLS verification failed during database download. "
+                    "Check your system date, CA certificates, or network.");
+        }
+
         return false;
     }
 
