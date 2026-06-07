@@ -312,7 +312,64 @@ are used.
 
 ---
 
-## 6. C++ Standard Library (Compiler-Provided)
+## 6. doctest (Bundled Header-Only, Test-Only)
+
+```
+[name]
+doctest (C++ test framework)
+
+[fonctions used]
+DOCTEST_CONFIG_IMPLEMENT       — define in exactly one .cpp before include to generate framework main
+doctest::Context(int, char**)  — test runner context object
+context.run()                  — execute all registered test cases
+TEST_CASE("name")              — define a test case
+CHECK(expr)                    — non-fatal assertion check
+REQUIRE(expr)                  — fatal assertion check (aborts current test case)
+SUBCASE("name")                — nested sub-case for scenario composition
+
+[files depende on this dependencie]
+tests/main.cpp                     — DOCTEST_CONFIG_IMPLEMENT + doctest::Context entry point
+tests/test_sha256.cpp              — SHA256 unit tests (TEST_CASE + CHECK)
+tests/test_config_manager.cpp      — ConfigManager unit tests (TEST_CASE + CHECK/REQUIRE)
+tests/test_user_data_manager.cpp   — UserDataManager unit tests (TEST_CASE + CHECK/REQUIRE)
+tests/fixtures.h                   — test helper structs used by test cases (transitive)
+
+[code snippet]
+// main.cpp — single translation unit that generates the test runner
+#define DOCTEST_CONFIG_IMPLEMENT
+#include "doctest.h"
+
+int main(int argc, char** argv) {
+    doctest::Context context(argc, argv);
+    return context.run();
+}
+
+// test_sha256.cpp — example test case
+#include "doctest.h"
+#include "sha256.h"
+
+TEST_CASE("SHA256::hash(string) — empty string") {
+    auto result = SHA256::hash("");
+    CHECK(result == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+}
+
+[cause]
+doctest is the unit test framework used by the test infrastructure (A-06).
+It was chosen over Catch2 and Google Test for three reasons:
+  • Single-header — zero compilation/link steps, dropped into libs/ alongside
+    json.hpp without modifying the build system beyond adding include paths.
+  • MIT license — fully compatible with the project's MIT license.
+  • Lightweight — compiles quickly (~0.5 s), has no std::filesystem dependency
+    requirement, and produces small binaries.
+
+doctest is a BUILD-TIME ONLY dependency. The test executable (tguide_tests)
+is never installed or packaged in release builds (CPack). Setting
+-DTGUIDE_SKIP_TESTS=ON at configure time disables the entire test target.
+```
+
+---
+
+## 7. C++ Standard Library (Compiler-Provided)
 
 ```
 [name]
@@ -383,9 +440,11 @@ than raw pointers or sentinel values.
 | 3 | **nlohmann/json** | Bundled header-only C++ | Include path `${LIBS_DIR}` | (single-header) | 5 files |
 | 4 | **POSIX API** | System headers | Implicit on Linux/macOS | N/A | 4 files |
 | 5 | **Windows API** | System headers | Implicit on Windows | N/A | 2 files |
-| 6 | **C++17 Standard Library** | Compiler-provided | Implicit (C++17 std) | C++17 | All 51 files |
+| 6 | **doctest** | Bundled header-only C++ (test-only) | Include path `${LIBS_DIR}` | 2.5.0 | 4 test files |
+| 7 | **C++17 Standard Library** | Compiler-provided | Implicit (C++17 std) | C++17 | All 51 files |
 
-**Total external dependencies: 3** (SQLite3, libcurl, nlohmann/json) + 2 platform SDKs + C++17 stdlib.
+**Total external dependencies: 4** (SQLite3, libcurl, nlohmann/json, doctest*) + 2 platform SDKs + C++17 stdlib.  
+\*doctest is test-only and not shipped in release builds.
 
 **Key architectural notes:**
 - SHA256 (L0-core/src/sha256.cpp) is NOT an external dependency — it is a custom FIPS 180-4 implementation from scratch with no OpenSSL or crypto library dependency.

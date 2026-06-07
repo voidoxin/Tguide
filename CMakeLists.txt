@@ -315,6 +315,14 @@ if(IS_LINUX OR IS_TERMUX OR IS_MACOS)
 endif()
 
 # ==============================================================
+# Testing — CTest integration
+# ==============================================================
+if(NOT TGUIDE_SKIP_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
+
+# ==============================================================
 # CPack — .deb package generation (Linux only)
 # usage: cpack -G DEB
 # ==============================================================
