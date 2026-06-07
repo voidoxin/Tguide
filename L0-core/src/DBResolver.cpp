@@ -78,7 +78,8 @@ static bool validateSchema(sqlite3* db) {
         { "tools",           { "id","name","category","short_desc","description","flags_all" } },
         { "tool_flags",      { "id","tool_id","name","description","loud","root","protocols" } },
         { "templates",       { "id","tool_id","template_name","description",
-                                "root","protocols","flag" } }
+                                "root","protocols","flag" } },
+        { "categories",      { "id","name","display_order","description" } }
     };
 
     for (auto& schema : schemas) {
@@ -112,7 +113,7 @@ static bool validateSchema(sqlite3* db) {
 static bool dbHasData(sqlite3* db) {
     const char* tables[] = {
         "vulnerabilities", "options", "modules",
-        "tools", "tool_flags", "templates"
+        "tools", "tool_flags", "templates", "categories"
     };
     for (auto& table : tables) {
         std::string sql = std::string("SELECT COUNT(*) FROM ") + table;

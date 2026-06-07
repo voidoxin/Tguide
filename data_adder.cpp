@@ -333,6 +333,47 @@ static void addTemplate(const std::string& db_path) {
         std::cout << "  [-] Failed.\n";
 }
 
+static void viewLastCategories(const std::string& db_path) {
+    int n = promptInt("How many to show");
+    CategoryD db(db_path);
+    auto all = db.getAll().items;
+    int start = std::max(0, (int)all.size() - n);
+    std::cout << "\n--- Last " << n << " Categories ---\n";
+    for (int i = start; i < (int)all.size(); i++) {
+        auto& c = all[i];
+        std::cout << "  [" << c.id << "] " << c.name
+                  << " | order: " << c.display_order << "\n"
+                  << "       desc: " << c.description << "\n\n";
+    }
+}
+
+static void addCategory(const std::string& db_path) {
+    std::cout << "\n--- Add Category ---\n";
+    Category c;
+    c.id = 0;
+    c.name = prompt("Name");
+    c.display_order = promptInt("Display order");
+    c.description = prompt("Description");
+    CategoryD db(db_path);
+    if (db.add(c))
+        std::cout << "  [+] Category added.\n";
+    else
+        std::cout << "  [-] Failed.\n";
+}
+
+static void deleteCategory(const std::string& db_path) {
+    CategoryD db(db_path);
+    auto all = db.getAll().items;
+    if (all.empty()) { std::cout << "  No categories.\n"; return; }
+    for (auto& c : all)
+        std::cout << "  [" << c.id << "] " << c.name << "\n";
+    int id = promptInt("ID to delete");
+    if (db.del(id))
+        std::cout << "  [+] Deleted.\n";
+    else
+        std::cout << "  [-] Failed.\n";
+}
+
 // ==================== INIT ====================
 
 static bool initDatabase(const std::string& db_path) {
@@ -343,6 +384,7 @@ static bool initDatabase(const std::string& db_path) {
     { ToolD     db(db_path); ok &= db.createTables(); }
     { ToolFlagD db(db_path); ok &= db.createTables(); }
     { TemplateD db(db_path); ok &= db.createTables(); }
+    { CategoryD db(db_path); ok &= db.createTables(); }
     if (ok) std::cout << "[+] All tables ready.\n";
     else    std::cout << "[-] Some tables failed.\n";
     return ok;
@@ -385,6 +427,10 @@ int main() {
         std::cout << "  16. Delete Tool Flag\n";
         std::cout << "  17. Delete Template\n";
         std::cout << "  ---\n";
+        std::cout << "  18. Add Category\n";
+        std::cout << "  19. View last N Categories\n";
+        std::cout << "  20. Delete Category\n";
+        std::cout << "  ---\n";
         std::cout << "  0. Exit\n";
         std::cout << "==========================\n";
         std::cout << "Choice: ";
@@ -410,6 +456,9 @@ int main() {
             case 15: deleteTool(db_path);          break;
             case 16: deleteToolFlag(db_path);      break;
             case 17: deleteTemplate(db_path);      break;
+            case 18: addCategory(db_path);         break;
+            case 19: viewLastCategories(db_path);  break;
+            case 20: deleteCategory(db_path);      break;
             case 0:
                 std::cout << "[*] Exiting.\n";
                 return 0;

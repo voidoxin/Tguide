@@ -93,6 +93,9 @@ static const std::set<std::string> SAFE_MODULE_COLS = {
 static const std::set<std::string> SAFE_TOOL_COLS = {
     "id","name","category","short_desc","description","flags_all"
 };
+static const std::set<std::string> SAFE_CATEGORY_COLS = {
+    "id","name","display_order","description"
+};
 
 // ==================== BackupManager ====================
 
@@ -708,6 +711,112 @@ TemplateResults TemplateD::getWhere(int tool_id) {
             t.protocols     = col_text(stmt, 5);
             t.flag          = sqlite3_column_int(stmt, 6) != 0;
             results.items.push_back(t);
+        }
+    );
+    return results;
+}
+
+// ==================== CategoryD ====================
+
+CategoryD::CategoryD(const std::string& path) : db_path(DBResolver::instance().resolve(path)) {}
+CategoryD::CategoryD(const std::string& path, DirectOpen) : db_path(path) {}
+
+bool CategoryD::createTables() {
+    DBSession s(db_path);
+    if (!s.ok()) return false;
+
+    return s.execute(
+        "CREATE TABLE IF NOT EXISTS categories ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "name TEXT, display_order INTEGER, description TEXT);"
+    );
+}
+
+bool CategoryD::add(const Category& c) {
+    DBSession s(db_path);
+    if (!s.ok()) return false;
+
+    bool ok = s.execute(
+        "INSERT INTO categories(name, display_order, description)"
+        " VALUES(?,?,?)",
+        [&](sqlite3_stmt* stmt) {
+            sqlite3_bind_text(stmt, 1, c.name.c_str(),         -1, SQLITE_TRANSIENT);
+            sqlite3_bind_int (stmt, 2, c.display_order);
+            sqlite3_bind_text(stmt, 3, c.description.c_str(),  -1, SQLITE_TRANSIENT);
+        }
+    );
+#ifdef TGUIDE_DEV_MODE
+    if (ok) BackupManager::backupDatabase(db_path);
+#endif
+    return ok;
+}
+
+bool CategoryD::del(int id) {
+    DBSession s(db_path);
+    if (!s.ok()) return false;
+
+    bool ok = s.execute(
+        "DELETE FROM categories WHERE id=?",
+        [&](sqlite3_stmt* stmt) { sqlite3_bind_int(stmt, 1, id); }
+    );
+#ifdef TGUIDE_DEV_MODE
+    if (ok) BackupManager::backupDatabase(db_path);
+#endif
+    return ok;
+}
+
+CategoryResults CategoryD::getAll() {
+    CategoryResults results;
+    DBSession s(db_path);
+    if (!s.ok()) return results;
+
+    s.query(
+        "SELECT id, name, display_order, description FROM categories",
+        nullptr,
+        [&](sqlite3_stmt* stmt) {
+            Category c;
+            c.id            = sqlite3_column_int(stmt, 0);
+            c.name          = col_text(stmt, 1);
+            c.display_order = sqlite3_column_int(stmt, 2);
+            c.description   = col_text(stmt, 3);
+            results.items.push_back(c);
+        }
+    );
+    return results;
+}
+
+CategoryResults CategoryD::getWhere(const std::vector<std::string>& columns,
+                                     const std::vector<std::string>& values) {
+    CategoryResults results;
+    if (columns.size() != values.size() || columns.empty()) return results;
+    DBSession s(db_path);
+    if (!s.ok()) return results;
+
+    for (auto& col : columns) {
+        if (SAFE_CATEGORY_COLS.find(col) == SAFE_CATEGORY_COLS.end()) return results;
+    }
+    std::stringstream ss;
+    ss << "SELECT id, name, display_order, description FROM categories WHERE ";
+    for (size_t i = 0; i < columns.size(); i++) {
+        ss << columns[i] << "=?";
+        if (i < columns.size() - 1) ss << " AND ";
+    }
+    std::string sql = ss.str();
+
+    s.query(
+        sql.c_str(),
+        [&](sqlite3_stmt* stmt) {
+            for (size_t i = 0; i < values.size(); i++)
+                sqlite3_bind_text(stmt, (int)i + 1,
+                    values[i].c_str(), -1, SQLITE_TRANSIENT);
+        },
+        [&](sqlite3_stmt* stmt) {
+            Category c;
+            c.id            = sqlite3_column_int(stmt, 0);
+            c.name          = col_text(stmt, 1);
+            c.display_order = sqlite3_column_int(stmt, 2);
+            c.description   = col_text(stmt, 3);
+            results.items.push_back(c);
         }
     );
     return results;

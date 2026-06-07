@@ -1,5 +1,5 @@
 # Tguide — Development Roadmap
-## Version: 1.2.0
+## Version: 1.3.0
 ## Date: 2026-06-07
 ## Author: voidoxin
 
@@ -10,9 +10,10 @@
 - **L1-services**: svc_tools has clearSearchIndex (STEP-03), svc_generator has sanitizeInput (STEP-04), **A6 architectural violation fixed** (L1 DTOs decouple L2 from L0 types); remaining service files still stubbed or minimal
 - **L2-Interface_Engine**: UI_Engine uses readInput() (STEP-01), toNumber() uses from_chars (STEP-02), UI_colors checks isatty() (STEP-05), but tool detail, saved commands/scripts, settings, and generator still stubbed
 - **CMakeLists.txt**: Build system configured across platforms but installs data_adder (dev-only) and lacks release configuration; **A7 architectural violation fixed** (build-time layer enforcement: L3_interface no longer includes/link L0_core directly); **A5 partial fix** (dead L2_INC ref removed from L3_interface)
-- **Missing**: Database schema updates (short_desc, categories table), complete UserDataManager integration, search algorithm, filter implementations, saved data screens, script generator, settings screen, and dev-only code removal
+- **Missing**: Database schema updates (short_desc), complete UserDataManager integration, search algorithm, filter implementations, saved data screens, script generator, settings screen, and dev-only code removal
 - **Completed analysis**: `.ai/dependencies.md` created (388 lines, cataloging 6 dependencies); cross-platform compatibility analysis completed and **STEP-CP1 complete** — macOS cross-platform fixes applied (path resolution, ANSI colors, CMake install targets, libcurl RAII guard); **A-06 test infrastructure complete** — doctest single-header framework, 21 test cases across 3 modules (SHA256, ConfigManager, UserDataManager), TempDirectory/TempFile/ErrorHandlerSpy fixtures, CMake/CTest integration (commit 8ae3447)
 - **STEP-10 complete (2026-06-07)**: Linux root requirement eliminated. All runtime paths moved from `/etc/tguide` and `/usr/share/tguide` to `~/.config/tguide` and `~/.local/share/tguide`. The tool no longer requires root on any platform.
+- **STEP-07 complete (2026-06-07)**: Database schema updated — Category struct, categories table, CategoryD CRUD class added to L0-core. Interactive category management in data_adder menu.
 
 ## Architecture Reference
 ```
@@ -240,11 +241,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L0 |
 | Priority   | CRITICAL |
-| Status     | [ ] TODO |
-| Files      | L0-core/include/DatabaseManager.h, L0-core/src/DatabaseManager.cpp, data_adder.cpp |
+| Status     | [x] DONE |
+| Files      | L0-core/include/DatabaseManager.h, L0-core/src/DatabaseManager.cpp, L0-core/src/DBResolver.cpp, data_adder.cpp |
 | Goal       | Add short_desc column to Tool struct and create CategoryD class with categories table schema |
 | Depends    | STEP-06 |
 | Done when  | Database schema includes short_desc in Tool struct and categories table with id, name, display_order, description columns |
+| Completed  | **2026-06-07** — Category struct, CategoryResults, and CategoryD class added to DatabaseManager.h. CategoryD implemented with SAFE_CATEGORY_COLS whitelist in DatabaseManager.cpp (lines 719-801). Categories added to DBResolver.cpp schema validation (line 82) and dbHasData() (line 116). Categories CRUD (Add/View/Delete) added to data_adder.cpp menu (options 18-20). Code review: APPROVED ✅. Dependencies check: APPROVED ✅. |
 
 ### STEP-08 — Implement UserDataManager for saved commands and scripts
 | Field      | Value |
@@ -969,7 +971,7 @@ L0-core → L1-services → L2-Interface_Engine
 | STEP-A03 | Phase 0 | L0 (Security) | Fix libcurl SSL/TLS verification in DBResolver.cpp (A-03) |
 | STEP-CP1 | Phase 0 | CROSS-PLATFORM | Implement macOS cross-platform portability fixes |
 | STEP-06 | Phase 1 | L0+L1+L2 | Fix error handling contract implementation |
-| STEP-07 | Phase 1 | L0 | Update database schema for short_desc and categories table |
+| STEP-07 | Phase 1 | L0 | Update database schema for short_desc and categories table (DONE) |
 | STEP-08 | Phase 1 | L0 | Implement UserDataManager for saved commands and scripts |
 | STEP-09 | Phase 1 | L0 | Add I18n / Localization Framework foundation (NEW-1) |
 | STEP-10 | Phase 1 | L0 | Fix path resolver for Linux user-space only (DONE) |

@@ -55,11 +55,19 @@ struct Template {
     bool flag;
 };
 
+struct Category {
+    int id;
+    std::string name;
+    int display_order;
+    std::string description;
+};
+
 struct VulnResults     { std::vector<Vulnerability> items; };
 struct ModuleResults   { std::vector<Module>        items; };
 struct ToolResults     { std::vector<Tool>           items; };
 struct ToolFlagResults { std::vector<ToolFlag>       items; };
 struct TemplateResults { std::vector<Template>       items; };
+struct CategoryResults { std::vector<Category>       items; };
 
 #ifdef TGUIDE_DEV_MODE
 class BackupManager {
@@ -164,4 +172,19 @@ public:
     bool del(int id);
 
     TemplateResults getWhere(int tool_id);
+};
+
+class CategoryD {
+    std::string db_path;
+public:
+    CategoryD(const std::string& path);
+    CategoryD(const std::string& path, DirectOpen);
+
+    bool createTables();
+    bool add(const Category& c);
+    bool del(int id);
+
+    CategoryResults getAll();
+    CategoryResults getWhere(const std::vector<std::string>& columns,
+                             const std::vector<std::string>& values);
 };
