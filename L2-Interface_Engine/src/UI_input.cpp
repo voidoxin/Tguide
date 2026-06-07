@@ -5,14 +5,15 @@
  *  written by voidoxin
  */
 
-#include "../includes/UI_input.h"
-#include "../includes/UI_colors.h"
-#include "../includes/UI_utils.h"
-#include <iostream>
 #include <algorithm>
 #include <cctype>
 #include <charconv>
+#include <iostream>
 #include <stdexcept>
+
+#include "../includes/UI_colors.h"
+#include "../includes/UI_input.h"
+#include "../includes/UI_utils.h"
 
 using namespace std;
 
@@ -39,7 +40,7 @@ string normalize(const string& input) {
 
 // print prompt in green, read one line, trim whitespace, truncate to 256 chars
 // returns empty string on EOF
-string readInput(const string& prompt) {
+string readInput(const string& prompt) noexcept {
     cout << (colorsEnabled() ? Color::GREEN : "")
          << prompt
          << (colorsEnabled() ? Color::RESET : "");

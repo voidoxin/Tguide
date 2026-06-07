@@ -18,7 +18,7 @@ std::string normalize(const std::string& input);
 
 // print prompt with green color, read one line from cin, trim whitespace
 // returns empty string on EOF
-std::string readInput(const std::string& prompt);
+std::string readInput(const std::string& prompt) noexcept;
 
 // ==================== CHECKS ====================
 

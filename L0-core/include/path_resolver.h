@@ -10,9 +10,6 @@
 #include <cstdlib>
 #include <string>
 
-#ifndef _WIN32
-#include <unistd.h>   // geteuid()
-#endif
 
 namespace fs = std::filesystem;
 
@@ -25,13 +22,6 @@ namespace PathResolver {
         if (!prefix) return false;
         return std::string(prefix).find("com.termux") != std::string::npos;
     }
-
-    // ── detect if running as root ──────────────────────────────────────────
-#ifndef _WIN32
-    static inline bool isRoot() {
-        return geteuid() == 0;
-    }
-#endif
 
     // ── config path ────────────────────────────────────────────────────────
     static inline fs::path configDir() {
@@ -48,8 +38,9 @@ namespace PathResolver {
             const char* prefix = getenv("PREFIX");
             if (prefix) return fs::path(prefix) / "etc/tguide";
         }
-        // Linux — needs root to write here
-        return fs::path("/etc/tguide");
+        const char* home = getenv("HOME");
+        if (home) return fs::path(home) / ".config/tguide";
+        return fs::path(".");
 #endif
     }
 
@@ -68,8 +59,9 @@ namespace PathResolver {
             const char* prefix = getenv("PREFIX");
             if (prefix) return fs::path(prefix) / "share/tguide";
         }
-        // Linux — needs root to write here
-        return fs::path("/usr/share/tguide");
+        const char* home = getenv("HOME");
+        if (home) return fs::path(home) / ".local/share/tguide";
+        return fs::path(".");
 #endif
     }
 
@@ -134,25 +126,6 @@ namespace PathResolver {
         fs::create_directories(scriptsDir(), ec);
         if (ec) return false;
         return true;
-    }
-
-    // ── create required directories — kept for backward compatibility ──────
-    // calls createSystemDirs() only; user dirs handled separately in CoreRunner
-    static inline bool createDirs() {
-        return createSystemDirs();
-    }
-
-    // ── check if we have write access to required dirs ─────────────────────
-    // used on Linux to warn the user before anything fails
-    static inline bool hasWriteAccess() {
-#ifdef _WIN32
-        return true;          // APPDATA is always writable
-#elif defined(__APPLE__)
-        return true;          // ~/Library/Application Support/ is always writable
-#else
-        if (isTermux()) return true;   // PREFIX is always writable
-        return isRoot();
-#endif
     }
 
 } // namespace PathResolver

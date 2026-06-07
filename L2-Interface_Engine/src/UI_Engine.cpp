@@ -3,18 +3,19 @@
  *  written by voidoxin
  */
 
-#include "../includes/UI_Engine.h"
-#include "../includes/UI_utils.h"
-#include "../includes/UI_colors.h"
-#include "../includes/UI_tools.h"
-#include "../includes/UI_generator.h"
-#include "../includes/UI_savedCommands.h"
-#include "../includes/UI_savedScripts.h"
-#include "../includes/UI_settings.h"
-#include "../includes/UI_input.h"
 #include <iostream>
 #include <string>
 #include <vector>
+
+#include "../includes/UI_colors.h"
+#include "../includes/UI_Engine.h"
+#include "../includes/UI_generator.h"
+#include "../includes/UI_input.h"
+#include "../includes/UI_savedCommands.h"
+#include "../includes/UI_savedScripts.h"
+#include "../includes/UI_settings.h"
+#include "../includes/UI_tools.h"
+#include "../includes/UI_utils.h"
 
 using namespace std;
 
@@ -38,10 +39,11 @@ static void printItem(int index, const UIEngine::MenuItem& item, bool isLast) {
 }
 
 // ── internal: print invalid input warning ─────────────────────────────────
+// intentionally NOT using UI_errors() — input validation, not a system error
 static void printInvalidInput() {
-    cout << Color::RED
+    cout << (colorsEnabled() ? Color::YELLOW : "")
          << "\n  invalid choice — try again.\n\n"
-         << Color::RESET;
+         << (colorsEnabled() ? Color::RESET : "");
 }
 
 // ── renderMenu ─────────────────────────────────────────────────────────────

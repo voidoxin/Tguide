@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
     curl_global_init(CURL_GLOBAL_DEFAULT);
 
     // ── create required directories ────────────────────────────────────────
-    // fatal — /etc/tguide and /usr/share/tguide require root on Linux
+    // creates user directories under ~/.config/tguide and ~/.local/share/tguide
     if (!PathResolver::createSystemDirs()) {
         UI_fatal("Failed to create required directories.\n"
                  "Check filesystem permissions.");

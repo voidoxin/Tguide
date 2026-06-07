@@ -1,16 +1,18 @@
 # Tguide — Development Roadmap
-## Version: 1.0.1
-## Date: 2026-06-05
+## Version: 1.2.0
+## Date: 2026-06-07
 ## Author: voidoxin
 
 ## Current State (from code scan)
+- **Proposals reviewed and accepted (2026-06-07)**: Four proposals from `tguide_technical_proposal.md` were independently reviewed by software-architect, security-auditor, and developer-core via agent consensus. **P1 (Dynamic Version Manifest)** and **P4 (DB Rollback/Recovery)** approved as a unified DB lifecycle subsystem (highest priority, replaces STEP-11 hardcoded-hash approach). **P3 (GitHub Threat Model)** approved as documentation (low priority). **P2 (DNS-Only Check)** deferred to Phase 3 (medium priority, future). New steps STEP-P1, STEP-P4, STEP-P3, and STEP-P2 incorporated into this roadmap.
 - **CoreRunner.cpp**: Bootstrap sequence mostly implemented, root check bug (BUG-1) fixed (STEP-00), dev-only BackupManager remains
 - **L0-core**: DatabaseManager has basic CRUD, UserDataManager created but not integrated, path_resolver needs Linux user-space fixes, DBCacheManager needs official hash; **A1 architectural violation fixed** (UI→L0 direct includes removed); **A2 architectural violation fixed** (raw extern callbacks → ErrorHandler abstraction); **A3 architectural violation fixed** (Global Mutable State eliminated: DBResolver, DBCacheManager, g_colorEnabled); **A-03 security fix completed** (7 SSL/TLS hardening measures in DBResolver.cpp, commit 4c818c2)
 - **L1-services**: svc_tools has clearSearchIndex (STEP-03), svc_generator has sanitizeInput (STEP-04), **A6 architectural violation fixed** (L1 DTOs decouple L2 from L0 types); remaining service files still stubbed or minimal
 - **L2-Interface_Engine**: UI_Engine uses readInput() (STEP-01), toNumber() uses from_chars (STEP-02), UI_colors checks isatty() (STEP-05), but tool detail, saved commands/scripts, settings, and generator still stubbed
 - **CMakeLists.txt**: Build system configured across platforms but installs data_adder (dev-only) and lacks release configuration; **A7 architectural violation fixed** (build-time layer enforcement: L3_interface no longer includes/link L0_core directly); **A5 partial fix** (dead L2_INC ref removed from L3_interface)
 - **Missing**: Database schema updates (short_desc, categories table), complete UserDataManager integration, search algorithm, filter implementations, saved data screens, script generator, settings screen, and dev-only code removal
-- **Completed analysis**: `.ai/dependencies.md` created (388 lines, cataloging 6 dependencies); cross-platform compatibility analysis completed and **STEP-CP1 complete** — macOS cross-platform fixes applied (path resolution, ANSI colors, CMake install targets, libcurl RAII guard)
+- **Completed analysis**: `.ai/dependencies.md` created (388 lines, cataloging 6 dependencies); cross-platform compatibility analysis completed and **STEP-CP1 complete** — macOS cross-platform fixes applied (path resolution, ANSI colors, CMake install targets, libcurl RAII guard); **A-06 test infrastructure complete** — doctest single-header framework, 21 test cases across 3 modules (SHA256, ConfigManager, UserDataManager), TempDirectory/TempFile/ErrorHandlerSpy fixtures, CMake/CTest integration (commit 8ae3447)
+- **STEP-10 complete (2026-06-07)**: Linux root requirement eliminated. All runtime paths moved from `/etc/tguide` and `/usr/share/tguide` to `~/.config/tguide` and `~/.local/share/tguide`. The tool no longer requires root on any platform.
 
 ## Architecture Reference
 ```
@@ -208,17 +210,30 @@ L0-core → L1-services → L2-Interface_Engine
 | Done when  | tguide compiles and runs on macOS without root; paths resolved under ~/Library/Application Support/tguide/; ANSI colors working in Terminal.app; `cmake --install build` installs binary to /usr/local/bin |
 | Completed  | **2026-06-06** — Six files modified across the codebase: (1) `path_resolver.h`: Added `__APPLE__` guards in `configDir()`, `dataDir()`, `userDataDir()`, and `hasWriteAccess()` — all returning writable paths under `~/Library/Application Support/tguide/` with no root required. (2) `data_adder.cpp`: Fixed include paths (lines 4, 6) to use CMake include directories instead of relative paths. (3) `CoreRunner.cpp`: Added `curl_global_init(CURL_GLOBAL_DEFAULT)` before all L0 calls and `CurlGuard` RAII struct calling `curl_global_cleanup()` on destruction; updated error message. (4) `CMakeLists.txt`: Added macOS platform detection (`IS_MACOS`), macOS install target (binary → `/usr/local/bin`), macOS CPack Bundle generator, and fixed `CURL::libcurl` propagation (`PRIVATE` → `PUBLIC` on `L0_core`). (5) `UI_colors.h`: Removed `__APPLE__` from color guard — `#else` branch now covers macOS, Linux, and Termux, enabling ANSI colors in macOS Terminal.app. (6) `.ai/dependencies.md`: Updated libcurl section to reflect `CoreRunner.cpp` usage of `curl_global_init/cleanup` and `PUBLIC` visibility of `CURL::libcurl`. Key outcomes: no root required on macOS, paths unified under `~/Library/Application Support/tguide/`, easy installation via `cmake --build build && cmake --install build`, ANSI colors working in macOS Terminal.app. Code review: APPROVED ✅. Testing: PASS ✅. |
 
+### STEP-A06 — Add minimum viable test infrastructure with doctest
+| Field      | Value |
+|------------|-------|
+| Layer      | TEST |
+| Priority   | CRITICAL |
+| Status     | [x] DONE |
+| Files      | libs/doctest.h (NEW), tests/main.cpp (NEW), tests/fixtures.h (NEW), tests/test_sha256.cpp (NEW), tests/test_config_manager.cpp (NEW), tests/test_user_data_manager.cpp (NEW), tests/CMakeLists.txt (NEW), CMakeLists.txt (modified), .ai/dependencies.md (modified) |
+| Goal       | Add minimum viable test infrastructure using the doctest single-header framework to enable automated unit testing across all layers. |
+| Depends    | none |
+| Done when  | Tests compile and pass with CTest: 21 test cases across 3 modules (SHA256: 8, ConfigManager: 6, UserDataManager: 7). Test fixtures include TempDirectory, TempFile, and ErrorHandlerSpy. CTest integration via `cmake --build build && ctest --test-dir build`. |
+| Completed  | **2026-06-06** — doctest single-header framework (v2.4.11, 9119 lines) added to `libs/doctest.h`. Test entry point in `tests/main.cpp`. Three fixture types defined in `tests/fixtures.h`: `TempDirectory` (auto-cleanup temp dirs), `TempFile` (scoped file with content), `ErrorHandlerSpy` (op-count error handler spy). Three test modules totaling 21 cases: `test_sha256.cpp` (8 cases: empty, short, known vectors, collision detection, incremental, streaming), `test_config_manager.cpp` (6 cases: defaults, load/save, get/set, non-existent load, save on destroy), `test_user_data_manager.cpp` (7 cases: init, save/load, add/remove command, add/remove script, persistence, clear, empty state). CMake target `tguide_tests` built with `target_link_libraries(tguide_tests PRIVATE L0_core)` and registered with `add_test()`. Top-level `CMakeLists.txt` updated with `enable_testing()` and `add_subdirectory(tests)`. `.ai/dependencies.md` updated with doctest section (§6). All tests pass cleanly. Code review: APPROVED ✅. Testing: PASS ✅ (21/21 passing). Commit: 8ae3447. |
+
 ## Phase 1 — Foundation (L0 only)
 ### STEP-06 — Fix error handling contract implementation (TASK-1b)
 | Field      | Value |
 |------------|-------|
 | Layer      | L0+L1+L2 |
 | Priority   | CRITICAL |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | L2-Interface_Engine/src/UI_errorHandling.cpp, L2-Interface_Engine/includes/UI_errorHandling.h, L2-Interface_Engine/src/UI_Engine.cpp (audit all files) |
 | Goal       | Implement professional error handling system: UI_fatal() never followed by clearScreen(), UI_errors() always followed by pause() before clearScreen |
 | Depends    | STEP-05 |
 | Done when  | All UI_errors() calls are followed by pause() before clearScreen() and UI_fatal() is never followed by clearScreen() |
+| Completed  | **2026-06-07** — Audit of all 12 error-handling call sites complete. No contract violations found. Added `noexcept` to `waitForEnter()`, `UI_fatal()`, `clearScreen()`, `readInput()`. Changed `printInvalidInput()` in UI_Engine.cpp to use `Color::YELLOW` with `colorsEnabled()` guard. Fixed include ordering to match coding style (standard → project). All changes reviewed and tested via fix/check loop: code-reviewer APPROVED ✅, test-engineer PASS ✅. |
 
 ### STEP-07 — Update database schema for short_desc and categories table
 | Field      | Value |
@@ -258,22 +273,45 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L0 |
 | Priority   | CRITICAL |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | L0-core/include/path_resolver.h, CoreRunner.cpp |
 | Goal       | Update path resolver to use user-space paths only on Linux and make hasWriteAccess() always return true |
 | Depends    | STEP-09 |
 | Done when  | Linux paths point to ~/.config/tguide/ and ~/.local/share/tguide/ instead of /etc/ and /usr/share/ |
+| Completed  | **2026-06-07** — Fast-tracked before STEP-07/08/09. Changed `configDir()` on Linux from `/etc/tguide` to `~/.config/tguide` via `$HOME` env var. Changed `dataDir()` on Linux from `/usr/share/tguide` to `~/.local/share/tguide`. Removed `isRoot()`, `hasWriteAccess()`, and `#include <unistd.h>` (dead code). Updated CoreRunner.cpp comment. Updated CMakeLists.txt install paths to `/usr/local/...` with corrected comments. Dependencies check: APPROVED ✅. Code review: APPROVED ✅. |
 
-### STEP-11 — Set official database hash and download URL
+### STEP-P1 — Implement Dynamic Version Manifest (replaces STEP-11)
 | Field      | Value |
 |------------|-------|
 | Layer      | L0 |
 | Priority   | CRITICAL |
 | Status     | [ ] TODO |
-| Files      | L0-core/include/db_cache_manager.h |
-| Goal       | Define DB_OFFICIAL_HASH and DB_DOWNLOAD_URL with actual values for database integrity verification |
-| Depends    | STEP-10 |
-| Done when  | db_cache_manager.h contains non-empty values for DB_OFFICIAL_HASH and DB_DOWNLOAD_URL |
+| Files      | L0-core/src/DBResolver.cpp, L0-core/include/DBResolver.h, L0-core/include/db_cache_manager.h, L0-core/src/db_cache_manager.cpp, CoreRunner.cpp, .ai/security.md |
+| Goal       | Replace compile-time DB_OFFICIAL_HASH with an HTTPS-fetched JSON manifest (signed_manifest.json) listing known-good DB versions + SHA256 hashes. Add fetchManifest() to DBResolver; store last-seen version in .db_cache; remove DB_OFFICIAL_HASH constant; anchor trust in HTTPS transport layer. |
+| Depends    | STEP-10 (DONE — unblocked) |
+| Done when  | DBResolver fetches manifest.json over HTTPS, parses version/db_hash/db_url, downloads DB from manifest URL, verifies hash, and accepts or rejects accordingly. DB_OFFICIAL_HASH no longer exists in compiled binary. .ai/security.md updated with manifest system description. |
+
+### STEP-P4 — Implement Database Rollback & Recovery System
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 + L2 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L0-core/src/DBResolver.cpp, L0-core/include/db_cache_manager.h, L0-core/src/db_cache_manager.cpp, L2-Interface_Engine/src/UI_settings.cpp, L2-Interface_Engine/includes/UI_settings.h, L2-Interface_Engine/src/UI_Engine.cpp |
+| Goal       | Implement N-1 auto-backup (tguide.db.bak) before every DB update; detect corruption on boot via schema validation; three-state recovery prompt (Restore/Keep/Ask Later); manual "Rollback Database" button in Settings → Database screen. |
+| Depends    | STEP-P1 |
+| Done when  | Active DB is backed up to tguide.db.bak before each update; boot validation triggers recovery prompt on corruption with three options (Restore/Keep/Ask Later); Settings screen shows active version, backup availability, and rollback/delete-backup options. |
+
+### STEP-P3 — Document GitHub URL threat model (account compromise boundary)
+| Field      | Value |
+|------------|-------|
+| Layer      | DOCUMENTATION |
+| Priority   | LOW |
+| Status     | [ ] TODO |
+| Files      | .ai/security.md |
+| Goal       | Document the stability guarantees of raw.githubusercontent.com URLs and the bounded risk of GitHub account compromise under the manifest-based system (P1). Declare account-compromise data corruption as out-of-scope for additional crypto signing at this stage. |
+| Depends    | none |
+| Done when  | .ai/security.md contains a dedicated section documenting the GitHub URL threat model, explaining why no additional DB signing is required, and stating the out-of-scope declaration. |
 
 ## Phase 2 — Core Tools UI
 ### STEP-12 — Implement tools entry screen and category browser
@@ -284,7 +322,7 @@ L0-core → L1-services → L2-Interface_Engine
 | Status     | [ ] TODO |
 | Files      | L2-Interface_Engine/src/UI_tools.cpp, L1-services/src/svc_tools.cpp, L1-services/includes/svc_tools.h |
 | Goal       | Complete tools entry screen with browse/search/filter options and functional category browser |
-| Depends    | STEP-11 |
+| Depends    | STEP-P1 |
 | Done when  | User can browse categories and view tools in each category from the tools entry screen |
 
 ### STEP-13 — Complete tool detail screen (shared endpoint)
@@ -364,6 +402,17 @@ L0-core → L1-services → L2-Interface_Engine
 | Goal       | Implement OPSEC modes (Stealth/Balanced/Aggressive) that modify connection behavior, timeout values, and update check frequency |
 | Depends    | STEP-18 |
 | Done when  | Config manager stores OPSEC mode setting and db_cache_manager adjusts network behavior based on selected mode
+
+### STEP-P2 — Implement DNS-Only Connectivity Check (deferred from proposal review)
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 |
+| Priority   | MEDIUM |
+| Status     | [ ] VISION |
+| Files      | L0-core/src/DBResolver.cpp, L0-core/include/DBResolver.h |
+| Goal       | Replace any port-based/ping connectivity probing with getaddrinfo() checks against well-known DNS resolver hostnames (dns.google, one.one.one.one, resolver.opendns.com). DNS queries handled by system resolver; no packets reach external servers. Called only immediately before fetchManifest(). |
+| Depends    | STEP-P1 |
+| Done when  | DBResolver::hasInternetAccess() uses getaddrinfo() only; no ICMP/HTTP probes to external hosts; function called only before manifest fetch, not at startup or in background context. |
 
 ### STEP-20 — Implement randomized connection check (L0) (STRATEGIC-5)
 | Field      | Value |
@@ -923,8 +972,10 @@ L0-core → L1-services → L2-Interface_Engine
 | STEP-07 | Phase 1 | L0 | Update database schema for short_desc and categories table |
 | STEP-08 | Phase 1 | L0 | Implement UserDataManager for saved commands and scripts |
 | STEP-09 | Phase 1 | L0 | Add I18n / Localization Framework foundation (NEW-1) |
-| STEP-10 | Phase 1 | L0 | Fix path resolver for Linux user-space only |
-| STEP-11 | Phase 1 | L0 | Set official database hash and download URL |
+| STEP-10 | Phase 1 | L0 | Fix path resolver for Linux user-space only (DONE) |
+| STEP-P1 | Phase 1 | L0 | Implement Dynamic Version Manifest (replaces STEP-11) |
+| STEP-P4 | Phase 1 | L0 + L2 | Implement Database Rollback & Recovery System |
+| STEP-P3 | Phase 1 | DOCUMENTATION | Document GitHub URL threat model (account compromise) |
 | STEP-12 | Phase 2 | L1+L2 | Implement tools entry screen and category browser |
 | STEP-13 | Phase 2 | L1+L2 | Complete tool detail screen (shared endpoint) |
 | STEP-14 | Phase 2 | L1+L2 | Implement template fill + placeholder prompting + save command |
@@ -933,6 +984,7 @@ L0-core → L1-services → L2-Interface_Engine
 | STEP-17 | Phase 3 | L0 | Implement Shadow Swap update system infrastructure (STRATEGIC-4) |
 | STEP-18 | Phase 3 | L2 | Implement Shadow Swap update settings UI (STRATEGIC-4) |
 | STEP-19 | Phase 3 | L0 | Implement OPSEC connectivity modes (STRATEGIC-3) |
+| STEP-P2 | Phase 3 | L0 | Implement DNS-Only Connectivity Check (deferred) |
 | STEP-20 | Phase 3 | L0 | Implement randomized connection check (STRATEGIC-5) |
 | STEP-21 | Phase 3 | L1 | Implement search index cache clearing on shadow swap |
 | STEP-22 | Phase 3 | L1 | Implement enhanced search algorithm |

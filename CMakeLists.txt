@@ -77,11 +77,12 @@ message(STATUS "Platform: ${TGUIDE_PLATFORM}")
 add_compile_definitions(TGUIDE_PLATFORM="${TGUIDE_PLATFORM}")
 
 # ==============================================================
-# Install Paths — mirrors PathResolver logic exactly
+# Install Paths — system-wide deployment locations
+# Runtime paths use user-space (~/.config, ~/.local/share) via PathResolver
 #
-#   Linux   : binary → /usr/bin/
-#             data   → /usr/share/tguide/
-#             config → /etc/tguide/          (requires root)
+#   Linux   : binary → /usr/local/bin/
+#             data   → /usr/local/share/tguide/    (package-manager installs only)
+#             config → /usr/local/etc/tguide/      (package-manager installs only)
 #
 #   Termux  : binary → $PREFIX/bin/
 #             data   → $PREFIX/share/tguide/
@@ -94,9 +95,9 @@ if(IS_TERMUX)
     set(TGUIDE_INSTALL_DATA   "$ENV{PREFIX}/share/tguide")
     set(TGUIDE_INSTALL_CONFIG "$ENV{PREFIX}/etc/tguide")
 elseif(IS_LINUX)
-    set(TGUIDE_INSTALL_BIN    "/usr/bin")
-    set(TGUIDE_INSTALL_DATA   "/usr/share/tguide")
-    set(TGUIDE_INSTALL_CONFIG "/etc/tguide")
+    set(TGUIDE_INSTALL_BIN    "/usr/local/bin")
+    set(TGUIDE_INSTALL_DATA   "/usr/local/share/tguide")
+    set(TGUIDE_INSTALL_CONFIG "/usr/local/etc/tguide")
 elseif(IS_WINDOWS)
     set(TGUIDE_INSTALL_BIN    "bin")
     set(TGUIDE_INSTALL_DATA   "data")

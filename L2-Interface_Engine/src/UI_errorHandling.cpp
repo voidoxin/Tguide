@@ -5,17 +5,18 @@
  *  written by voidoxin
  */
 
-#include "../includes/UI_errorHandling.h"
-#include "../includes/UI_colors.h"
-#include "../includes/UI_input.h"
 #include <iostream>
+
+#include "../includes/UI_colors.h"
+#include "../includes/UI_errorHandling.h"
+#include "../includes/UI_input.h"
 
 using namespace std;
 
 // ==================== WAIT ====================
 
 // standalone wait — used when no message is needed but screen must not advance
-void waitForEnter() {
+void waitForEnter() noexcept {
     if (cin.eof()) return;
     cout << (colorsEnabled() ? Color::DIM : "")
          << "  press enter to continue..."
@@ -28,7 +29,7 @@ void waitForEnter() {
 
 // prints [FATAL] and waits with "press enter to exit..." — does NOT call exit()
 // clearScreen() must NEVER be called by any caller after this returns
-void UI_fatal(const std::string& msg) {
+void UI_fatal(const std::string& msg) noexcept {
     cout << "\n"
          << (colorsEnabled() ? Color::RED  : "")
          << (colorsEnabled() ? Color::BOLD : "")

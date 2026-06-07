@@ -3,9 +3,10 @@
  *  written by voidoxin
  */
 
-#include "../includes/UI_utils.h"
-#include "../includes/UI_colors.h"
 #include <iostream>
+
+#include "../includes/UI_colors.h"
+#include "../includes/UI_utils.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -13,7 +14,7 @@
 
 using namespace std;
 
-void UI::clearScreen() {
+void UI::clearScreen() noexcept {
 #ifdef _WIN32
     system("cls");
 #else

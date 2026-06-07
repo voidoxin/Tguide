@@ -7,7 +7,7 @@
 #include <string>
 
 namespace UI {
-    void clearScreen();
+    void clearScreen() noexcept;
     void printBanner();
     void printDivider();
     void printBreadcrumb(const std::string& section);
