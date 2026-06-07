@@ -130,6 +130,7 @@ set_target_properties(sqlite3_obj PROPERTIES
     C_STANDARD 11
 )
 target_include_directories(sqlite3_obj PRIVATE ${LIBS_DIR})
+target_compile_options(sqlite3_obj PRIVATE -O0)
 
 # ==============================================================
 # json.hpp — header-only (nlohmann/json)
