@@ -15,4 +15,7 @@ namespace UISettings {
     // render the Settings screen — blocks until user navigates back
     void show();
 
+    // render the Database Management sub-screen with rollback options
+    void showDatabaseMenu();
+
 }

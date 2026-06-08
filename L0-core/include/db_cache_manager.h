@@ -118,6 +118,28 @@ public:
      */
     std::string getLastSeenVersion();
 
+    /*
+     * Stores the SHA-256 hash of the database backup file (.bak).
+     * Empty string means no backup is available.
+     */
+    void setBackupHash(const std::string& hash);
+
+    /*
+     * Returns the SHA-256 hash of the database backup file (.bak).
+     * Returns empty string if no backup has been recorded.
+     */
+    std::string getBackupHash();
+
+    /*
+     * Returns true if a backup hash has been recorded (backup exists).
+     */
+    bool hasBackup();
+
+    /*
+     * Clears the backup hash — called when backup is deleted or invalidated.
+     */
+    void clearBackup();
+
 private:
     DBCacheManager() = default;
 

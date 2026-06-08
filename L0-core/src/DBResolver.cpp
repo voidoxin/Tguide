@@ -330,6 +330,37 @@ bool DBResolver::downloadDB(const std::string& url, const std::string& destPath)
     return true;
 }
 
+// ==================== BACKUP / RESTORE ====================
+
+bool DBResolver::tryRestoreFromBackup(const std::string& bakPath,
+                                       const std::string& destPath) {
+    if (!std::filesystem::exists(bakPath))
+        return false;
+    if (!isSQLiteFile(bakPath))
+        return false;
+
+    // Validate backup schema
+    sqlite3* db = nullptr;
+    bool valid = false;
+    if (sqlite3_open(bakPath.c_str(), &db) == SQLITE_OK) {
+        valid = validateSchema(db);
+        sqlite3_close(db);
+    }
+    if (!valid)
+        return false;
+
+    // Verify backup hash matches the recorded hash
+    std::string actualHash = SHA256::hashFile(bakPath);
+    if (actualHash != DBCacheManager::instance().getBackupHash())
+        return false;
+
+    // Restore: copy backup over destination
+    std::error_code ec;
+    std::filesystem::copy_file(bakPath, destPath,
+        std::filesystem::copy_options::overwrite_existing, ec);
+    return !ec;
+}
+
 // ==================== RESOLVER ====================
 
 void DBResolver::invalidateCacheIfMissing() {
@@ -464,6 +495,19 @@ std::string DBResolver::resolve(const std::string& configPath) {
 
     // Step 3 — try download via manifest
     {
+        // Backup current database before attempting download
+        std::string bakPath = configPath + ".bak";
+        if (std::filesystem::exists(configPath)) {
+            std::error_code ec;
+            std::filesystem::remove(bakPath, ec);
+            std::filesystem::copy_file(configPath, bakPath, ec);
+            if (!ec) {
+                DBCacheManager::instance().setBackupHash(
+                    SHA256::hashFile(configPath));
+                DBCacheManager::instance().save();
+            }
+        }
+
         std::cout << "  database not found \u2014 fetching version manifest...\n"
                   << std::flush;
 
@@ -486,6 +530,13 @@ std::string DBResolver::resolve(const std::string& configPath) {
                   << std::flush;
 
         if (!downloadDB(m.db_url, configPath)) {
+            // Attempt to restore from backup before giving up
+            if (tryRestoreFromBackup(bakPath, configPath)) {
+                DBCacheManager::instance().clearBackup();
+                DBCacheManager::instance().save();
+                std::string restoredHash = SHA256::hashFile(configPath);
+                return cacheResult(configPath, configPath, restoredHash);
+            }
             if (g_errorHandler.fatal) g_errorHandler.fatal(
                 "Failed to download database from GitHub. "
                 "Please check your internet connection and try again."
@@ -505,6 +556,13 @@ std::string DBResolver::resolve(const std::string& configPath) {
         if (!dlOk) {
             std::error_code ec;
             std::filesystem::remove(configPath, ec);
+            // Attempt to restore from backup before giving up
+            if (tryRestoreFromBackup(bakPath, configPath)) {
+                DBCacheManager::instance().clearBackup();
+                DBCacheManager::instance().save();
+                std::string restoredHash = SHA256::hashFile(configPath);
+                return cacheResult(configPath, configPath, restoredHash);
+            }
             if (g_errorHandler.fatal) g_errorHandler.fatal(
                 "Downloaded database failed schema validation.");
             fatal_ = true;
@@ -515,6 +573,13 @@ std::string DBResolver::resolve(const std::string& configPath) {
         if (dlHash != m.db_hash) {
             std::error_code ec;
             std::filesystem::remove(configPath, ec);
+            // Attempt to restore from backup before giving up
+            if (tryRestoreFromBackup(bakPath, configPath)) {
+                DBCacheManager::instance().clearBackup();
+                DBCacheManager::instance().save();
+                std::string restoredHash = SHA256::hashFile(configPath);
+                return cacheResult(configPath, configPath, restoredHash);
+            }
             if (g_errorHandler.fatal) g_errorHandler.fatal(
                 "Downloaded database hash does not match the version manifest. "
                 "The file may have been tampered with. Aborting."

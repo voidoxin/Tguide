@@ -18,7 +18,8 @@ json DBCacheManager::buildDefault() {
         {
             "meta", {
                 { "current_hash", "" },
-                { "last_version", "" }
+                { "last_version", "" },
+                { "backup_hash", "" }
             }
         },
         { "history", json::array() }
@@ -132,4 +133,20 @@ void DBCacheManager::setLastSeenVersion(const std::string& version) {
 
 std::string DBCacheManager::getLastSeenVersion() {
     return cache_["meta"].value("last_version", "");
+}
+
+void DBCacheManager::setBackupHash(const std::string& hash) {
+    cache_["meta"]["backup_hash"] = hash;
+}
+
+std::string DBCacheManager::getBackupHash() {
+    return cache_["meta"].value("backup_hash", "");
+}
+
+bool DBCacheManager::hasBackup() {
+    return !getBackupHash().empty();
+}
+
+void DBCacheManager::clearBackup() {
+    cache_["meta"]["backup_hash"] = "";
 }

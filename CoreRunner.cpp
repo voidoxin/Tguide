@@ -7,7 +7,9 @@
 
 #include <iostream>
 #include <filesystem>
+#include <sqlite3.h>
 #include "L0-core/include/DatabaseManager.h"
+#include "L0-core/include/DBResolver.h"
 #include "L0-core/include/ErrorHandler.h"
 #include "L0-core/include/config_manager.h"
 #include "L0-core/include/path_resolver.h"
@@ -17,6 +19,7 @@
 #include "L2-Interface_Engine/includes/UI_colors.h"
 #include "L2-Interface_Engine/includes/UI_disclaimer.h"
 #include "L2-Interface_Engine/includes/UI_Engine.h"
+#include "L2-Interface_Engine/includes/UI_input.h"
 #include <curl/curl.h>
 using namespace std;
 namespace fs = std::filesystem;
@@ -91,6 +94,81 @@ int main(int argc, char* argv[]) {
         UI_fatal("Database initialization failed.\n"
                  "Check your internet connection or reinstall tguide.");
         return 1;
+    }
+
+    // ── database integrity check ──────────────────────────────────────────
+    // Runs PRAGMA integrity_check to detect corruption that may have passed
+    // schema validation. If corruption is found, offers recovery from backup.
+    {
+        sqlite3* db = nullptr;
+        if (sqlite3_open(PathResolver::dbFile().string().c_str(), &db) == SQLITE_OK) {
+            bool needsRecovery = false;
+
+            sqlite3_stmt* stmt = nullptr;
+            if (sqlite3_prepare_v2(db, "PRAGMA integrity_check", -1, &stmt, nullptr) == SQLITE_OK) {
+                while (sqlite3_step(stmt) == SQLITE_ROW) {
+                    const char* text = reinterpret_cast<const char*>(
+                        sqlite3_column_text(stmt, 0));
+                    if (text && std::string(text) != "ok") {
+                        needsRecovery = true;
+                        break;
+                    }
+                }
+                sqlite3_finalize(stmt);
+            } else {
+                // Prepare failure is itself strong evidence of corruption
+                needsRecovery = true;
+            }
+            sqlite3_close(db);
+
+            if (needsRecovery) {
+                std::string bakPath = PathResolver::dbFile().string() + ".bak";
+                bool backupExists = std::filesystem::exists(bakPath);
+
+                while (true) {
+                    cout << "\n"
+                         << (colorsEnabled() ? Color::YELLOW : "")
+                         << (colorsEnabled() ? Color::BOLD : "")
+                         << "  [!] Database integrity check failed.\n"
+                         << (colorsEnabled() ? Color::RESET : "")
+                         << "\n"
+                         << "  The database file may be corrupted.\n";
+
+                    if (backupExists) {
+                        cout << "  A backup is available.\n";
+                    }
+
+                    cout << "\n"
+                         << "  [R] Restore from backup"
+                         << (backupExists ? "" : " (no backup available)")
+                         << "\n"
+                         << "  [K] Keep current (may cause errors)\n"
+                         << "  [A] Ask again on next launch\n"
+                         << "\n";
+
+                    string input = readInput("  \u2192 ");
+                    if (input.empty()) continue;
+
+                    char c = std::tolower(static_cast<unsigned char>(input[0]));
+
+                    if (c == 'r' && backupExists) {
+                        if (DBResolver::tryRestoreFromBackup(
+                                bakPath, PathResolver::dbFile().string())) {
+                            // Clear backup hash after restore
+                            DBCacheManager::instance().clearBackup();
+                            DBCacheManager::instance().save();
+                            cout << "\n  Backup restored successfully.\n\n";
+                        } else {
+                            cout << "\n  Backup is corrupted or invalid. Cannot restore.\n\n";
+                        }
+                        waitForEnter();
+                        break;
+                    } else if (c == 'k' || c == 'a') {
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     // ── hand off to UI ─────────────────────────────────────────────────────
