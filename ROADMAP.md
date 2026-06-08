@@ -5,6 +5,7 @@
 
 ## Current State (from code scan)
 - **Proposals reviewed and accepted (2026-06-07)**: Four proposals from `tguide_technical_proposal.md` were independently reviewed by software-architect, security-auditor, and developer-core via agent consensus. **P1 (Dynamic Version Manifest)** and **P4 (DB Rollback/Recovery)** approved as a unified DB lifecycle subsystem (highest priority, replaces STEP-11 hardcoded-hash approach). **P3 (GitHub Threat Model)** approved as documentation (low priority). **P2 (DNS-Only Check)** deferred to Phase 3 (medium priority, future). New steps STEP-P1, STEP-P4, STEP-P3, and STEP-P2 incorporated into this roadmap.
+- **STEP-P1 complete (2026-06-08)**: Dynamic version manifest implemented. DBResolver fetches signed_manifest.json from GitHub, parses version/db_hash/db_url, validates hash before download acceptance. DBCacheManager persists last_seen_version. DB_OFFICIAL_HASH removed from compiled binary.
 - **CoreRunner.cpp**: Bootstrap sequence mostly implemented, root check bug (BUG-1) fixed (STEP-00), dev-only BackupManager remains
 - **L0-core**: DatabaseManager has basic CRUD, UserDataManager created but not integrated, path_resolver needs Linux user-space fixes, DBCacheManager needs official hash; **A1 architectural violation fixed** (UI→L0 direct includes removed); **A2 architectural violation fixed** (raw extern callbacks → ErrorHandler abstraction); **A3 architectural violation fixed** (Global Mutable State eliminated: DBResolver, DBCacheManager, g_colorEnabled); **A-03 security fix completed** (7 SSL/TLS hardening measures in DBResolver.cpp, commit 4c818c2)
 - **L1-services**: svc_tools has clearSearchIndex (STEP-03), svc_generator has sanitizeInput (STEP-04), **A6 architectural violation fixed** (L1 DTOs decouple L2 from L0 types); remaining service files still stubbed or minimal
@@ -289,11 +290,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L0 |
 | Priority   | CRITICAL |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | L0-core/src/DBResolver.cpp, L0-core/include/DBResolver.h, L0-core/include/db_cache_manager.h, L0-core/src/db_cache_manager.cpp, CoreRunner.cpp, .ai/security.md |
 | Goal       | Replace compile-time DB_OFFICIAL_HASH with an HTTPS-fetched JSON manifest (signed_manifest.json) listing known-good DB versions + SHA256 hashes. Add fetchManifest() to DBResolver; store last-seen version in .db_cache; remove DB_OFFICIAL_HASH constant; anchor trust in HTTPS transport layer. |
 | Depends    | STEP-10 (DONE — unblocked) |
 | Done when  | DBResolver fetches manifest.json over HTTPS, parses version/db_hash/db_url, downloads DB from manifest URL, verifies hash, and accepts or rejects accordingly. DB_OFFICIAL_HASH no longer exists in compiled binary. .ai/security.md updated with manifest system description. |
+| Completed  | **2026-06-08** — Dynamic version manifest implemented. DBResolver fetches signed_manifest.json from GitHub, parses version/db_hash/db_url, validates hash before download acceptance. DBCacheManager persists last_seen_version. DB_OFFICIAL_HASH removed from compiled binary. |
 
 ### STEP-P4 — Implement Database Rollback & Recovery System
 | Field      | Value |
@@ -977,7 +979,7 @@ L0-core → L1-services → L2-Interface_Engine
 | STEP-08 | Phase 1 | L0 | Implement UserDataManager for saved commands and scripts |
 | STEP-09 | Phase 1 | L0 | Add I18n / Localization Framework foundation (NEW-1) |
 | STEP-10 | Phase 1 | L0 | Fix path resolver for Linux user-space only (DONE) |
-| STEP-P1 | Phase 1 | L0 | Implement Dynamic Version Manifest (replaces STEP-11) |
+| STEP-P1 | Phase 1 | L0 | Implement Dynamic Version Manifest (replaces STEP-11) (DONE) |
 | STEP-P4 | Phase 1 | L0 + L2 | Implement Database Rollback & Recovery System |
 | STEP-P3 | Phase 1 | DOCUMENTATION | Document GitHub URL threat model (account compromise) |
 | STEP-12 | Phase 2 | L1+L2 | Implement tools entry screen and category browser |
