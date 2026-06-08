@@ -38,14 +38,28 @@ static json readJson(const std::string& path) {
 
 // ==================== UserDataManager ====================
 
+UserDataManager& UserDataManager::instance() {
+    static UserDataManager m;
+    return m;
+}
+
+void UserDataManager::init(const std::string& commandsPath,
+                            const std::string& scriptsPath) {
+    m_commandsPath = commandsPath;
+    m_scriptsPath  = scriptsPath;
+    m_initialized  = true;
+}
+
 UserDataManager::UserDataManager(const std::string& commandsPath,
                                  const std::string& scriptsPath)
     : m_commandsPath(commandsPath), m_scriptsPath(scriptsPath)
 {
+    m_initialized = true;
     // paths stored — caller must call load() explicitly
 }
 
 bool UserDataManager::load() {
+    if (!m_initialized) return false;
     bool ok = true;
 
     // ── commands ──────────────────────────────────────────────────────────
@@ -102,6 +116,7 @@ bool UserDataManager::load() {
 }
 
 bool UserDataManager::save() {
+    if (!m_initialized) return false;
     json cmdArray = json::array();
     for (auto& c : m_commands) {
         cmdArray.push_back({
@@ -151,6 +166,7 @@ int UserDataManager::nextScriptId() const {
 
 int UserDataManager::saveCommand(int tool_id, const std::string& command,
                                  const std::string& note) {
+    if (!m_initialized) return -1;
     // empty path means user data dir was unavailable — fail immediately
     if (m_commandsPath.empty()) return -1;
 
@@ -169,6 +185,7 @@ int UserDataManager::saveCommand(int tool_id, const std::string& command,
 }
 
 bool UserDataManager::deleteCommand(int id) {
+    if (!m_initialized) return false;
     auto it = std::find_if(m_commands.begin(), m_commands.end(),
         [id](const SavedCommand& c) { return c.id == id; });
     // id not found — silent false, no UI_errors (caller handles display)
@@ -192,6 +209,7 @@ std::vector<SavedCommand> UserDataManager::getCommands() {
 
 int UserDataManager::saveScript(const std::string& name, const std::string& path,
                                 const std::string& note) {
+    if (!m_initialized) return -1;
     // empty path means user data dir was unavailable — fail immediately
     if (m_scriptsPath.empty()) return -1;
 
@@ -210,6 +228,7 @@ int UserDataManager::saveScript(const std::string& name, const std::string& path
 }
 
 bool UserDataManager::deleteScript(int id) {
+    if (!m_initialized) return false;
     auto it = std::find_if(m_scripts.begin(), m_scripts.end(),
         [id](const SavedScript& s) { return s.id == id; });
     // id not found — silent false, no UI_errors (caller handles display)

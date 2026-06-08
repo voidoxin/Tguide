@@ -1,5 +1,5 @@
 # Tguide — Development Roadmap
-## Version: 1.3.0
+## Version: 1.4.0
 ## Date: 2026-06-07
 ## Author: voidoxin
 
@@ -12,6 +12,7 @@
 - **CMakeLists.txt**: Build system configured across platforms but installs data_adder (dev-only) and lacks release configuration; **A7 architectural violation fixed** (build-time layer enforcement: L3_interface no longer includes/link L0_core directly); **A5 partial fix** (dead L2_INC ref removed from L3_interface)
 - **Missing**: Database schema updates (short_desc), complete UserDataManager integration, search algorithm, filter implementations, saved data screens, script generator, settings screen, and dev-only code removal
 - **Completed analysis**: `.ai/dependencies.md` created (388 lines, cataloging 6 dependencies); cross-platform compatibility analysis completed and **STEP-CP1 complete** — macOS cross-platform fixes applied (path resolution, ANSI colors, CMake install targets, libcurl RAII guard); **A-06 test infrastructure complete** — doctest single-header framework, 21 test cases across 3 modules (SHA256, ConfigManager, UserDataManager), TempDirectory/TempFile/ErrorHandlerSpy fixtures, CMake/CTest integration (commit 8ae3447)
+- **STEP-08 complete (2026-06-07)**: UserDataManager now uses Meyer's singleton pattern. CoreRunner properly integrates it — the instance survives beyond bootstrap. Ready for Phase 4 service layer.
 - **STEP-10 complete (2026-06-07)**: Linux root requirement eliminated. All runtime paths moved from `/etc/tguide` and `/usr/share/tguide` to `~/.config/tguide` and `~/.local/share/tguide`. The tool no longer requires root on any platform.
 - **STEP-07 complete (2026-06-07)**: Database schema updated — Category struct, categories table, CategoryD CRUD class added to L0-core. Interactive category management in data_adder menu.
 
@@ -253,11 +254,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L0 |
 | Priority   | CRITICAL |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | L0-core/include/UserDataManager.h, L0-core/src/UserDataManager.cpp, CoreRunner.cpp, L0-core/include/path_resolver.h |
 | Goal       | Create UserDataManager class to handle saved_commands.json and saved_scripts.json, integrate into CoreRunner, and extend PathResolver with user data paths |
 | Depends    | STEP-07 |
 | Done when  | UserDataManager loads/saves JSON files and CoreRunner constructs it after config load |
+| Completed  | **2026-06-07** — Made UserDataManager a singleton (DBResolver/DBCacheManager pattern) with `instance()` + `init()`. Added `m_initialized` guard to all mutating methods. Changed CoreRunner to use `UserDataManager::instance().init(...)` instead of local variable — the singleton now survives beyond bootstrap and is accessible to L1 services in Phase 4. All 6 existing UserDataManager tests pass. |
 
 ### STEP-09 — Add I18n / Localization Framework foundation (NEW-1)
 | Field      | Value |

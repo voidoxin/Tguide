@@ -35,6 +35,10 @@ struct SavedScript {
  */
 class UserDataManager {
 public:
+    static UserDataManager& instance();
+    void init(const std::string& commandsPath,
+              const std::string& scriptsPath);
+
     UserDataManager(const std::string& commandsPath,
                     const std::string& scriptsPath);
 
@@ -54,10 +58,13 @@ public:
     std::vector<SavedScript> getScripts();
 
 private:
+    UserDataManager() = default;
+
     std::string               m_commandsPath;
     std::string               m_scriptsPath;
     std::vector<SavedCommand> m_commands;
     std::vector<SavedScript>  m_scripts;
+    bool                      m_initialized = false;
 
     int nextCommandId() const;
     int nextScriptId()  const;

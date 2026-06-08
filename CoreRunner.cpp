@@ -55,13 +55,13 @@ int main(int argc, char* argv[]) {
     bool colors = cfg.get<int>("colors", 1) == 1;
     initColors(colors);
 
-    // ── init user data storage ─────────────────────────────────────────────
+    // ── init user data storage (singleton — survives bootstrap) ────────────
     // non-fatal: missing or unreadable files are recreated automatically
-    UserDataManager userData(
+    UserDataManager::instance().init(
         PathResolver::savedCommandsFile().string(),
         PathResolver::savedScriptsFile().string()
     );
-    if (!userData.load())
+    if (!UserDataManager::instance().load())
         UI_errors("Failed to load user data files. Saved data may be unavailable.");
 
     // ── legal disclaimer — first run only ──────────────────────────────────
