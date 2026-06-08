@@ -165,6 +165,7 @@ set(L0_SOURCES
     ${CMAKE_SOURCE_DIR}/L0-core/src/config_manager.cpp
     ${CMAKE_SOURCE_DIR}/L0-core/src/db_cache_manager.cpp
     ${CMAKE_SOURCE_DIR}/L0-core/src/sha256.cpp
+    ${CMAKE_SOURCE_DIR}/L0-core/src/strings.cpp
     ${CMAKE_SOURCE_DIR}/L0-core/src/UserDataManager.cpp
 )
 

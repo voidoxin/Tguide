@@ -12,6 +12,7 @@
 #include "../includes/UI_input.h"
 #include "../includes/UI_paginator.h"
 #include "../../L1-services/includes/svc_tools.h"
+#include "../../L0-core/include/strings.h"
 #include <iostream>
 #include <string>
 #include <vector>
@@ -230,7 +231,11 @@ static void showSearch() {
 // ==================== TOOLS ENTRY ====================
 
 void UITools::show() {
-    const vector<string> opts = {"Browse by Category", "Search", "Filter"};
+    const vector<string> opts = {
+        Strings::get(StringID::TOOLS_BROWSE_CATEGORY),
+        Strings::get(StringID::TOOLS_SEARCH),
+        Strings::get(StringID::TOOLS_FILTER)
+    };
 
     while (true) {
         UI::clearScreen();
@@ -239,18 +244,18 @@ void UITools::show() {
         UI::printDivider();
 
         cout << "\n"
-             << "  \u251C\u2500 \u25C9  Browse by Category   [1]\n"
-             << "  \u251C\u2500 \u2315  Search               [2]\n"
-             << "  \u251C\u2500 \u22DF  Filter               [3]\n"
+             << "  \u251C\u2500 \u25C9  " << Strings::get(StringID::TOOLS_BROWSE_CATEGORY) << "   [1]\n"
+             << "  \u251C\u2500 \u2315  " << Strings::get(StringID::TOOLS_SEARCH) << "               [2]\n"
+             << "  \u251C\u2500 \u22DF  " << Strings::get(StringID::TOOLS_FILTER) << "               [3]\n"
              << (colorsEnabled() ? Color::DIM : "")
-             << "  \u2514\u2500 \u2190  Back                 [0]"
+             << "  \u2514\u2500 \u2190  " << Strings::get(StringID::TOOLS_BACK) << "                 [0]"
              << (colorsEnabled() ? Color::RESET : "")
              << "\n\n";
 
         UI::printDivider();
         cout << "\n";
 
-        string input = readInput("  \u2192 ");
+        string input = readInput("  " + Strings::get(StringID::TOOLS_PROMPT) + " ");
         if (input.empty()) continue;
         if (isQuit(input)) { handleQuit(); return; }
         if (isBack(input)) return;
@@ -268,7 +273,7 @@ void UITools::show() {
             UI::printDivider();
             cout << "\n"
                  << (colorsEnabled() ? Color::DIM : "")
-                 << "  coming soon \u2014 not yet implemented"
+                 << Strings::get(StringID::TOOLS_COMING_SOON)
                  << (colorsEnabled() ? Color::RESET : "")
                  << "\n\n";
             UI::printDivider();
@@ -276,9 +281,9 @@ void UITools::show() {
             waitForEnter();
         } else {
             if (isAmbiguous(input, opts))
-                cout << "  ambiguous \u2014 be more specific.\n";
+                cout << "  " << Strings::get(StringID::TOOLS_AMBIGUOUS) << "\n";
             else
-                cout << "  invalid choice \u2014 try again.\n";
+                cout << "  " << Strings::get(StringID::TOOLS_INVALID_CHOICE) << "\n";
         }
     }
 }

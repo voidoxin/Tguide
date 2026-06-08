@@ -267,11 +267,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L0 |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | L0-core/include/strings.h, L0-core/src/strings.cpp, L2-Interface_Engine/includes/UI_tools.h (sample conversion) |
 | Goal       | Create string table system with enum-based string IDs and get() function for externalizing all UI text |
 | Depends    | STEP-08 |
 | Done when  | At least one UI screen uses get(STRING_ID) instead of hardcoded strings |
+| Completed  | **2026-06-08** — StringID enum (8 entries) + Strings::get() in new L0-core/include/strings.h and L0-core/src/strings.cpp. Bounds-safe accessor with assert + static_assert. UITools::show() converted to use Strings::get() — menu labels, status messages, and prompt all externalized. 3 new doctest cases covering non-empty validation, content verification, and reference stability. All 3 new tests pass. Build compiles clean with zero warnings. |
 
 ### STEP-10 — Fix path resolver for Linux user-space only (no root required)
 | Field      | Value |
