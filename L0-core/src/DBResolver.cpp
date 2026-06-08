@@ -2,6 +2,7 @@
 #include "ErrorHandler.h"
 #include "db_cache_manager.h"
 #include "sha256.h"
+#include "../../libs/json.hpp"
 #include <iostream>
 #include <filesystem>
 #include <functional>
@@ -23,6 +24,8 @@ void DBResolver::resetForTesting() {
     fatal_ = false;
     cacheValidated_ = false;
     resolvedCache_.clear();
+    manifest_ = Manifest{};
+    manifestFetched_ = false;
 }
 #endif
 
@@ -126,6 +129,128 @@ static bool dbHasData(sqlite3* db) {
         if (hasRows) return true;
     }
     return false;
+}
+
+// ==================== MANIFEST ====================
+
+static constexpr const char* MANIFEST_URL =
+    "https://raw.githubusercontent.com/voidoxin/Tguide/main/data/signed_manifest.json";
+
+static size_t curlStringCallback(void* ptr, size_t size,
+                                  size_t nmemb, void* str) {
+    std::string* s = static_cast<std::string*>(str);
+    s->append(static_cast<char*>(ptr), size * nmemb);
+    return size * nmemb;
+}
+
+DBResolver::Manifest DBResolver::fetchManifest() {
+    if (manifestFetched_)
+        return manifest_;
+
+    CURL* curl = curl_easy_init();
+    if (!curl) {
+        if (g_errorHandler.error)
+            g_errorHandler.error("Failed to initialize curl for manifest fetch.");
+        return {};
+    }
+
+    std::string response;
+
+    curl_easy_setopt(curl, CURLOPT_URL,            MANIFEST_URL);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_MAXREDIRS,       5L);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION,  curlStringCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA,      &response);
+    curl_easy_setopt(curl, CURLOPT_FAILONERROR,    1L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT,        30L);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
+    curl_easy_setopt(curl, CURLOPT_MAXFILESIZE,    1048576L);  // 1MB max for manifest
+
+    // --- SSL/TLS security options ---
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER,  1L);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST,  2L);
+    curl_easy_setopt(curl, CURLOPT_SSLVERSION,      CURL_SSLVERSION_TLSv1_2);
+#if LIBCURL_VERSION_NUM >= 0x075500  // curl >= 7.85.0: _STR variants
+    curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR,       "https");
+    curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS_STR, "https");
+#else
+    curl_easy_setopt(curl, CURLOPT_PROTOCOLS,        CURLPROTO_HTTPS);
+    curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS,  CURLPROTO_HTTPS);
+#endif
+
+    CURLcode res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+
+    if (res != CURLE_OK) {
+        if (g_errorHandler.error)
+            g_errorHandler.error(
+                "Failed to fetch version manifest from GitHub. "
+                "Check your internet connection. Using local database.");
+        return {};
+    }
+
+    try {
+        json manifestJson = json::parse(response);
+
+        Manifest m;
+        m.version = manifestJson.value("version", "");
+        m.db_hash = manifestJson.value("db_hash", "");
+        m.db_url  = manifestJson.value("db_url", "");
+
+        // Validate required fields
+        if (m.version.empty() || m.db_hash.empty() || m.db_url.empty()) {
+            if (g_errorHandler.error)
+                g_errorHandler.error(
+                    "Version manifest is missing required fields.");
+            return {};
+        }
+
+        // Validate db_hash is a 64-char hex string
+        if (m.db_hash.size() != 64) {
+            if (g_errorHandler.error)
+                g_errorHandler.error(
+                    "Version manifest contains an invalid db_hash.");
+            return {};
+        }
+        for (char c : m.db_hash) {
+            if (!((c >= '0' && c <= '9') ||
+                  (c >= 'a' && c <= 'f') ||
+                  (c >= 'A' && c <= 'F'))) {
+                if (g_errorHandler.error)
+                    g_errorHandler.error(
+                        "Version manifest contains an invalid db_hash.");
+                return {};
+            }
+        }
+
+        // Validate db_url starts with https://
+        if (m.db_url.rfind("https://", 0) != 0) {
+            if (g_errorHandler.error)
+                g_errorHandler.error(
+                    "Version manifest contains a non-HTTPS db_url.");
+            return {};
+        }
+
+        manifestFetched_ = true;
+        manifest_ = m;
+
+        // Persist version for future reference
+        DBCacheManager::instance().setLastSeenVersion(m.version);
+        DBCacheManager::instance().save();
+
+        return m;
+
+    } catch (const json::parse_error&) {
+        if (g_errorHandler.error)
+            g_errorHandler.error(
+                "Failed to parse version manifest JSON.");
+    } catch (const std::exception& e) {
+        if (g_errorHandler.error)
+            g_errorHandler.error(
+                std::string("Unexpected error parsing manifest: ") + e.what());
+    }
+
+    return {};
 }
 
 // ==================== DOWNLOAD ====================
@@ -278,22 +403,25 @@ std::string DBResolver::copyDefaultToConfig(const std::string& configPath) {
 }
 
 std::string DBResolver::resolveHashMismatch(const std::string& configPath,
-                                             const std::string& hash,
-                                             bool officialHashSet) {
+                                             const std::string& hash) {
     if (!std::filesystem::exists(DEFAULT_DB_PATH) ||
         !isSQLiteFile(DEFAULT_DB_PATH))
         return {};
 
-    std::string defaultHash = SHA256::hashFile(DEFAULT_DB_PATH);
-    if (!officialHashSet || defaultHash != DB_OFFICIAL_HASH)
-        return {};
+    sqlite3* db = nullptr;
+    bool defaultOk = false;
+    if (sqlite3_open(DEFAULT_DB_PATH.c_str(), &db) == SQLITE_OK) {
+        defaultOk = validateSchema(db);
+        sqlite3_close(db);
+    }
+    if (!defaultOk) return {};
 
     std::error_code ec;
     std::filesystem::copy_file(DEFAULT_DB_PATH, configPath,
         std::filesystem::copy_options::overwrite_existing, ec);
     if (ec) {
         if (g_errorHandler.error) g_errorHandler.error(
-            "Failed to copy official database. Attempting recovery.");
+            "Failed to copy default database.");
         return {};
     }
     std::string newHash = SHA256::hashFile(configPath);
@@ -324,83 +452,81 @@ std::string DBResolver::resolve(const std::string& configPath) {
     bool fileExists = openAndValidate(configPath, isSQLite, schemaOk,
                                        hasData, hash);
 
-    const bool officialHashSet = !std::string(DB_OFFICIAL_HASH).empty();
-    const bool isOfficial      = officialHashSet && hash == DB_OFFICIAL_HASH;
-
     // Step 1 — existing file is valid → use it
-    if (fileExists && isSQLite && schemaOk && (isOfficial || !officialHashSet))
+    if (fileExists && isSQLite && schemaOk)
         return cacheResult(configPath, configPath, hash);
 
-    // Step 2 — hash mismatch with valid data → ask user
-    if (fileExists && isSQLite && schemaOk && hasData &&
-        officialHashSet && !isOfficial) {
-        char response = g_errorHandler.attention ? g_errorHandler.attention(
-            "The database at the configured path does not match the official release. "
-            "Enter 'y' to revert to the official database, or 'n' to keep the external one."
-        ) : 0;
-
-        if (response == 0 || response == 'n' || response == 'N')
-            return cacheResult(configPath, configPath, hash);
-
-        std::string result = resolveHashMismatch(configPath, hash,
-                                                  officialHashSet);
-        if (!result.empty()) return result;
-        fileExists = false;  // file consumed — fall through
-    }
-
-    // Step 3 — try default DB
+    // Step 2 — try default DB
     {
         std::string result = copyDefaultToConfig(configPath);
         if (!result.empty()) return result;
     }
 
-    // Step 4 — try download
+    // Step 3 — try download via manifest
     {
-        std::string downloadUrl = std::string(DB_DOWNLOAD_URL);
-        if (!downloadUrl.empty()) {
-            std::cout << "  database not found \u2014 attempting download from GitHub...\n"
-                      << std::flush;
+        std::cout << "  database not found \u2014 fetching version manifest...\n"
+                  << std::flush;
 
-            if (downloadDB(downloadUrl, configPath)) {
-                sqlite3* db   = nullptr;
-                bool     dlOk = false;
-                if (sqlite3_open(configPath.c_str(), &db) == SQLITE_OK) {
-                    dlOk = validateSchema(db);
-                    sqlite3_close(db);
-                }
+        Manifest m = fetchManifest();
 
-                if (dlOk) {
-                    std::string dlHash = SHA256::hashFile(configPath);
-                    if (officialHashSet && dlHash != DB_OFFICIAL_HASH) {
-                        std::error_code ec;
-                        std::filesystem::remove(configPath, ec);
-                        if (g_errorHandler.fatal) g_errorHandler.fatal(
-                            "Downloaded database hash does not match the official release. "
-                            "The file may have been tampered with. Aborting."
-                        );
-                        fatal_ = true;
-                        return "";
-                    }
-                    return cacheResult(configPath, configPath, dlHash);
-                }
-
-                std::error_code ec;
-                std::filesystem::remove(configPath, ec);
-            }
-
+        if (m.db_url.empty()) {
+            std::string lastVer = DBCacheManager::instance().getLastSeenVersion();
             if (g_errorHandler.fatal) g_errorHandler.fatal(
-                "Failed to download or validate the official database. "
-                "Please check your internet connection or verify "
-                "DB_DOWNLOAD_URL in db_cache_manager.h."
+                "Database not found and version manifest is unavailable. "
+                "Please check your internet connection "
+                + (lastVer.empty()
+                    ? "and try again."
+                    : "or reinstall tguide (last seen version: " + lastVer + ").")
             );
-        } else {
-            if (g_errorHandler.fatal) g_errorHandler.fatal(
-                "Database not found and DB_DOWNLOAD_URL is not configured. "
-                "Set DB_DOWNLOAD_URL in db_cache_manager.h before release."
-            );
+            fatal_ = true;
+            return "";
         }
+
+        std::cout << "  attempting download from GitHub...\n"
+                  << std::flush;
+
+        if (!downloadDB(m.db_url, configPath)) {
+            if (g_errorHandler.fatal) g_errorHandler.fatal(
+                "Failed to download database from GitHub. "
+                "Please check your internet connection and try again."
+            );
+            fatal_ = true;
+            return "";
+        }
+
+        // Validate the downloaded file
+        sqlite3* db   = nullptr;
+        bool     dlOk = false;
+        if (sqlite3_open(configPath.c_str(), &db) == SQLITE_OK) {
+            dlOk = validateSchema(db);
+            sqlite3_close(db);
+        }
+
+        if (!dlOk) {
+            std::error_code ec;
+            std::filesystem::remove(configPath, ec);
+            if (g_errorHandler.fatal) g_errorHandler.fatal(
+                "Downloaded database failed schema validation.");
+            fatal_ = true;
+            return "";
+        }
+
+        std::string dlHash = SHA256::hashFile(configPath);
+        if (dlHash != m.db_hash) {
+            std::error_code ec;
+            std::filesystem::remove(configPath, ec);
+            if (g_errorHandler.fatal) g_errorHandler.fatal(
+                "Downloaded database hash does not match the version manifest. "
+                "The file may have been tampered with. Aborting."
+            );
+            fatal_ = true;
+            return "";
+        }
+
+        return cacheResult(configPath, configPath, dlHash);
     }
 
+    // Unreachable
     fatal_ = true;
     return "";
 }

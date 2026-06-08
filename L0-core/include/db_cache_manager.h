@@ -1,7 +1,6 @@
 #pragma once
 #include <string>
 #include <vector>
-#include <optional>
 #include "../../libs/json.hpp"
 
 using json = nlohmann::json;
@@ -10,34 +9,14 @@ using json = nlohmann::json;
  * DBCacheManager
  *
  * Manages the .db_cache file which tracks:
- *   - The official database signature for integrity verification
  *   - The currently active database hash
- *   - A rolling history of the last 3 accessed databases                                            *
+ *   - The last-seen manifest version
+ *   - A rolling history of the last 3 accessed databases
  * This file is managed exclusively by the application.
  * Manual modification will corrupt integrity verification.
  *
  * Part of the Tools Guide project — open source.
  */
-
-// =============================================================
-// CONFIGURE BEFORE RELEASE
-// =============================================================
-
-/*
- * SHA-256 hash of the official database shipped with this tool.
- * Set this value after generating the first official release of tguide.db.
- * Leave empty during development.
- */
-static constexpr const char* DB_OFFICIAL_HASH = "";
-
-/*
- * Direct download URL for the official database hosted on GitHub.
- * Used as a fallback when no valid local database is found.
- * Example: "https://raw.githubusercontent.com/user/tguide/main/data/tguide.db"
- */
-static constexpr const char* DB_DOWNLOAD_URL = "";
-
-// =============================================================
 
 class DBCacheManager {
 public:
@@ -111,15 +90,6 @@ public:
      */
     std::vector<DBRecord> getHistory();
 
-    /*
-     * Searches the access history for any record whose hash matches
-     * the official database signature, regardless of file path.
-     * Skips records pointing to files that no longer exist on disk.
-     *
-     * @return  std::optional<DBRecord> containing the match, or std::nullopt.
-     */
-    std::optional<DBRecord> findOfficialInHistory();
-
     // Current hash
     /*
      * Updates the hash of the currently active database in the cache.
@@ -136,13 +106,17 @@ public:
     std::string getCurrentHash();
 
     /*
-     * Compares the currently active database hash against
-     * the official database hash defined in DB_OFFICIAL_HASH.
+     * Records the version string from the last successful manifest fetch.
      *
-     * @return  True if the active database matches the official release.
-     *          False if it differs, or if DB_OFFICIAL_HASH is not set.
+     * @param version  The version string from signed_manifest.json.
      */
-    bool isCurrentOfficial();
+    void setLastSeenVersion(const std::string& version);
+
+    /*
+     * Returns the version string from the last successful manifest fetch.
+     * Returns empty string if no version has been recorded yet.
+     */
+    std::string getLastSeenVersion();
 
 private:
     DBCacheManager() = default;

@@ -17,9 +17,8 @@ json DBCacheManager::buildDefault() {
         },
         {
             "meta", {
-                { "official_hash", DB_OFFICIAL_HASH },
-                { "current_hash",  ""               },
-                { "download_url",  DB_DOWNLOAD_URL  }
+                { "current_hash", "" },
+                { "last_version", "" }
             }
         },
         { "history", json::array() }
@@ -127,21 +126,10 @@ std::string DBCacheManager::getCurrentHash() {
     return cache_["meta"].value("current_hash", "");
 }
 
-bool DBCacheManager::isCurrentOfficial() {
-    if (std::string(DB_OFFICIAL_HASH).empty()) return false;
-    const std::string current = getCurrentHash();
-    if (current.empty()) return false;
-    return current == DB_OFFICIAL_HASH;
+void DBCacheManager::setLastSeenVersion(const std::string& version) {
+    cache_["meta"]["last_version"] = version;
 }
 
-std::optional<DBCacheManager::DBRecord> DBCacheManager::findOfficialInHistory() {
-    if (std::string(DB_OFFICIAL_HASH).empty()) return std::nullopt;
-
-    for (auto& record : getHistory()) {
-        if (record.hash != DB_OFFICIAL_HASH) continue;
-        if (!std::filesystem::exists(record.path)) continue;
-        return record;
-    }
-
-    return std::nullopt;
+std::string DBCacheManager::getLastSeenVersion() {
+    return cache_["meta"].value("last_version", "");
 }

@@ -4,6 +4,15 @@
 
 class DBResolver {
 public:
+    /*
+     * Data from the version manifest fetched from GitHub.
+     */
+    struct Manifest {
+        std::string version;
+        std::string db_hash;
+        std::string db_url;
+    };
+
     static DBResolver& instance();
 
     // Resolve a config path to a usable database path.
@@ -12,6 +21,13 @@ public:
 
     // Returns true if a fatal error occurred during the last resolve.
     bool fatal() const { return fatal_; }
+
+    // Fetch and parse the version manifest from GitHub.
+    // Returns empty Manifest on failure (caller handles fallback).
+    Manifest fetchManifest();
+
+    // Returns the last successfully fetched manifest.
+    Manifest getManifest() const { return manifest_; }
 
 #ifndef NDEBUG
     // Reset all internal state — for test isolation.
@@ -25,6 +41,9 @@ private:
     bool cacheValidated_ = false;
     std::unordered_map<std::string, std::string> resolvedCache_;
 
+    Manifest manifest_;
+    bool manifestFetched_ = false;
+
     // Helper methods
     void invalidateCacheIfMissing();
     std::string cacheResult(const std::string& configPath,
@@ -35,7 +54,6 @@ private:
                          std::string& hash);
     std::string copyDefaultToConfig(const std::string& configPath);
     std::string resolveHashMismatch(const std::string& configPath,
-                                    const std::string& hash,
-                                    bool officialHashSet);
+                                    const std::string& hash);
     bool downloadDB(const std::string& url, const std::string& destPath);
 };
