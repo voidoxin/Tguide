@@ -9,8 +9,8 @@
 #include "../../L0-core/include/DatabaseManager.h"
 #include "../../L0-core/include/path_resolver.h"
 #include <algorithm>
-#include <cctype>
-#include <set>
+#include <string>
+#include <vector>
 
 using namespace std;
 
@@ -28,33 +28,7 @@ static std::vector<SvcDTO::ToolDTO> toDTOs(const std::vector<Tool>& tools) {
     return result;
 }
 
-namespace SvcTools {                              
-// ── CATEGORIES ──────────────────────────────────────────────────────────────
-                                                   vector<string> getCategories() {
-    ToolD db(PathResolver::dbFile().string());
-    ToolResults res = db.getAll();
-
-    set<string>    seen;   // lowercased keys for case-insensitive dedup
-    vector<string> cats;
-
-    for (const Tool& t : res.items) {
-        if (t.category.empty()) continue;
-        string key = t.category;
-        transform(key.begin(), key.end(), key.begin(), ::tolower);
-        if (seen.insert(key).second)
-            cats.push_back(t.category);  // preserve original casing
-    }
-
-    sort(cats.begin(), cats.end(), [](const string& a, const string& b) {
-        string la = a, lb = b;
-        transform(la.begin(), la.end(), la.begin(), ::tolower);
-        transform(lb.begin(), lb.end(), lb.begin(), ::tolower);
-        return la < lb;
-    });
-
-    return cats;
-}
-
+namespace SvcTools {
 // ── TOOLS BY CATEGORY ───────────────────────────────────────────────────────
 
 vector<SvcDTO::ToolDTO> getToolsByCategory(const string& category) {
@@ -68,6 +42,28 @@ vector<SvcDTO::ToolDTO> getToolsByCategory(const string& category) {
 // TODO: implement search algorithm
 vector<SvcDTO::ToolDTO> searchTools(const string& query) {
     (void)query; return {};
+}
+
+// ── CATEGORY LIST (from categories table) ─────────────────────────────────
+
+vector<SvcDTO::CategoryDTO> getCategoryList() {
+    CategoryD db(PathResolver::dbFile().string());
+    CategoryResults res = db.getAll();
+
+    // Sort by display_order, then alphabetically by name
+    sort(res.items.begin(), res.items.end(),
+         [](const Category& a, const Category& b) {
+             if (a.display_order != b.display_order)
+                 return a.display_order < b.display_order;
+             return a.name < b.name;
+         });
+
+    vector<SvcDTO::CategoryDTO> result;
+    result.reserve(res.items.size());
+    for (const auto& c : res.items) {
+        result.push_back({c.id, c.name, c.description});
+    }
+    return result;
 }
 
 } // namespace SvcTools

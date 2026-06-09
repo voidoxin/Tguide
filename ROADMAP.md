@@ -328,11 +328,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L1+L2 |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | L2-Interface_Engine/src/UI_tools.cpp, L1-services/src/svc_tools.cpp, L1-services/includes/svc_tools.h |
 | Goal       | Complete tools entry screen with browse/search/filter options and functional category browser |
 | Depends    | STEP-P1 |
 | Done when  | User can browse categories and view tools in each category from the tools entry screen |
+| Completed  | **2026-06-09** — Tools entry screen category browser now reads from the canonical `categories` table (CategoryD) instead of extracting from ToolD (STEP-07 dependency). Added `CategoryDTO` to `svc_dto.h` and `getCategoryList()` to `SvcTools` service layer, sorted by `display_order` then name. Updated `showCategories()` in UI_tools.cpp to display categories as `name — description`. Removed now-unused `getCategories()` dead code and cleaned up includes (`<cctype>`, `<set>`). Added ambiguous-input feedback to `showToolsByCategory()` for consistent UX. Build: zero warnings across all 5 targets. Tests: 27/28 passing (1 pre-existing ConfigManager failure). Code review: APPROVED ✅. |
 
 ### STEP-13 — Complete tool detail screen (shared endpoint)
 | Field      | Value |

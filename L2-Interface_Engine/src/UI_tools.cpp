@@ -74,7 +74,7 @@ static void showToolDetail(const SvcDTO::ToolDTO& tool) {
 // ==================== TOOL LIST ====================
 
 static void showToolsByCategory(const string& category) {
-    std::vector<SvcDTO::ToolDTO> tools = SvcTools::getToolsByCategory(category);
+    vector<SvcDTO::ToolDTO> tools = SvcTools::getToolsByCategory(category);
 
     if (tools.empty()) {
         cout << "\n  no tools in this category.\n\n";
@@ -123,14 +123,17 @@ static void showToolsByCategory(const string& category) {
         }
 
         int idx = pager.select(input);
+        vector<string> clean;
         if (idx == -1) {
-            vector<string> clean;
             clean.reserve(tools.size());
             for (const auto& t : tools) clean.push_back(t.name);
             idx = matchOption(input, clean);
         }
         if (idx == -1) {
-            cout << "  invalid choice \u2014 try again.\n";
+            if (isAmbiguous(input, clean))
+                cout << "  ambiguous \u2014 be more specific.\n";
+            else
+                cout << "  invalid choice \u2014 try again.\n";
             continue;
         }
 
@@ -141,15 +144,25 @@ static void showToolsByCategory(const string& category) {
 // ==================== CATEGORY BROWSER ====================
 
 static void showCategories() {
-    vector<string> cats = SvcTools::getCategories();
+    vector<SvcDTO::CategoryDTO> cats = SvcTools::getCategoryList();
 
     if (cats.empty()) {
         cout << "\n  no categories found.\n\n";
         return;
     }
 
-    Paginator      pager(cats, true);
-    vector<string> labels = paginatorLabels(cats);
+    // Build display strings: "name — description" (em dash separator)
+    vector<string> lines;
+    lines.reserve(cats.size());
+    for (const auto& c : cats) {
+        string line = c.name;
+        if (!c.description.empty())
+            line += " \u2014 " + c.description;
+        lines.push_back(line);
+    }
+
+    Paginator      pager(lines, true);
+    vector<string> labels = paginatorLabels(lines);
 
     while (true) {
         pager.render("tools \u203a categories");
@@ -178,7 +191,7 @@ static void showCategories() {
             continue;
         }
 
-        showToolsByCategory(cats[static_cast<size_t>(idx)]);
+        showToolsByCategory(cats[static_cast<size_t>(idx)].name);
     }
 }
 

@@ -13,6 +13,12 @@
 
 namespace SvcDTO {
 
+    struct CategoryDTO {
+        int         id;
+        std::string name;
+        std::string description;
+    };
+
     struct ToolDTO {
         int         id;
         std::string name;

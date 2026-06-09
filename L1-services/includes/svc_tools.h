@@ -13,8 +13,9 @@
 
 namespace SvcTools {
 
-    // returns sorted distinct category strings from all tools, skipping empty
-    std::vector<std::string> getCategories();
+    // returns all categories with id, name, and description, sorted by
+    // display_order then name — uses the categories table (STEP-07)
+    std::vector<SvcDTO::CategoryDTO> getCategoryList();
 
     // returns all tools whose category matches the given string (case-sensitive DB match)
     std::vector<SvcDTO::ToolDTO> getToolsByCategory(const std::string& category);
