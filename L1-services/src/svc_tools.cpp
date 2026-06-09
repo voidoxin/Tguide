@@ -5,14 +5,17 @@
  *  written by voidoxin
  */
 
-#include "../includes/svc_tools.h"
+#include <algorithm>
+#include <cctype>
+#include <set>
+#include <string>
+#include <vector>
+
 #include "../../L0-core/include/DatabaseManager.h"
 #include "../../L0-core/include/path_resolver.h"
 #include "../../L0-core/include/UserDataManager.h"
 #include "../includes/svc_generator.h"
-#include <algorithm>
-#include <string>
-#include <vector>
+#include "../includes/svc_tools.h"
 
 using namespace std;
 
@@ -36,6 +39,11 @@ static SvcDTO::ToolFlagDTO toDTO(const ToolFlag& f) {
 
 static SvcDTO::TemplateDTO toDTO(const Template& t) {
     return { t.id, t.tool_id, t.template_name, t.description, t.root, t.protocols, t.flag };
+}
+
+static SvcDTO::VulnerabilityDTO toDTO(const Vulnerability& v) {
+    return { v.id, v.name, v.metasploit, v.discovered_date, v.discoverer,
+             v.severity, v.access, v.platform, v.service, v.description, v.danger };
 }
 
 namespace SvcTools {
@@ -139,4 +147,87 @@ int saveTemplateCommand(int toolId, const string& command, const string& note) {
     return UserDataManager::instance().saveCommand(toolId, command, note);
 }
 
+// ── VULNERABILITIES ────────────────────────────────────────────────
+
+vector<SvcDTO::VulnerabilityDTO> getAllVulnerabilities() {
+    VulnD db(PathResolver::dbFile().string());
+    auto items = db.getAll();
+    sort(items.begin(), items.end(),
+         [](const Vulnerability& a, const Vulnerability& b) {
+             return a.name < b.name;
+         });
+    vector<SvcDTO::VulnerabilityDTO> result;
+    result.reserve(items.size());
+    for (const auto& v : items) result.push_back(toDTO(v));
+    return result;
+}
+
+vector<SvcDTO::VulnerabilityDTO> searchVulnerabilities(const string& query) {
+    VulnD db(PathResolver::dbFile().string());
+    vector<SvcDTO::VulnerabilityDTO> result;
+
+    // Search by name
+    {
+        VulnResults res = db.getWhere({"name"}, {query});
+        for (const auto& v : res.items) result.push_back(toDTO(v));
+    }
+
+    // Search by metasploit name
+    {
+        VulnResults res = db.getWhere({"metasploit_name"}, {query});
+        for (const auto& v : res.items) result.push_back(toDTO(v));
+    }
+
+    // Deduplicate by id
+    sort(result.begin(), result.end(),
+         [](const SvcDTO::VulnerabilityDTO& a, const SvcDTO::VulnerabilityDTO& b) {
+             return a.id < b.id;
+         });
+    auto last = unique(result.begin(), result.end(),
+                       [](const SvcDTO::VulnerabilityDTO& a, const SvcDTO::VulnerabilityDTO& b) {
+                           return a.id == b.id;
+                       });
+    result.erase(last, result.end());
+
+    sort(result.begin(), result.end(),
+         [](const SvcDTO::VulnerabilityDTO& a, const SvcDTO::VulnerabilityDTO& b) {
+             return a.name < b.name;
+         });
+    return result;
+}
+
+vector<SvcDTO::VulnerabilityDTO> filterVulnerabilities(const string& column,
+                                                        const string& value) {
+    static const set<string> ALLOWED = {"severity", "access", "platform"};
+    if (ALLOWED.find(column) == ALLOWED.end()) return {};
+
+    VulnD db(PathResolver::dbFile().string());
+    VulnResults res = db.getWhere({column}, {value});
+    vector<SvcDTO::VulnerabilityDTO> result;
+    result.reserve(res.items.size());
+    for (const auto& v : res.items) result.push_back(toDTO(v));
+    return result;
+}
+
+vector<string> getDistinctValues(const string& column) {
+    VulnD db(PathResolver::dbFile().string());
+    auto all = db.getAll();
+    set<string> seen;
+    vector<string> result;
+    for (const auto& v : all) {
+        string val;
+        if (column == "severity")       val = v.severity;
+        else if (column == "access")    val = v.access;
+        else if (column == "platform")  val = v.platform;
+        else continue;
+        if (val.empty()) continue;
+        string key = val;
+        transform(key.begin(), key.end(), key.begin(),
+                  [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        if (seen.insert(key).second)
+            result.push_back(val);
+    }
+    sort(result.begin(), result.end());
+    return result;
+}
 } // namespace SvcTools

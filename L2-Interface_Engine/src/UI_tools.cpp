@@ -14,6 +14,7 @@
 #include "../../L1-services/includes/svc_tools.h"
 #include "../../L1-services/includes/svc_strings.h"
 #include "../../L1-services/includes/svc_generator.h"
+#include <algorithm>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -27,6 +28,7 @@ static void showCategories();
 static void showSearch();
 static void showTemplateFill(const SvcDTO::ToolDTO& tool,
                               const SvcDTO::TemplateDTO& templ);
+static void showVulnerabilities();
 
 // ==================== HELPERS ====================
 
@@ -56,6 +58,14 @@ static bool isAmbiguous(const string& input, const vector<string>& opts) {
     return false;
 }
 
+static bool isMetasploit(const SvcDTO::ToolDTO& tool) {
+    string lo = tool.name;
+    transform(lo.begin(), lo.end(), lo.begin(),
+              ::tolower);
+    return lo == "metasploit";
+}
+
+
 // ==================== TOOL DETAIL (STUB) ====================
 
 static void showToolDetail(const SvcDTO::ToolDTO& tool) {
@@ -77,6 +87,8 @@ static void showToolDetail(const SvcDTO::ToolDTO& tool) {
 
         // ── options banner (always visible) ──
         cout << (colorsEnabled() ? Color::DIM : "");
+        if (isMetasploit(tool))
+            cout << "  [v] vulnerabilities\n";
         cout << "  [0] " << Strings::get(StringID::TOOLS_BACK) << "\n";
         cout << (colorsEnabled() ? Color::RESET : "");
 
@@ -118,8 +130,7 @@ static void showToolDetail(const SvcDTO::ToolDTO& tool) {
             }
         }
 
-        // ── metasploit / recon-ng placeholder (future steps) ──
-        // TODO: STEP-15 — vulnerabilities sub-menu for metasploit
+        // ── recon-ng placeholder (future step) ──
         // TODO: STEP-16 — modules sub-menu for recon-ng
 
         UI::printDivider();
@@ -134,6 +145,12 @@ static void showToolDetail(const SvcDTO::ToolDTO& tool) {
         int num = toNumber(input);
         if (num >= 1 && num <= static_cast<int>(templates.size())) {
             showTemplateFill(tool, templates[static_cast<size_t>(num - 1)]);
+            continue;
+        }
+
+        // Metasploit vulnerabilities
+        if (isMetasploit(tool) && (input == "v" || input == "V")) {
+            showVulnerabilities();
             continue;
         }
 
@@ -414,6 +431,210 @@ static void showTemplateFill(const SvcDTO::ToolDTO& tool,
 
         cout << "  " << Strings::get(StringID::TOOLS_INVALID_CHOICE) << "\n";
         waitForEnter();
+    }
+}
+
+// ==================== VULNERABILITY DETAIL ====================
+
+static void showVulnerabilityDetail(const SvcDTO::VulnerabilityDTO& vuln) {
+    while (true) {
+        UI::clearScreen();
+        UI::printBanner();
+        UI::printBreadcrumb("tools \u203a metasploit \u203a " + vuln.name);
+        UI::printDivider();
+
+        cout << "\n  " << (colorsEnabled() ? string(Color::BOLD) + Color::CYAN : "")
+             << vuln.name
+             << (colorsEnabled() ? Color::RESET : "") << "\n\n";
+
+        cout << "  severity:   " << vuln.severity << "\n"
+             << "  access:     " << vuln.access << "\n"
+             << "  platform:   " << vuln.platform << "\n"
+             << "  service:    " << vuln.service << "\n"
+             << "  danger:     " << vuln.danger << "\n"
+             << "  discovered: " << vuln.discovered_date
+             << " by " << vuln.discoverer << "\n\n";
+
+        if (!vuln.metasploit.empty())
+            cout << "  module: " << vuln.metasploit << "\n\n";
+
+        cout << "  " << vuln.description << "\n\n";
+
+        UI::printDivider();
+        cout << "\n"
+             << (colorsEnabled() ? Color::DIM : "")
+             << "  [0] " << Strings::get(StringID::TOOLS_BACK)
+             << (colorsEnabled() ? Color::RESET : "")
+             << "\n\n";
+
+        string input = readInput("  \u2192 ");
+        if (input.empty()) continue;
+        if (isQuit(input)) { handleQuit(); return; }
+        if (isBack(input)) return;
+        cout << "  " << Strings::get(StringID::TOOLS_INVALID_CHOICE) << "\n";
+        waitForEnter();
+    }
+}
+
+// ==================== VULNERABILITIES SUB-MENU ====================
+
+static void showVulnerabilities() {
+    vector<SvcDTO::VulnerabilityDTO> vulns = SvcTools::getAllVulnerabilities();
+    string filterCol, filterVal;
+    bool hasFilter = false;
+
+    // Build display lines for current data — helper at function scope
+    auto buildLines = [](const vector<SvcDTO::VulnerabilityDTO>& data)
+        -> pair<vector<string>, vector<string>> {
+        vector<string> lines, labels;
+        lines.reserve(data.size());
+        labels.reserve(data.size());
+        for (size_t i = 0; i < data.size(); i++) {
+            const auto& v = data[i];
+            string line = "  ";
+            if (colorsEnabled())
+                line += string(Color::CYAN) + v.name + Color::RESET;
+            else
+                line += v.name;
+            line += "  " + v.severity;
+            if (!v.platform.empty()) line += "  " + v.platform;
+            if (!v.service.empty())  line += "  " + v.service;
+            lines.push_back(line);
+
+            size_t sp = v.name.find(' ');
+            labels.push_back(sp == string::npos ? v.name : v.name.substr(0, sp));
+        }
+        return {lines, labels};
+    };
+
+    // Initial build
+    auto [lines, labels] = buildLines(vulns);
+    Paginator pager(lines, true);
+
+    while (true) {
+        UI::clearScreen();
+        UI::printBanner();
+        UI::printBreadcrumb("tools \u203a metasploit \u203a vulnerabilities");
+        UI::printDivider();
+
+        // ── options ──
+        cout << "\n"
+             << (colorsEnabled() ? Color::DIM : "");
+        if (hasFilter)
+            cout << "  [f] filter: " << filterCol << " = " << filterVal << "\n";
+        else
+            cout << "  [f] filter\n";
+        cout << "  [s] search\n"
+             << "  [a] show all"
+             << (hasFilter ? " (clear filter)" : "")
+             << "\n  [0] back\n"
+             << (colorsEnabled() ? Color::RESET : "") << "\n";
+        UI::printDivider();
+
+        if (vulns.empty()) {
+            cout << "\n  no vulnerabilities found.\n\n";
+            UI::printDivider();
+            cout << "\n";
+            waitForEnter();
+            continue;
+        }
+
+        pager.render("vulnerabilities");
+
+        string input = readInput("  \u2192 ");
+        if (input.empty()) continue;
+        if (isQuit(input)) { handleQuit(); return; }
+        if (isBack(input)) return;
+
+        if (isNext(input)) {
+            if (!pager.nextPage())
+                cout << "  already on last page.\n";
+            continue;
+        }
+        if (isPrev(input)) {
+            if (!pager.prevPage())
+                cout << "  already on first page.\n";
+            continue;
+        }
+
+        // Options that change data → rebuild pager
+        if (input == "f" || input == "F") {
+            cout << "\n  filter by:\n"
+                 << "    [1] severity\n"
+                 << "    [2] access\n"
+                 << "    [3] platform\n"
+                 << "    [0] cancel\n  \u2192 ";
+            string fIn = readInput("");
+            if (fIn.empty() || isQuit(fIn) || isBack(fIn)) continue;
+
+            string col;
+            if (fIn == "1")      col = "severity";
+            else if (fIn == "2") col = "access";
+            else if (fIn == "3") col = "platform";
+            else { cout << "  invalid choice.\n"; waitForEnter(); continue; }
+
+            auto vals = SvcTools::getDistinctValues(col);
+            if (vals.empty()) {
+                cout << "  no values available.\n";
+                waitForEnter();
+                continue;
+            }
+            cout << "\n  select " << col << ":\n";
+            for (size_t vi = 0; vi < vals.size(); vi++)
+                cout << "    [" << (vi + 1) << "] " << vals[vi] << "\n";
+            cout << "  \u2192 ";
+            string vIn = readInput("");
+            if (vIn.empty() || isQuit(vIn) || isBack(vIn)) continue;
+            int vIdx = toNumber(vIn);
+            if (vIdx < 1 || vIdx > static_cast<int>(vals.size())) {
+                cout << "  invalid choice.\n";
+                waitForEnter();
+                continue;
+            }
+            filterCol = col;
+            filterVal = vals[static_cast<size_t>(vIdx - 1)];
+            hasFilter = true;
+            vulns = SvcTools::filterVulnerabilities(filterCol, filterVal);
+            tie(lines, labels) = buildLines(vulns);
+            pager = Paginator(lines, true);
+            continue;
+        }
+
+        if (input == "s" || input == "S") {
+            cout << "\n  search: ";
+            string query = readInput("");
+            if (query.empty() || isQuit(query) || isBack(query)) continue;
+            vulns = SvcTools::searchVulnerabilities(query);
+            hasFilter = false;
+            tie(lines, labels) = buildLines(vulns);
+            pager = Paginator(lines, true);
+            continue;
+        }
+
+        if (input == "a" || input == "A") {
+            vulns = SvcTools::getAllVulnerabilities();
+            hasFilter = false;
+            tie(lines, labels) = buildLines(vulns);
+            pager = Paginator(lines, true);
+            continue;
+        }
+
+        // Select vulnerability
+        int idx = pager.select(input);
+        vector<string> cleanForMatch;
+        if (idx == -1) {
+            cleanForMatch.reserve(labels.size());
+            for (const auto& v : vulns) cleanForMatch.push_back(v.name);
+            idx = matchOption(input, cleanForMatch);
+        }
+        if (idx == -1) {
+            if (isAmbiguous(input, cleanForMatch.empty() ? labels : cleanForMatch))
+                cout << "  ambiguous \u2014 be more specific.\n";
+            else
+                cout << "  " << Strings::get(StringID::TOOLS_INVALID_CHOICE) << "\n";
+            continue;
+        }
+        showVulnerabilityDetail(vulns[static_cast<size_t>(idx)]);
     }
 }
 

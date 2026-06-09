@@ -43,4 +43,18 @@ namespace SvcTools {
 
     // Save a built command to UserDataManager saved commands; returns the new id or -1
     int saveTemplateCommand(int toolId, const std::string& command, const std::string& note);
+
+    // ── VULNERABILITIES ────────────────────────────────────────────────
+    // Returns all vulnerabilities, sorted by name
+    std::vector<SvcDTO::VulnerabilityDTO> getAllVulnerabilities();
+
+    // Search vulnerabilities by name or metasploit path (exact match)
+    std::vector<SvcDTO::VulnerabilityDTO> searchVulnerabilities(const std::string& query);
+
+    // Filter vulnerabilities by a column/value pair (severity, access, or platform)
+    std::vector<SvcDTO::VulnerabilityDTO> filterVulnerabilities(const std::string& column,
+                                                                 const std::string& value);
+
+    // Get sorted distinct string values for a given column (severity, access, platform)
+    std::vector<std::string> getDistinctValues(const std::string& column);
 } // namespace SvcTools
