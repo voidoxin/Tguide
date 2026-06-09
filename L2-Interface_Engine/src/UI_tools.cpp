@@ -5,19 +5,24 @@
  *  written by voidoxin
  */
 
-#include "../includes/UI_tools.h"
-#include "../includes/UI_utils.h"
+#include <algorithm>
+#include <cctype>
+#include <iostream>
+#include <string>
+#include <vector>
+
+#include "../../L0-core/include/DatabaseManager.h"
+#include "../../L0-core/include/path_resolver.h"
+#include "../../L0-core/include/UserDataManager.h"
+#include "../includes/svc_generator.h"
+#include "../includes/svc_strings.h"
+#include "../includes/svc_tools.h"
 #include "../includes/UI_colors.h"
 #include "../includes/UI_errorHandling.h"
 #include "../includes/UI_input.h"
 #include "../includes/UI_paginator.h"
-#include "../../L1-services/includes/svc_tools.h"
-#include "../../L1-services/includes/svc_strings.h"
-#include "../../L1-services/includes/svc_generator.h"
-#include <algorithm>
-#include <iostream>
-#include <string>
-#include <vector>
+#include "../includes/UI_tools.h"
+#include "../includes/UI_utils.h"
 
 using namespace std;
 
@@ -29,6 +34,7 @@ static void showSearch();
 static void showTemplateFill(const SvcDTO::ToolDTO& tool,
                               const SvcDTO::TemplateDTO& templ);
 static void showVulnerabilities();
+static void showModules();
 
 // ==================== HELPERS ====================
 
@@ -58,13 +64,21 @@ static bool isAmbiguous(const string& input, const vector<string>& opts) {
     return false;
 }
 
+// ==================== VULNERABILITY HELPERS ====================
+
 static bool isMetasploit(const SvcDTO::ToolDTO& tool) {
     string lo = tool.name;
     transform(lo.begin(), lo.end(), lo.begin(),
-              ::tolower);
+              [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     return lo == "metasploit";
 }
 
+static bool isReconNg(const SvcDTO::ToolDTO& tool) {
+    string lo = tool.name;
+    transform(lo.begin(), lo.end(), lo.begin(),
+              [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return lo == "recon-ng";
+}
 
 // ==================== TOOL DETAIL (STUB) ====================
 
@@ -89,6 +103,8 @@ static void showToolDetail(const SvcDTO::ToolDTO& tool) {
         cout << (colorsEnabled() ? Color::DIM : "");
         if (isMetasploit(tool))
             cout << "  [v] vulnerabilities\n";
+        if (isReconNg(tool))
+            cout << "  [m] modules\n";
         cout << "  [0] " << Strings::get(StringID::TOOLS_BACK) << "\n";
         cout << (colorsEnabled() ? Color::RESET : "");
 
@@ -130,9 +146,6 @@ static void showToolDetail(const SvcDTO::ToolDTO& tool) {
             }
         }
 
-        // ── recon-ng placeholder (future step) ──
-        // TODO: STEP-16 — modules sub-menu for recon-ng
-
         UI::printDivider();
         cout << "\n";
 
@@ -151,6 +164,11 @@ static void showToolDetail(const SvcDTO::ToolDTO& tool) {
         // Metasploit vulnerabilities
         if (isMetasploit(tool) && (input == "v" || input == "V")) {
             showVulnerabilities();
+            continue;
+        }
+        // Recon-ng modules
+        if (isReconNg(tool) && (input == "m" || input == "M")) {
+            showModules();
             continue;
         }
 
@@ -473,6 +491,202 @@ static void showVulnerabilityDetail(const SvcDTO::VulnerabilityDTO& vuln) {
         if (isBack(input)) return;
         cout << "  " << Strings::get(StringID::TOOLS_INVALID_CHOICE) << "\n";
         waitForEnter();
+    }
+}
+
+// ==================== MODULE DETAIL ====================
+
+static void showModuleDetail(const SvcDTO::ModuleDTO& mod) {
+    while (true) {
+        UI::clearScreen();
+        UI::printBanner();
+        UI::printBreadcrumb("tools \u203a recon-ng \u203a " + mod.name);
+        UI::printDivider();
+
+        cout << "\n  " << (colorsEnabled() ? string(Color::BOLD) + Color::CYAN : "")
+             << mod.name
+             << (colorsEnabled() ? Color::RESET : "") << "\n\n";
+
+        cout << "  path:        " << mod.path << "\n"
+             << "  platform:    " << mod.platform << "\n"
+             << "  type:        " << mod.type << "\n";
+        if (!mod.API.empty())
+            cout << "  API:         " << mod.API << "\n";
+        cout << "  mode:        " << (mod.mode ? "active" : "passive") << "\n"
+             << "  loud:        " << (mod.loud ? "yes" : "no") << "\n";
+        if (!mod.output.empty())
+            cout << "  output:      " << mod.output << "\n";
+        cout << "\n  " << mod.description << "\n\n";
+
+        UI::printDivider();
+        cout << "\n"
+             << (colorsEnabled() ? Color::DIM : "")
+             << "  [0] " << Strings::get(StringID::TOOLS_BACK)
+             << (colorsEnabled() ? Color::RESET : "")
+             << "\n\n";
+
+        string input = readInput("  \u2192 ");
+        if (input.empty()) continue;
+        if (isQuit(input)) { handleQuit(); return; }
+        if (isBack(input)) return;
+        cout << "  " << Strings::get(StringID::TOOLS_INVALID_CHOICE) << "\n";
+        waitForEnter();
+    }
+}
+
+// ==================== MODULES SUB-MENU ====================
+
+static void showModules() {
+    vector<SvcDTO::ModuleDTO> modules = SvcTools::getAllModules();
+    string filterCol, filterVal;
+    bool hasFilter = false;
+
+    auto buildLines = [](const vector<SvcDTO::ModuleDTO>& data)
+        -> pair<vector<string>, vector<string>> {
+        vector<string> lines, labels;
+        lines.reserve(data.size());
+        labels.reserve(data.size());
+        for (size_t i = 0; i < data.size(); i++) {
+            const auto& m = data[i];
+            string line = "  ";
+            if (colorsEnabled())
+                line += string(Color::CYAN) + m.name + Color::RESET;
+            else
+                line += m.name;
+            line += "  " + m.type;
+            if (!m.platform.empty()) line += "  " + m.platform;
+            lines.push_back(line);
+
+            size_t sp = m.name.find(' ');
+            labels.push_back(sp == string::npos ? m.name : m.name.substr(0, sp));
+        }
+        return {lines, labels};
+    };
+
+    auto [lines, labels] = buildLines(modules);
+    Paginator pager(lines, true);
+
+    while (true) {
+        UI::clearScreen();
+        UI::printBanner();
+        UI::printBreadcrumb("tools \u203a recon-ng \u203a modules");
+        UI::printDivider();
+
+        // ── options ──
+        cout << "\n" << (colorsEnabled() ? Color::DIM : "");
+        if (hasFilter)
+            cout << "  [f] filter: " << filterCol << " = " << filterVal << "\n";
+        else
+            cout << "  [f] filter\n";
+        cout << "  [s] search\n"
+             << "  [a] show all"
+             << (hasFilter ? " (clear filter)" : "")
+             << "\n  [0] back\n"
+             << (colorsEnabled() ? Color::RESET : "") << "\n";
+        UI::printDivider();
+
+        if (modules.empty()) {
+            cout << "\n  no modules found.\n\n";
+            UI::printDivider();
+            cout << "\n";
+            waitForEnter();
+            continue;
+        }
+
+        pager.render("modules");
+
+        string input = readInput("  \u2192 ");
+        if (input.empty()) continue;
+        if (isQuit(input)) { handleQuit(); return; }
+        if (isBack(input)) return;
+
+        if (isNext(input)) {
+            if (!pager.nextPage())
+                cout << "  already on last page.\n";
+            continue;
+        }
+        if (isPrev(input)) {
+            if (!pager.prevPage())
+                cout << "  already on first page.\n";
+            continue;
+        }
+
+        // Options that change data → rebuild pager
+        if (input == "f" || input == "F") {
+            cout << "\n  filter by:\n"
+                 << "    [1] type\n"
+                 << "    [2] platform\n"
+                 << "    [0] cancel\n  \u2192 ";
+            string fIn = readInput("");
+            if (fIn.empty() || isQuit(fIn) || isBack(fIn)) continue;
+
+            string col;
+            if (fIn == "1")      col = "type";
+            else if (fIn == "2") col = "platform";
+            else { cout << "  invalid choice.\n"; waitForEnter(); continue; }
+
+            auto vals = SvcTools::getDistinctModuleValues(col);
+            if (vals.empty()) {
+                cout << "  no values available.\n";
+                waitForEnter();
+                continue;
+            }
+            cout << "\n  select " << col << ":\n";
+            for (size_t vi = 0; vi < vals.size(); vi++)
+                cout << "    [" << (vi + 1) << "] " << vals[vi] << "\n";
+            cout << "  \u2192 ";
+            string vIn = readInput("");
+            if (vIn.empty() || isQuit(vIn) || isBack(vIn)) continue;
+            int vIdx = toNumber(vIn);
+            if (vIdx < 1 || vIdx > static_cast<int>(vals.size())) {
+                cout << "  invalid choice.\n";
+                waitForEnter();
+                continue;
+            }
+            filterCol = col;
+            filterVal = vals[static_cast<size_t>(vIdx - 1)];
+            hasFilter = true;
+            modules = SvcTools::filterModules(filterCol, filterVal);
+            tie(lines, labels) = buildLines(modules);
+            pager = Paginator(lines, true);
+            continue;
+        }
+
+        if (input == "s" || input == "S") {
+            cout << "\n  search: ";
+            string query = readInput("");
+            if (query.empty() || isQuit(query) || isBack(query)) continue;
+            modules = SvcTools::searchModules(query);
+            hasFilter = false;
+            tie(lines, labels) = buildLines(modules);
+            pager = Paginator(lines, true);
+            continue;
+        }
+
+        if (input == "a" || input == "A") {
+            modules = SvcTools::getAllModules();
+            hasFilter = false;
+            tie(lines, labels) = buildLines(modules);
+            pager = Paginator(lines, true);
+            continue;
+        }
+
+        // Select module
+        int idx = pager.select(input);
+        vector<string> cleanForMatch;
+        if (idx == -1) {
+            cleanForMatch.reserve(labels.size());
+            for (const auto& m : modules) cleanForMatch.push_back(m.name);
+            idx = matchOption(input, cleanForMatch);
+        }
+        if (idx == -1) {
+            if (isAmbiguous(input, cleanForMatch.empty() ? labels : cleanForMatch))
+                cout << "  ambiguous \u2014 be more specific.\n";
+            else
+                cout << "  " << Strings::get(StringID::TOOLS_INVALID_CHOICE) << "\n";
+            continue;
+        }
+        showModuleDetail(modules[static_cast<size_t>(idx)]);
     }
 }
 

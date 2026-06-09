@@ -230,4 +230,99 @@ vector<string> getDistinctValues(const string& column) {
     sort(result.begin(), result.end());
     return result;
 }
+
+// ── Module L0→DTO mapper ──────────────────────────────────────────────
+static SvcDTO::ModuleDTO toDTO(const Module& m) {
+    SvcDTO::ModuleDTO dto;
+    dto.id          = m.id;
+    dto.name        = m.name;
+    dto.path        = m.path;
+    dto.platform    = m.platform;
+    dto.type        = m.type;
+    dto.description = m.description;
+    dto.API         = m.API;
+    dto.mode        = m.mode;
+    dto.loud        = m.loud;
+    dto.output      = m.output;
+    return dto;
+}
+
+// ── MODULES ────────────────────────────────────────────────────────────
+vector<SvcDTO::ModuleDTO> getAllModules() {
+    ModuD db(PathResolver::dbFile().string());
+    auto items = db.getAll();
+    sort(items.begin(), items.end(),
+         [](const Module& a, const Module& b) {
+             return a.name < b.name;
+         });
+    vector<SvcDTO::ModuleDTO> result;
+    result.reserve(items.size());
+    for (const auto& m : items) result.push_back(toDTO(m));
+    return result;
+}
+
+vector<SvcDTO::ModuleDTO> searchModules(const string& query) {
+    ModuD db(PathResolver::dbFile().string());
+    vector<SvcDTO::ModuleDTO> result;
+    // Search by name
+    {
+        ModuleResults res = db.getWhere({"name"}, {query});
+        for (const auto& m : res.items) result.push_back(toDTO(m));
+    }
+    // Deduplicate by id
+    sort(result.begin(), result.end(),
+         [](const SvcDTO::ModuleDTO& a, const SvcDTO::ModuleDTO& b) {
+             return a.id < b.id;
+         });
+    auto last = unique(result.begin(), result.end(),
+                       [](const SvcDTO::ModuleDTO& a, const SvcDTO::ModuleDTO& b) {
+                           return a.id == b.id;
+                       });
+    result.erase(last, result.end());
+    sort(result.begin(), result.end(),
+         [](const SvcDTO::ModuleDTO& a, const SvcDTO::ModuleDTO& b) {
+             return a.name < b.name;
+         });
+    return result;
+}
+
+vector<SvcDTO::ModuleDTO> filterModules(const string& column, const string& value) {
+    static const set<string> ALLOWED = {"type", "platform"};
+    if (ALLOWED.find(column) == ALLOWED.end()) return {};
+    ModuD db(PathResolver::dbFile().string());
+    ModuleResults res = db.getWhere({column}, {value});
+    vector<SvcDTO::ModuleDTO> result;
+    result.reserve(res.items.size());
+    for (const auto& m : res.items) result.push_back(toDTO(m));
+    return result;
+}
+
+SvcDTO::ModuleDTO getModuleById(int id) {
+    ModuD db(PathResolver::dbFile().string());
+    ModuleResults res = db.getWhere({"id"}, {to_string(id)});
+    if (res.items.empty()) return SvcDTO::ModuleDTO();
+    return toDTO(res.items[0]);
+}
+
+vector<string> getDistinctModuleValues(const string& column) {
+    ModuD db(PathResolver::dbFile().string());
+    auto all = db.getAll();
+    set<string> seen;
+    vector<string> result;
+    for (const auto& m : all) {
+        string val;
+        if (column == "type")       val = m.type;
+        else if (column == "platform") val = m.platform;
+        else continue;
+        if (val.empty()) continue;
+        string key = val;
+        transform(key.begin(), key.end(), key.begin(),
+                  [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        if (seen.insert(key).second)
+            result.push_back(val);
+    }
+    sort(result.begin(), result.end());
+    return result;
+}
+
 } // namespace SvcTools

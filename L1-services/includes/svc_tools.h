@@ -57,4 +57,21 @@ namespace SvcTools {
 
     // Get sorted distinct string values for a given column (severity, access, platform)
     std::vector<std::string> getDistinctValues(const std::string& column);
+
+    // ── MODULES ────────────────────────────────────────────────────────
+    // Returns all modules, sorted by name
+    std::vector<SvcDTO::ModuleDTO> getAllModules();
+
+    // Search modules by name (exact match)
+    std::vector<SvcDTO::ModuleDTO> searchModules(const std::string& query);
+
+    // Filter modules by a column/value pair (type or platform)
+    std::vector<SvcDTO::ModuleDTO> filterModules(const std::string& column,
+                                                  const std::string& value);
+
+    // Get a single module by ID
+    SvcDTO::ModuleDTO getModuleById(int id);
+
+    // Get sorted distinct string values for a given module column (type or platform)
+    std::vector<std::string> getDistinctModuleValues(const std::string& column);
 } // namespace SvcTools
