@@ -364,22 +364,24 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L1+L2 |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | L2-Interface_Engine/src/UI_tools.cpp, L1-services/src/svc_tools.cpp, L1-services/includes/svc_tools.h |
 | Goal       | Add vulnerabilities sub-menu to metasploit tool detail with search, filter, and show all options |
 | Depends    | STEP-14 |
 | Done when  | Metaspoit tool detail shows Vulnerabilities option and opens sub-menu when selected |
+| Completed  | **2026-06-09** — Vulnerabilities sub-menu implemented with browse, filter (by severity/access/platform), search (by name/exact match), and "show all" options. Vulnerability detail screen shows name, description, severity, access, platform, service, metasploit path, and references. Code review identified 5 defects: Paginator lifecycle (F1-critical), name-based selection with ANSI codes (F2-high), incorrect LIKE documentation (F3-high), stale TODO (F4-medium), ::tolower portability (F6-medium), missing column validation (F7-low). All 6 defects fixed. Build: zero warnings. Tests: 27/28 passing. |
 
 ### STEP-16 — Implement recon-ng modules sub-menu
 | Field      | Value |
 |------------|-------|
 | Layer      | L1+L2 |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | L2-Interface_Engine/src/UI_tools.cpp, L1-services/src/svc_tools.cpp, L1-services/includes/svc_tools.h |
 | Goal       | Add modules sub-menu to recon-ng tool detail with search, filter, and show all options |
 | Depends    | STEP-15 |
 | Done when  | Recon-ng tool detail shows Modules option and opens sub-menu when selected |
+| Completed  | **2026-06-09** — Recon-ng modules sub-menu implemented with browse, filter (by type/platform), search (by name/exact match), and "show all" options. Module detail screen shows path, platform, type, API, mode (active/passive), loud, output, and description. Mirrors the vulnerability pattern from STEP-15. Code review: 1 high (tolower UB risk), 2 medium (missing cctype includes), 2 low (include ordering) — all fixed. Build: zero warnings. Tests: 27/28 passing. |
 
 ## Phase 3 — OPSEC + Network System
 ### STEP-17 — Implement Shadow Swap update system (L0 infrastructure) (STRATEGIC-4)
