@@ -1,21 +1,19 @@
 # Tguide — Development Roadmap
-## Version: 1.4.0
-## Date: 2026-06-07
+## Version: 1.0.0
+## Date: 2026-06-09
 ## Author: voidoxin
 
 ## Current State (from code scan)
-- **Proposals reviewed and accepted (2026-06-07)**: Four proposals from `tguide_technical_proposal.md` were independently reviewed by software-architect, security-auditor, and developer-core via agent consensus. **P1 (Dynamic Version Manifest)** and **P4 (DB Rollback/Recovery)** approved as a unified DB lifecycle subsystem (highest priority, replaces STEP-11 hardcoded-hash approach). **P3 (GitHub Threat Model)** approved as documentation (low priority). **P2 (DNS-Only Check)** deferred to Phase 3 (medium priority, future). New steps STEP-P1, STEP-P4, STEP-P3, and STEP-P2 incorporated into this roadmap.
-- **STEP-P1 complete (2026-06-08)**: Dynamic version manifest implemented. DBResolver fetches signed_manifest.json from GitHub, parses version/db_hash/db_url, validates hash before download acceptance. DBCacheManager persists last_seen_version. DB_OFFICIAL_HASH removed from compiled binary.
-- **CoreRunner.cpp**: Bootstrap sequence mostly implemented, root check bug (BUG-1) fixed (STEP-00), dev-only BackupManager remains
-- **L0-core**: DatabaseManager has basic CRUD, UserDataManager created but not integrated, path_resolver needs Linux user-space fixes, DBCacheManager needs official hash; **A1 architectural violation fixed** (UI→L0 direct includes removed); **A2 architectural violation fixed** (raw extern callbacks → ErrorHandler abstraction); **A3 architectural violation fixed** (Global Mutable State eliminated: DBResolver, DBCacheManager, g_colorEnabled); **A-03 security fix completed** (7 SSL/TLS hardening measures in DBResolver.cpp, commit 4c818c2)
-- **L1-services**: svc_tools has clearSearchIndex (STEP-03), svc_generator has sanitizeInput (STEP-04), **A6 architectural violation fixed** (L1 DTOs decouple L2 from L0 types); remaining service files still stubbed or minimal
-- **L2-Interface_Engine**: UI_Engine uses readInput() (STEP-01), toNumber() uses from_chars (STEP-02), UI_colors checks isatty() (STEP-05), but tool detail, saved commands/scripts, settings, and generator still stubbed
-- **CMakeLists.txt**: Build system configured across platforms but installs data_adder (dev-only) and lacks release configuration; **A7 architectural violation fixed** (build-time layer enforcement: L3_interface no longer includes/link L0_core directly); **A5 partial fix** (dead L2_INC ref removed from L3_interface)
-- **Missing**: Database schema updates (short_desc), complete UserDataManager integration, search algorithm, filter implementations, saved data screens, script generator, settings screen, and dev-only code removal
-- **Completed analysis**: `.ai/dependencies.md` created (388 lines, cataloging 6 dependencies); cross-platform compatibility analysis completed and **STEP-CP1 complete** — macOS cross-platform fixes applied (path resolution, ANSI colors, CMake install targets, libcurl RAII guard); **A-06 test infrastructure complete** — doctest single-header framework, 21 test cases across 3 modules (SHA256, ConfigManager, UserDataManager), TempDirectory/TempFile/ErrorHandlerSpy fixtures, CMake/CTest integration (commit 8ae3447)
-- **STEP-08 complete (2026-06-07)**: UserDataManager now uses Meyer's singleton pattern. CoreRunner properly integrates it — the instance survives beyond bootstrap. Ready for Phase 4 service layer.
-- **STEP-10 complete (2026-06-07)**: Linux root requirement eliminated. All runtime paths moved from `/etc/tguide` and `/usr/share/tguide` to `~/.config/tguide` and `~/.local/share/tguide`. The tool no longer requires root on any platform.
-- **STEP-07 complete (2026-06-07)**: Database schema updated — Category struct, categories table, CategoryD CRUD class added to L0-core. Interactive category management in data_adder menu.
+- **v1.0 Focus**: This roadmap is now focused on delivering a stable v1.0.0 release. All Phase 0 (critical bug fixes), Phase 1 (foundation), and Phase 2 (core tools UI) steps are complete. The remaining work is organized into release-focused phases targeting database tooling, cross-platform bootstrap, core feature completion, database lifecycle, and packaging.
+- **Phase 0 complete**: All 17 steps (STEP-00 through STEP-A06) including critical bug fixes, architectural violations, security hardening, cross-platform fixes, and test infrastructure.
+- **Phase 1 complete**: All 7 steps (STEP-06 through STEP-P3) including error handling, database schema, UserDataManager, localization, path resolver, dynamic manifest, DB rollback/recovery, and threat model documentation.
+- **Phase 2 complete**: All 5 steps (STEP-12 through STEP-16) including tools entry screen, tool detail screen, template fill/placeholder prompting, metasploit vulnerabilities, and recon-ng modules.
+- **CoreRunner.cpp**: Bootstrap sequence fully implemented, root check eliminated, ErrorHandler registered early (A8 fix).
+- **L0-core**: DatabaseManager has full CRUD, UserDataManager singleton integrated, path_resolver supports Linux/macOS, DBResolver with dynamic manifest + SSL/TLS hardening, DBCacheManager with backup/rollback, A1/A2/A3/A8/A9 architectural violations fixed.
+- **L1-services**: svc_tools with search index, svc_generator with input sanitization, svc_dto decoupling layer, string table re-export, A6 DTO pattern fixed.
+- **L2-Interface_Engine**: UI_Engine with readInput(), colors with isatty()/g_colorEnabled, tool detail/category/vulnerability/module screens, template fill workflow, generator wizard, A4 header isolation fixed, A7 build-time layer enforcement fixed.
+- **Testing**: doctest framework with 28+ test cases across SHA256, ConfigManager, UserDataManager, DB recovery. CTest integration.
+- **Key remaining work before v1.0**: Replace data_adder.cpp with professional Python toolchain (STEP-DB), fix database bootstrap for no-internet first boot (STEP-B1), cross-platform path resolution (STEP-B2), Windows support (STEP-B3), cross-platform validation (STEP-CP2), enhanced search (STEP-R1), saved commands/scripts screens (STEP-R2/R3), settings screen completion (STEP-R4), remove all stubs (STEP-R5), shadow swap update system (STEP-17/18), fix manifest URL to use GitHub Releases (STEP-MU), remove dev-only code (STEP-61), full QA (STEP-62), and packaging for AUR/Homebrew/Deb/Windows + v1.0 release (STEP-PK1-5).
 
 ## Architecture Reference
 ```
@@ -383,585 +381,253 @@ L0-core → L1-services → L2-Interface_Engine
 | Done when  | Recon-ng tool detail shows Modules option and opens sub-menu when selected |
 | Completed  | **2026-06-09** — Recon-ng modules sub-menu implemented with browse, filter (by type/platform), search (by name/exact match), and "show all" options. Module detail screen shows path, platform, type, API, mode (active/passive), loud, output, and description. Mirrors the vulnerability pattern from STEP-15. Code review: 1 high (tolower UB risk), 2 medium (missing cctype includes), 2 low (include ordering) — all fixed. Build: zero warnings. Tests: 27/28 passing. |
 
-## Phase 3 — OPSEC + Network System
-### STEP-17 — Implement Shadow Swap update system (L0 infrastructure) (STRATEGIC-4)
+## Release Phase R0 — Database Builder ⭐ HIGHEST PRIORITY
+### STEP-DB — Professional Python database builder (replaces data_adder.cpp)
+| Field      | Value |
+|------------|-------|
+| Layer      | TOOLING |
+| Priority   | HIGHEST |
+| Status     | [ ] TODO |
+| Files      | tools/build_db.py (NEW), tools/data/ (NEW directory), data_adder.cpp (DELETE) |
+| Goal       | Replace data_adder.cpp with a professional Python CLI toolchain: read YAML/JSON data files, produce a signed SQLite database, support CSV import for batch editing, generate release manifest, validate schema before build |
+| Depends    | none |
+| Done when  | `python tools/build_db.py` produces a valid `tguide.db` from YAML source files; data_adder.cpp is deleted from CMakeLists.txt; manifest is auto-generated; database is schema-validated before build |
+
+## Release Phase R1 — Bootstrap & Cross-Platform Foundation
+### STEP-B1 — Fix database bootstrap (no internet on first boot)
 | Field      | Value |
 |------------|-------|
 | Layer      | L0 |
+| Priority   | CRITICAL |
+| Status     | [ ] TODO |
+| Files      | L0-core/src/DBResolver.cpp, L0-core/include/DBResolver.h, CoreRunner.cpp, CMakeLists.txt |
+| Goal       | Remove first-boot internet requirement: bundle a seed DB with the binary, detect fresh install, copy seed DB to user data dir, make manifest fetch non-fatal (graceful degradation if offline) |
+| Depends    | none |
+| Done when  | First boot succeeds without network; seed DB is bundled at `/usr/share/tguide/tguide.db` (Linux), `~/Library/Application Support/tguide/tguide.db` (macOS), `%APPDATA%/tguide/tguide.db` (Windows); manifest failure shows warning but does not exit |
+
+### STEP-B2 — Cross-platform path resolution
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 |
+| Priority   | CRITICAL |
+| Status     | [ ] TODO |
+| Files      | L0-core/include/path_resolver.h, L0-core/src/DBResolver.cpp, CoreRunner.cpp |
+| Goal       | Unify path resolution across all target platforms: Linux (XDG), macOS (Application Support), Windows (APPDATA/LOCALAPPDATA), Termux (~/../usr/share). Add installDbFile() returning per-OS seed DB path. |
+| Depends    | STEP-B1 |
+| Done when  | path_resolver.h returns correct platform-specific paths for all target platforms; copyDefaultToConfig() uses installDbFile() instead of hardcoded dev-time path |
+
+### STEP-B3 — Windows support
+| Field      | Value |
+|------------|-------|
+| Layer      | CROSS-PLATFORM |
 | Priority   | HIGH |
 | Status     | [ ] TODO |
-| Files      | L0-core/include/db_cache_manager.h, L0-core/src/db_cache_manager.cpp, L0-core/include/config_manager.h, L0-core/src/config_manager.cpp |
-| Goal       | Implement background download to tguide.db.tmp, atomic file swap on restart/exit, and internal update frequency tracking (Aggressive/Balanced/Passive/Stealth) |
-| Depends    | STEP-16 |
-| Done when  | Database updates download to tguide.db.tmp, swap occurs automatically on application restart/exit, and update frequency configuration is stored in config
+| Files      | CMakeLists.txt, L2-Interface_Engine/includes/UI_colors.h, CoreRunner.cpp |
+| Goal       | Add Windows build support: enable ANSI colors via Windows API, handle SIGINT via SetConsoleCtrlHandler, add MSVC/clang-cl CMake configuration, fix POSIX-specific code paths |
+| Depends    | STEP-B2 |
+| Done when  | tguide compiles and runs on Windows without errors; colors work in Windows Terminal; Ctrl+C is handled gracefully |
 
-### STEP-18 — Implement Shadow Swap update settings UI (L2) (STRATEGIC-4)
+### STEP-CP2 — Cross-platform validation testing
+| Field      | Value |
+|------------|-------|
+| Layer      | QA |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | All |
+| Goal       | Test tguide on all target platforms: Kali Linux, Ubuntu, Fedora, Arch Linux, macOS, Windows, Termux. Fix all platform-specific issues found. |
+| Depends    | STEP-B3 |
+| Done when  | tguide compiles, installs, and runs correctly on all 7 target platforms |
+
+## Release Phase R2 — Core Feature Completion
+### STEP-R1 — Implement enhanced search algorithm
+| Field      | Value |
+|------------|-------|
+| Layer      | L1 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L1-services/src/svc_tools.cpp, L1-services/includes/svc_tools.h |
+| Goal       | Implement search with fuzzy matching, partial word matching, and case-insensitive search for better user experience (was STEP-22) |
+| Depends    | STEP-CP2 |
+| Done when  | Search returns results for typos, partial names, and related terms |
+
+### STEP-R2 — Implement saved commands screen (was STEP-23 + STEP-24 merged)
+| Field      | Value |
+|------------|-------|
+| Layer      | L1+L2 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L1-services/src/svc_savedCommands.cpp (NEW), L1-services/includes/svc_savedCommands.h (NEW), L2-Interface_Engine/src/UI_savedCommands.cpp, L2-Interface_Engine/includes/UI_savedCommands.h |
+| Goal       | Implement one complete saved commands feature: service layer (CRUD via UserDataManager) + UI screen (list, select, fill placeholders, delete, execute) |
+| Depends    | STEP-R1 |
+| Done when  | User can browse saved commands, select one to fill placeholders, delete, and see command preview |
+
+### STEP-R3 — Implement saved scripts screen (was STEP-25 + STEP-26 merged)
+| Field      | Value |
+|------------|-------|
+| Layer      | L1+L2 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L1-services/src/svc_savedScripts.cpp (NEW), L1-services/includes/svc_savedScripts.h (NEW), L2-Interface_Engine/src/UI_savedScripts.cpp, L2-Interface_Engine/includes/UI_savedScripts.h |
+| Goal       | Implement one complete saved scripts feature: service layer (CRUD via UserDataManager) + UI screen (list, view, delete, execute) |
+| Depends    | STEP-R2 |
+| Done when  | User can browse saved scripts, select one to view details, delete scripts, and see script preview |
+
+### STEP-R4 — Complete settings screen (color toggle + DB management)
 | Field      | Value |
 |------------|-------|
 | Layer      | L2 |
 | Priority   | HIGH |
 | Status     | [ ] TODO |
-| Files      | L2-Interface_Engine/src/UI_settings.cpp, L2-Interface_Engine/src/UI_Engine.cpp, L2-Interface_Engine/includes/UI_utils.h |
-| Goal       | Implement user notification "[ Update Ready - Restart to Apply ]" indicator and settings menu for update frequency (Aggressive/Balanced/Passive/Stealth) |
+| Files      | L2-Interface_Engine/src/UI_settings.cpp, L2-Interface_Engine/includes/UI_settings.h |
+| Goal       | Complete the settings screen with: color enable/disable toggle (persisted to config), database version display, manual DB update trigger, backup restore option (from STEP-P4), and DB info display |
+| Depends    | STEP-R3 |
+| Done when  | Settings screen has all 5 features working; color toggle persists and takes effect immediately |
+
+### STEP-R5 — Remove all "coming soon" stubs from codebase
+| Field      | Value |
+|------------|-------|
+| Layer      | CLEANUP |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L2-Interface_Engine/src/UI_tools.cpp, L2-Interface_Engine/src/UI_Engine.cpp, L2-Interface_Engine/includes/UI_tools.h, L1-services/src/svc_tools.cpp |
+| Goal       | Remove or implement all "coming soon" / placeholder menu entries. If a feature isn't ready for v1.0, its menu entry must be hidden behind a compile-time flag or removed entirely. Audit for 183 stub/TODO references found in codebase. |
+| Depends    | STEP-R4 |
+| Done when  | No "coming soon", "TODO", "stub", or placeholder text remains in user-visible UI; dead code paths are removed |
+
+## Release Phase R3 — Database Lifecycle
+### STEP-17 — Shadow Swap update system (was Phase 3 STEP-17)
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L0-core/src/DBResolver.cpp, L0-core/include/DBResolver.h, L0-core/include/db_cache_manager.h, L0-core/src/db_cache_manager.cpp |
+| Goal       | Implement background download to tguide.db.tmp, atomic file swap on restart/exit, and update notification |
+| Depends    | STEP-R5 |
+| Done when  | Database updates download to .tmp file, binary swap occurs on next restart, update notification is stored in DBCacheManager |
+
+### STEP-18 — Shadow Swap update UI (was Phase 3 STEP-18)
+| Field      | Value |
+|------------|-------|
+| Layer      | L2 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L2-Interface_Engine/src/UI_settings.cpp, L2-Interface_Engine/src/UI_Engine.cpp |
+| Goal       | Show "[ Update Ready — Restart to Apply ]" notification in main menu when shadow swap is pending; add update trigger in Settings |
 | Depends    | STEP-17 |
-| Done when  | Settings screen shows update frequency option, UI displays "[ Update Ready - Restart to Apply ]" when swap is pending, and user can change update frequency in settings
+| Done when  | UI shows update notification when swap is pending; Settings has "Check for Updates" and "Apply Update" options |
 
-### STEP-19 — Implement OPSEC connectivity modes (L0) (STRATEGIC-3)
+### STEP-MU — Fix manifest URL to use GitHub Releases (NEW)
 | Field      | Value |
 |------------|-------|
 | Layer      | L0 |
-| Priority   | HIGH |
+| Priority   | CRITICAL |
 | Status     | [ ] TODO |
-| Files      | L0-core/include/config_manager.h, L0-core/src/config_manager.cpp, L0-core/include/db_cache_manager.h, L0-core/src/db_cache_manager.cpp |
-| Goal       | Implement OPSEC modes (Stealth/Balanced/Aggressive) that modify connection behavior, timeout values, and update check frequency |
+| Files      | L0-core/src/DBResolver.cpp, .ai/security.md |
+| Goal       | Change manifest URL from raw.githubusercontent.com/main branch to a permanent GitHub Releases URL so the released binary forever points to a stable manifest location independent of repo changes |
 | Depends    | STEP-18 |
-| Done when  | Config manager stores OPSEC mode setting and db_cache_manager adjusts network behavior based on selected mode
+| Done when  | Manifest URL points to `https://github.com/voidoxin/Tguide/releases/latest/download/signed_manifest.json`; `main` branch URL is no longer in codebase |
 
-### STEP-P2 — Implement DNS-Only Connectivity Check (deferred from proposal review)
-| Field      | Value |
-|------------|-------|
-| Layer      | L0 |
-| Priority   | MEDIUM |
-| Status     | [ ] VISION |
-| Files      | L0-core/src/DBResolver.cpp, L0-core/include/DBResolver.h |
-| Goal       | Replace any port-based/ping connectivity probing with getaddrinfo() checks against well-known DNS resolver hostnames (dns.google, one.one.one.one, resolver.opendns.com). DNS queries handled by system resolver; no packets reach external servers. Called only immediately before fetchManifest(). |
-| Depends    | STEP-P1 |
-| Done when  | DBResolver::hasInternetAccess() uses getaddrinfo() only; no ICMP/HTTP probes to external hosts; function called only before manifest fetch, not at startup or in background context. |
-
-### STEP-20 — Implement randomized connection check (L0) (STRATEGIC-5)
-| Field      | Value |
-|------------|-------|
-| Layer      | L0 |
-| Priority   | HIGH |
-| Status     | [ ] TODO |
-| Files      | L0-core/include/db_cache_manager.h, L0-core/src/db_cache_manager.cpp |
-| Goal       | Implement randomized timing for database integrity checks to prevent pattern detection |
-| Depends    | STEP-19 |
-| Done when  | Database integrity checks occur at random intervals within configured bounds rather than fixed schedule
-
-### STEP-21 — Implement search index cache clearing on shadow swap (L1)
-| Field      | Value |
-|------------|-------|
-| Layer      | L1 |
-| Priority   | HIGH |
-| Status     | [ ] TODO |
-| Files      | L1-services/src/svc_tools.cpp |
-| Goal       | Clear search index when shadow swap occurs to prevent stale search results after database update |
-| Depends    | STEP-20 |
-| Done when  | svc_tools.cpp contains code that clears s_index during database swap operations
-
-### STEP-22 — Implement enhanced search algorithm (L1)
-| Field      | Value |
-|------------|-------|
-| Layer      | L1 |
-| Priority   | HIGH |
-| Status     | [ ] TODO |
-| Files      | L1-services/src/svc_tools.cpp, L1-services/includes/svc_tools.h |
-| Goal       | Implement search with fuzzy matching, Levenshtein distance, and partial word matching for better user experience |
-| Depends    | STEP-21 |
-| Done when  | Search returns results for typos, partial names, and related terms using improved matching algorithms
-
-## Phase 4 — User Data Screens
-### STEP-23 — Implement saved commands service (L1)
-| Field      | Value |
-|------------|-------|
-| Layer      | L1 |
-| Priority   | HIGH |
-| Status     | [ ] TODO |
-| Files      | L1-services/src/svc_savedCommands.cpp, L1-services/includes/svc_savedCommands.h |
-| Goal       | Implement service layer for CRUD operations on saved commands, bridging UI to UserDataManager persistence |
-| Depends    | STEP-22 |
-| Done when  | svc_savedCommands provides list, add, delete, and update functions that read/write via UserDataManager
-
-### STEP-24 — Implement saved commands UI screen (L2)
-| Field      | Value |
-|------------|-------|
-| Layer      | L2 |
-| Priority   | HIGH |
-| Status     | [ ] TODO |
-| Files      | L2-Interface_Engine/src/UI_savedCommands.cpp, L2-Interface_Engine/includes/UI_savedCommands.h |
-| Goal       | Implement saved commands screen with list view, select to fill placeholders, delete, and execute options |
-| Depends    | STEP-23 |
-| Done when  | User can browse saved commands, select one to fill placeholders, delete commands, and see command preview
-
-### STEP-25 — Implement saved scripts service (L1)
-| Field      | Value |
-|------------|-------|
-| Layer      | L1 |
-| Priority   | HIGH |
-| Status     | [ ] TODO |
-| Files      | L1-services/src/svc_savedScripts.cpp, L1-services/includes/svc_savedScripts.h |
-| Goal       | Implement service layer for CRUD operations on saved scripts, bridging UI to UserDataManager persistence |
-| Depends    | STEP-24 |
-| Done when  | svc_savedScripts provides list, add, delete, and update functions that read/write via UserDataManager
-
-### STEP-26 — Implement saved scripts UI screen (L2)
-| Field      | Value |
-|------------|-------|
-| Layer      | L2 |
-| Priority   | HIGH |
-| Status     | [ ] TODO |
-| Files      | L2-Interface_Engine/src/UI_savedScripts.cpp, L2-Interface_Engine/includes/UI_savedScripts.h |
-| Goal       | Implement saved scripts screen with list view, select to view, delete, and execute options |
-| Depends    | STEP-25 |
-| Done when  | User can browse saved scripts, select one to view details, delete scripts, and see script preview
-
-### STEP-27 — Implement favorites storage in UserDataManager (L0) (NEW-2)
-| Field      | Value |
-|------------|-------|
-| Layer      | L0 |
-| Priority   | MEDIUM |
-| Status     | [ ] TODO |
-| Files      | L0-core/include/UserDataManager.h, L0-core/src/UserDataManager.cpp |
-| Goal       | Add favorites set/vector to UserDataManager with load/save logic in favorites.json |
-| Depends    | STEP-26 |
-| Done when  | UserDataManager loads and saves a favorites list from favorites.json with add/remove/check functions
-
-### STEP-28 — Implement favorites service (L1) (NEW-2)
-| Field      | Value |
-|------------|-------|
-| Layer      | L1 |
-| Priority   | MEDIUM |
-| Status     | [ ] TODO |
-| Files      | L1-services/src/svc_tools.cpp, L1-services/includes/svc_tools.h |
-| Goal       | Add favorite toggle, list, and check functions to svc_tools service layer bridging UI to UserDataManager favorites |
-| Depends    | STEP-27 |
-| Done when  | svc_tools provides toggleFavorite(), isFavorite(), getFavorites() functions
-
-### STEP-29 — Implement favorites UI toggle and menu (L2) (NEW-2)
-| Field      | Value |
-|------------|-------|
-| Layer      | L2 |
-| Priority   | MEDIUM |
-| Status     | [ ] TODO |
-| Files      | L2-Interface_Engine/src/UI_tools.cpp, L2-Interface_Engine/includes/UI_tools.h, L2-Interface_Engine/src/UI_Engine.cpp |
-| Goal       | Add favorite toggle (star icon) to tool detail screen and a Favorites section in main menu |
-| Depends    | STEP-28 |
-| Done when  | User can favorite/unfavorite from tool detail and see a Favorites section in main menu listing favorited tools
-
-### STEP-30 — Implement recently viewed history in UserDataManager (L0) (NEW-3)
-| Field      | Value |
-|------------|-------|
-| Layer      | L0 |
-| Priority   | MEDIUM |
-| Status     | [ ] TODO |
-| Files      | L0-core/include/UserDataManager.h, L0-core/src/UserDataManager.cpp |
-| Goal       | Add recently viewed list (max 10) to UserDataManager with load/save logic in history.json |
-| Depends    | STEP-29 |
-| Done when  | UserDataManager tracks last 10 viewed tools with tool id and timestamp, persisted to history.json
-
-### STEP-31 — Implement recently viewed history service (L1) (NEW-3)
-| Field      | Value |
-|------------|-------|
-| Layer      | L1 |
-| Priority   | MEDIUM |
-| Status     | [ ] TODO |
-| Files      | L1-services/src/svc_tools.cpp, L1-services/includes/svc_tools.h |
-| Goal       | Add view tracking functions to svc_tools: recordView(toolId) and getRecentViews() bridging UI to UserDataManager |
-| Depends    | STEP-30 |
-| Done when  | svc_tools records each tool view and provides the recent list sorted by most recent
-
-### STEP-32 — Implement recently viewed bar in main menu (L2) (NEW-3)
-| Field      | Value |
-|------------|-------|
-| Layer      | L2 |
-| Priority   | MEDIUM |
-| Status     | [ ] TODO |
-| Files      | L2-Interface_Engine/src/UI_Engine.cpp |
-| Goal       | Display a Recently Viewed bar in main menu showing last 5 viewed tools as quick-select options |
-| Depends    | STEP-31 |
-| Done when  | Main menu shows "Recently Viewed" section with up to 5 tool names that can be selected directly
-
-## Phase 5 — Script Generator & Clipboard
-### STEP-33 — Implement template selection and placeholder fill logic (L1)
-| Field      | Value |
-|------------|-------|
-| Layer      | L1 |
-| Priority   | HIGH |
-| Status     | [ ] TODO |
-| Files      | L1-services/src/svc_generator.cpp, L1-services/includes/svc_generator.h |
-| Goal       | Implement multi-template selection, placeholder detection, and interactive fill logic for script generation |
-| Depends    | STEP-32 |
-| Done when  | svc_generator can select a template, detect all placeholders, prompt for values, and produce a filled command string
-
-### STEP-34 — Implement generator wizard flow UI (L2)
-| Field      | Value |
-|------------|-------|
-| Layer      | L2 |
-| Priority   | HIGH |
-| Status     | [ ] TODO |
-| Files      | L2-Interface_Engine/src/UI_generator.cpp, L2-Interface_Engine/includes/UI_generator.h |
-| Goal       | Implement step-by-step wizard UI: template selection, placeholder prompting, and command preview |
-| Depends    | STEP-33 |
-| Done when  | User can navigate through generator wizard: select template, fill each placeholder, and preview command
-
-### STEP-35 — Implement .sh file generation and write logic (L1)
-| Field      | Value |
-|------------|-------|
-| Layer      | L1 |
-| Priority   | HIGH |
-| Status     | [ ] TODO |
-| Files      | L1-services/src/svc_generator.cpp, L1-services/includes/svc_generator.h |
-| Goal       | Implement file write logic for .sh script output: shebang, command body, and save to user scripts directory |
-| Depends    | STEP-34 |
-| Done when  | svc_generator can write a complete .sh file with proper shebang and command body to the saved scripts path
-
-### STEP-36 — Implement script save confirmation screen (L2)
-| Field      | Value |
-|------------|-------|
-| Layer      | L2 |
-| Priority   | HIGH |
-| Status     | [ ] TODO |
-| Files      | L2-Interface_Engine/src/UI_generator.cpp |
-| Goal       | Implement name prompt, save confirmation with existing-name warning, and success notification after script write |
-| Depends    | STEP-35 |
-| Done when  | User can name the script, confirm overwrite if name exists, and see success confirmation after save
-
-### STEP-37 — Implement live preview during build service (L1) (STRATEGIC-8)
-| Field      | Value |
-|------------|-------|
-| Layer      | L1 |
-| Priority   | MEDIUM |
-| Status     | [ ] TODO |
-| Files      | L1-services/src/svc_generator.cpp, L1-services/includes/svc_generator.h |
-| Goal       | Implement live command preview generation: build command string incrementally as placeholders are filled |
-| Depends    | STEP-36 |
-| Done when  | svc_generator provides a getPreview() function that returns the current command string state during filling
-
-### STEP-38 — Implement live preview pane in generator UI (L2) (STRATEGIC-8)
-| Field      | Value |
-|------------|-------|
-| Layer      | L2 |
-| Priority   | MEDIUM |
-| Status     | [ ] TODO |
-| Files      | L2-Interface_Engine/src/UI_generator.cpp |
-| Goal       | Display a live preview pane that updates in real-time as the user fills placeholders in the generator wizard |
-| Depends    | STEP-37 |
-| Done when  | Generator wizard shows a live preview section that updates after each placeholder is filled
-
-### STEP-39 — Implement copy to clipboard service (L1) (NEW-4)
-| Field      | Value |
-|------------|-------|
-| Layer      | L1 |
-| Priority   | MEDIUM |
-| Status     | [ ] TODO |
-| Files      | L1-services/src/svc_clipboard.cpp, L1-services/includes/svc_clipboard.h |
-| Goal       | Implement cross-platform clipboard service with xclip (Linux), pbcopy (macOS), and clip.exe (Windows) fallback |
-| Depends    | STEP-38 |
-| Done when  | svc_clipboard provides copyToClipboard(text) that works on all target platforms with automatic detection
-
-### STEP-40 — Implement copy to clipboard UI options (L2) (NEW-4)
-| Field      | Value |
-|------------|-------|
-| Layer      | L2 |
-| Priority   | MEDIUM |
-| Status     | [ ] TODO |
-| Files      | L2-Interface_Engine/src/UI_tools.cpp, L2-Interface_Engine/src/UI_generator.cpp, L2-Interface_Engine/src/UI_savedCommands.cpp |
-| Goal       | Add [C] copy option to tool detail screen, generator preview, and saved commands browse screen |
-| Depends    | STEP-39 |
-| Done when  | User can press [C] to copy command/script text to clipboard from tool detail, generator, and saved commands screens
-
-## Phase 6 — Community Extensions
-### STEP-41 — Implement extensions folder scanning (L0) (STRATEGIC-2)
-| Field      | Value |
-|------------|-------|
-| Layer      | L0 |
-| Priority   | MEDIUM |
-| Status     | [ ] TODO |
-| Files      | L0-core/include/path_resolver.h, L0-core/include/config_manager.h, L0-core/src/config_manager.cpp |
-| Goal       | Add extensions directory path to PathResolver and implement file scanning for .json extension definitions |
-| Depends    | STEP-40 |
-| Done when  | Config manager provides an extensions path and a scan function that enumerates available extension files
-
-### STEP-42 — Implement runtime extension merge with priority (L1) (STRATEGIC-2)
-| Field      | Value |
-|------------|-------|
-| Layer      | L1 |
-| Priority   | MEDIUM |
-| Status     | [ ] TODO |
-| Files      | L1-services/src/svc_tools.cpp, L1-services/includes/svc_tools.h |
-| Goal       | Implement runtime merge of extension data that overrides built-in database data when IDs conflict |
-| Depends    | STEP-41 |
-| Done when  | Extension tools appear in browse/search results and override built-in tools with the same ID
-
-## Phase 7 — Filters
-### STEP-43 — Implement flags filter service (L1) (FUTURE-2)
-| Field      | Value |
-|------------|-------|
-| Layer      | L1 |
-| Priority   | MEDIUM |
-| Status     | [ ] TODO |
-| Files      | L1-services/src/svc_tools.cpp, L1-services/includes/svc_tools.h |
-| Goal       | Implement filterByFlags() function that filters tools by specific flag presence in tool detail screen |
-| Depends    | STEP-42 |
-| Done when  | svc_tools provides a getFlagsForTool() and filterToolsByFlag() for flag-based filtering
-
-### STEP-44 — Implement flags filter UI (L2) (FUTURE-2)
-| Field      | Value |
-|------------|-------|
-| Layer      | L2 |
-| Priority   | MEDIUM |
-| Status     | [ ] TODO |
-| Files      | L2-Interface_Engine/src/UI_tools.cpp, L2-Interface_Engine/includes/UI_tools.h |
-| Goal       | Add [C] flags filter option to tool detail screen showing available flags with selectable filter |
-| Depends    | STEP-43 |
-| Done when  | Tool detail screen shows [C] flags option and user can select a flag to filter tools by it
-
-### STEP-45 — Implement templates filter service (L1) (FUTURE-3)
-| Field      | Value |
-|------------|-------|
-| Layer      | L1 |
-| Priority   | MEDIUM |
-| Status     | [ ] TODO |
-| Files      | L1-services/src/svc_tools.cpp, L1-services/includes/svc_tools.h |
-| Goal       | Implement filterByTemplate() function that filters tools that have specific template types |
-| Depends    | STEP-44 |
-| Done when  | svc_tools provides a getTemplatesForTool() and filterToolsByTemplate() for template-based filtering
-
-### STEP-46 — Implement templates filter UI (L2) (FUTURE-3)
-| Field      | Value |
-|------------|-------|
-| Layer      | L2 |
-| Priority   | MEDIUM |
-| Status     | [ ] TODO |
-| Files      | L2-Interface_Engine/src/UI_tools.cpp, L2-Interface_Engine/includes/UI_tools.h |
-| Goal       | Add [E] templates filter option to tool detail screen showing available templates with selectable filter |
-| Depends    | STEP-45 |
-| Done when  | Tool detail screen shows [E] templates option and user can select a template to filter tools by it
-
-### STEP-47 — Implement vulnerability filter service (L1) (FUTURE-4)
-| Field      | Value |
-|------------|-------|
-| Layer      | L1 |
-| Priority   | MEDIUM |
-| Status     | [ ] TODO |
-| Files      | L1-services/src/svc_tools.cpp, L1-services/includes/svc_tools.h |
-| Goal       | Implement filterByVulnerability() function that filters tools related to specific vulnerability types |
-| Depends    | STEP-46 |
-| Done when  | svc_tools provides vulnerability-based filtering for tools in the browse/search results
-
-### STEP-48 — Implement vulnerability filter UI (L2) (FUTURE-4)
-| Field      | Value |
-|------------|-------|
-| Layer      | L2 |
-| Priority   | MEDIUM |
-| Status     | [ ] TODO |
-| Files      | L2-Interface_Engine/src/UI_tools.cpp, L2-Interface_Engine/includes/UI_tools.h |
-| Goal       | Add vulnerability filter option to tools browse screen with vulnerability type selection |
-| Depends    | STEP-47 |
-| Done when  | Browse screen includes vulnerability filter option and results update when vulnerability type is selected
-
-### STEP-49 — Implement module filter service (L1) (FUTURE-5)
-| Field      | Value |
-|------------|-------|
-| Layer      | L1 |
-| Priority   | MEDIUM |
-| Status     | [ ] TODO |
-| Files      | L1-services/src/svc_tools.cpp, L1-services/includes/svc_tools.h |
-| Goal       | Implement filterByModule() function that filters tools related to specific modules |
-| Depends    | STEP-48 |
-| Done when  | svc_tools provides module-based filtering for tools in the browse/search results
-
-### STEP-50 — Implement module filter UI (L2) (FUTURE-5)
-| Field      | Value |
-|------------|-------|
-| Layer      | L2 |
-| Priority   | MEDIUM |
-| Status     | [ ] TODO |
-| Files      | L2-Interface_Engine/src/UI_tools.cpp, L2-Interface_Engine/includes/UI_tools.h |
-| Goal       | Add module filter option to tools browse screen with module type selection |
-| Depends    | STEP-49 |
-| Done when  | Browse screen includes module filter option and results update when module type is selected
-
-## Phase 8 — New Features
-### STEP-51 — Implement database stats service (L1) (NEW-5)
-| Field      | Value |
-|------------|-------|
-| Layer      | L1 |
-| Priority   | LOW |
-| Status     | [ ] TODO |
-| Files      | L1-services/src/svc_stats.cpp, L1-services/includes/svc_stats.h |
-| Goal       | Implement service to aggregate database statistics: total tools, per-category counts, last updated timestamp |
-| Depends    | STEP-50 |
-| Done when  | svc_stats provides getStats() returning tool count, category breakdown, and database metadata
-
-### STEP-52 — Implement database stats UI screen (L2) (NEW-5)
-| Field      | Value |
-|------------|-------|
-| Layer      | L2 |
-| Priority   | LOW |
-| Status     | [ ] TODO |
-| Files      | L2-Interface_Engine/src/UI_stats.cpp, L2-Interface_Engine/includes/UI_stats.h, L2-Interface_Engine/src/UI_Engine.cpp |
-| Goal       | Implement stats screen accessible from main menu showing database statistics with formatted output |
-| Depends    | STEP-51 |
-| Done when  | Main menu has a Stats option that displays tool counts, category breakdown, and database info
-
-### STEP-53 — Add Cloud Security tool modules to database (L0) (STRATEGIC-6)
-| Field      | Value |
-|------------|-------|
-| Layer      | L0 |
-| Priority   | MEDIUM |
-| Status     | [ ] TODO |
-| Files      | data_adder.cpp, L0-core/src/DatabaseManager.cpp, L0-core/include/DatabaseManager.h |
-| Goal       | Add Cloud Security tool entries (AWS, GCP, Azure security tools) to database schema and seed data |
-| Depends    | STEP-52 |
-| Done when  | Database includes Cloud Security category with relevant tools, descriptions, flags, and templates
-
-### STEP-54 — Add AI Hacking tool modules to database (L0) (STRATEGIC-7)
-| Field      | Value |
-|------------|-------|
-| Layer      | L0 |
-| Priority   | MEDIUM |
-| Status     | [ ] TODO |
-| Files      | data_adder.cpp, L0-core/src/DatabaseManager.cpp, L0-core/include/DatabaseManager.h |
-| Goal       | Add AI Hacking tool entries (prompt injection, model security, adversarial ML tools) to database |
-| Depends    | STEP-53 |
-| Done when  | Database includes AI Hacking category with relevant tools, descriptions, flags, and templates
-
-### STEP-55 — Implement run script from inside tguide service (L1) (FUTURE-6)
-| Field      | Value |
-|------------|-------|
-| Layer      | L1 |
-| Priority   | LOW |
-| Status     | [ ] TODO |
-| Files      | L1-services/src/svc_generator.cpp, L1-services/includes/svc_generator.h |
-| Goal       | Implement executeScript(path) function that runs a saved .sh script via subprocess and captures output |
-| Depends    | STEP-54 |
-| Done when  | svc_generator provides executeScript() that runs a script, captures stdout/stderr, and returns exit code
-
-### STEP-56 — Implement run script UI (L2) (FUTURE-6)
-| Field      | Value |
-|------------|-------|
-| Layer      | L2 |
-| Priority   | LOW |
-| Status     | [ ] TODO |
-| Files      | L2-Interface_Engine/src/UI_generator.cpp, L2-Interface_Engine/src/UI_savedScripts.cpp |
-| Goal       | Add [R] run option to saved scripts screen and generator confirmation screen to execute scripts inline |
-| Depends    | STEP-55 |
-| Done when  | User can run a saved script from UI, see live output, and return to menu after execution completes
-
-### STEP-57 — Implement script generator pre-loaded from tool detail service (L1) (FUTURE-7)
-| Field      | Value |
-|------------|-------|
-| Layer      | L1 |
-| Priority   | LOW |
-| Status     | [ ] TODO |
-| Files      | L1-services/src/svc_tools.cpp, L1-services/src/svc_generator.cpp, L1-services/includes/svc_generator.h |
-| Goal       | Implement preloadTemplate(toolId) function that passes selected tool's template directly to generator |
-| Depends    | STEP-56 |
-| Done when  | svc_generator accepts a pre-selected template from svc_tools and initializes wizard with it
-
-### STEP-58 — Implement script generator pre-loaded from tool detail UI (L2) (FUTURE-7)
-| Field      | Value |
-|------------|-------|
-| Layer      | L2 |
-| Priority   | LOW |
-| Status     | [ ] TODO |
-| Files      | L2-Interface_Engine/src/UI_tools.cpp, L2-Interface_Engine/src/UI_generator.cpp |
-| Goal       | Add [G] generate script option to tool detail screen that opens generator with the tool's template pre-loaded |
-| Depends    | STEP-57 |
-| Done when  | Tool detail screen shows [G] option and selecting it opens generator wizard with template already selected
-
-## Phase 9 — Settings & Polish
-### STEP-59 — Implement color toggle in settings screen (L2)
-| Field      | Value |
-|------------|-------|
-| Layer      | L2 |
-| Priority   | MEDIUM |
-| Status     | [ ] TODO |
-| Files      | L2-Interface_Engine/src/UI_settings.cpp, L2-Interface_Engine/includes/UI_settings.h, L2-Interface_Engine/includes/UI_colors.h |
-| Goal       | Add color enable/disable toggle to settings screen that persists to config and immediately updates UI |
-| Depends    | STEP-58 |
-| Done when  | Settings screen has color toggle, changing it persists to config, and UI updates colors immediately
-
-### STEP-60 — Implement key bindings configuration in settings (L2)
-| Field      | Value |
-|------------|-------|
-| Layer      | L2 |
-| Priority   | LOW |
-| Status     | [ ] TODO |
-| Files      | L2-Interface_Engine/src/UI_settings.cpp, L2-Interface_Engine/includes/UI_settings.h, L0-core/include/config_manager.h |
-| Goal       | Add customizable key bindings for common actions (back, quit, copy, generate, run) in settings screen |
-| Depends    | STEP-59 |
-| Done when  | Settings screen shows key binding list, user can remap keys, and changes persist to config
-
-### STEP-61 — Remove dev-only code before release
+## Release Phase R4 — Pre-Release & Packaging
+### STEP-61 — Remove dev-only code before release (was Phase 9 STEP-61)
 | Field      | Value |
 |------------|-------|
 | Layer      | CLEANUP |
 | Priority   | CRITICAL |
 | Status     | [ ] TODO |
-| Files      | data_adder.cpp, L0-core/src/DatabaseManager.cpp, L0-core/include/DatabaseManager.h, CoreRunner.cpp |
-| Goal       | Remove data_adder.cpp from build, remove BackupManager and add/del methods from DatabaseManager, and remove dev-only bootstrap code from CoreRunner |
-| Depends    | STEP-60 |
-| Done when  | data_adder.cpp is removed from CMakeLists.txt, BackupManager is removed, and no dev-only code remains in release build
+| Files      | data_adder.cpp, CMakeLists.txt, CoreRunner.cpp, L0-core/src/DatabaseManager.cpp |
+| Goal       | Remove data_adder.cpp from build system, remove any remaining dev-only bootstrap code from CoreRunner, add release build type configuration |
+| Depends    | STEP-MU |
+| Done when  | data_adder.cpp is removed from CMakeLists.txt; `cmake --build build --config Release` produces a clean build with no dev code |
 
-## Phase 10 — Pre-Release & Packaging
-### STEP-62 — Cross-platform testing and validation
+### STEP-62 — Full QA testing (was Phase 10 STEP-62)
 | Field      | Value |
 |------------|-------|
 | Layer      | QA |
 | Priority   | CRITICAL |
 | Status     | [ ] TODO |
 | Files      | All |
-| Goal       | Test tguide on all target platforms (Linux, Termux, Windows, macOS) and fix platform-specific issues |
+| Goal       | Full regression test suite: all existing doctest tests pass, manual smoke test on all supported platforms, bootstrap/update/rollback scenarios verified, edge cases documented |
 | Depends    | STEP-61 |
-| Done when  | Tguide compiles and runs without errors on Linux, Termux, Windows, and macOS
+| Done when  | All tests pass on all platforms; QA report generated; no known P0/P1 bugs remain |
 
-### STEP-63 — Create AUR package for Arch Linux (FUTURE-8)
+### STEP-PK1 — AUR package for Arch Linux
 | Field      | Value |
 |------------|-------|
 | Layer      | PACKAGING |
-| Priority   | MEDIUM |
+| Priority   | HIGH |
 | Status     | [ ] TODO |
-| Files      | PKGBUILD (new), .SRCINFO (new) |
-| Goal       | Create AUR PKGBUILD and .SRCINFO for Arch Linux distribution with proper dependencies and install paths |
+| Files      | PKGBUILD (NEW), .SRCINFO (NEW) |
+| Goal       | Create AUR PKGBUILD with proper dependencies (libcurl, sqlite), install paths (/usr/share/tguide/tguide.db), and release build |
 | Depends    | STEP-62 |
-| Done when  | Tguide is installable via `yay -S tguide` or similar AUR helper
+| Done when  | `yay -S tguide` installs and runs correctly on Arch Linux |
 
-### STEP-64 — Create Homebrew formula for macOS (FUTURE-8)
+### STEP-PK2 — Homebrew formula for macOS
 | Field      | Value |
 |------------|-------|
 | Layer      | PACKAGING |
-| Priority   | MEDIUM |
+| Priority   | HIGH |
 | Status     | [ ] TODO |
-| Files      | tguide.rb (new formula) |
-| Goal       | Create Homebrew formula for macOS distribution with proper dependencies and install paths |
+| Files      | Formula/tguide.rb (NEW) |
+| Goal       | Create Homebrew formula with proper dependencies, macOS path support, and install targets |
 | Depends    | STEP-62 |
-| Done when  | Tguide is installable via `brew install tguide`
+| Done when  | `brew install tguide` installs and runs correctly on macOS |
 
-### STEP-65 — Create Termux package (FUTURE-8)
+### STEP-PK3 — .deb package for Debian/Kali/Ubuntu
 | Field      | Value |
 |------------|-------|
 | Layer      | PACKAGING |
-| Priority   | MEDIUM |
+| Priority   | HIGH |
 | Status     | [ ] TODO |
-| Files      | build-package.sh (new), Termux build scripts |
-| Goal       | Create Termux package build script with proper compilation flags for Android environment |
+| Files      | debian/ (NEW directory: control, rules, changelog, compat, install) |
+| Goal       | Create .deb packaging with proper dependencies, seed DB bundling, and system-wide install paths |
 | Depends    | STEP-62 |
-| Done when  | Tguide compiles and runs in Termux environment on Android
+| Done when  | `dpkg-buildpackage` produces a working .deb; `apt install ./tguide.deb` works on Debian/Kali/Ubuntu |
 
-### STEP-66 — Create .deb package for Debian/Ubuntu (FUTURE-8)
+### STEP-PK4 — Windows installer (ZIP/NSIS)
 | Field      | Value |
 |------------|-------|
 | Layer      | PACKAGING |
-| Priority   | MEDIUM |
+| Priority   | HIGH |
 | Status     | [ ] TODO |
-| Files      | debian/ (new directory with control, rules, changelog, compat) |
-| Goal       | Create .deb packaging structure for Debian-based Linux distributions |
+| Files      | build/windows/installer.nsi (NEW), CMakeLists.txt |
+| Goal       | Create Windows ZIP archive and NSIS installer with bundled DLLs and seed DB |
 | Depends    | STEP-62 |
-| Done when  | `dpkg-buildpackage` produces a working .deb package
+| Done when  | Windows installer produces working tguide.exe with colors, paths, and seed DB |
 
-## Future Vision
-### STRATEGIC-1 — AI Assistant (llama.cpp integration)
+### STEP-PK5 — Release v1.0.0
 | Field      | Value |
 |------------|-------|
-| Layer      | Future Vision |
-| Priority   | LOW |
-| Status     | [ ] VISION |
-| Goal       | Integrate llama.cpp for local AI-powered assistance: natural language querying of tools, intelligent command suggestions, and contextual help |
-| Dependencies | llama.cpp library, significant refactoring for async I/O |
-| Rationale   | AI assistant requires architectural changes beyond current scope and would benefit from having a stable, feature-complete application first |
+| Layer      | RELEASE |
+| Priority   | CRITICAL |
+| Status     | [ ] TODO |
+| Files      | GitHub Releases, CHANGELOG.md (NEW) |
+| Goal       | Tag v1.0.0, create GitHub Release with all artifacts (Linux binary, .deb, macOS Homebrew, Windows ZIP, AUR commit), write changelog, announce |
+| Depends    | STEP-PK1, STEP-PK2, STEP-PK3, STEP-PK4 |
+| Done when  | GitHub Release v1.0.0 is published with all platform artifacts; CHANGELOG.md documents all v1.0 features and changes |
+
+## Future — v2.0 (Post-Release)
+
+These features are explicitly cut from v1.0 scope and moved to a future v2.0 release:
+
+- **OPSEC modes** (Stealth/Balanced/Aggressive connectivity) — was STEP-19, STEP-20
+- **DNS-Only Connectivity Check** — was STEP-P2
+- **Randomized timing** — was STEP-20
+- **Favorites system** — was STEP-27, STEP-28, STEP-29
+- **Recently viewed history** — was STEP-30, STEP-31, STEP-32
+- **Script generator wizard** (beyond basic template fill from STEP-14) — was Phase 5
+- **Clipboard integration** — was STEP-39, STEP-40
+- **Extension system** — was Phase 6
+- **Filters system** (flags/templates/vulnerability/module filters) — was Phase 7
+- **Database stats screen** — was STEP-51, STEP-52
+- **Cloud Security tools** — was STEP-53
+- **AI Hacking tools** — was STEP-54
+- **Run script inside tguide** — was STEP-55, STEP-56
+- **Generator pre-loaded from tool detail** — was STEP-57, STEP-58
+- **Key bindings configuration** — was STEP-60
+- **Termux package** — was STEP-65
+- **AI Assistant (llama.cpp)** — STRATEGIC-1
+- **VISION items** (STEP-P2)
 
 ## Step Index Table
 | Step | Phase | Layer | Goal |
@@ -982,12 +648,13 @@ L0-core → L1-services → L2-Interface_Engine
 | STEP-A9 | Phase 0 | BOOTSTRAP (Architecture) | Fix A9 architectural violation (CoreRunner over-instantiation) |
 | STEP-A03 | Phase 0 | L0 (Security) | Fix libcurl SSL/TLS verification in DBResolver.cpp (A-03) |
 | STEP-CP1 | Phase 0 | CROSS-PLATFORM | Implement macOS cross-platform portability fixes |
+| STEP-A06 | Phase 0 | TEST | Add minimum viable test infrastructure with doctest |
 | STEP-06 | Phase 1 | L0+L1+L2 | Fix error handling contract implementation |
-| STEP-07 | Phase 1 | L0 | Update database schema for short_desc and categories table (DONE) |
+| STEP-07 | Phase 1 | L0 | Update database schema for short_desc and categories table |
 | STEP-08 | Phase 1 | L0 | Implement UserDataManager for saved commands and scripts |
 | STEP-09 | Phase 1 | L0 | Add I18n / Localization Framework foundation (NEW-1) |
-| STEP-10 | Phase 1 | L0 | Fix path resolver for Linux user-space only (DONE) |
-| STEP-P1 | Phase 1 | L0 | Implement Dynamic Version Manifest (replaces STEP-11) (DONE) |
+| STEP-10 | Phase 1 | L0 | Fix path resolver for Linux user-space only (no root required) |
+| STEP-P1 | Phase 1 | L0 | Implement Dynamic Version Manifest (replaces STEP-11) |
 | STEP-P4 | Phase 1 | L0 + L2 | Implement Database Rollback & Recovery System |
 | STEP-P3 | Phase 1 | DOCUMENTATION | Document GitHub URL threat model (account compromise) |
 | STEP-12 | Phase 2 | L1+L2 | Implement tools entry screen and category browser |
@@ -995,54 +662,23 @@ L0-core → L1-services → L2-Interface_Engine
 | STEP-14 | Phase 2 | L1+L2 | Implement template fill + placeholder prompting + save command |
 | STEP-15 | Phase 2 | L1+L2 | Implement metasploit vulnerabilities sub-menu |
 | STEP-16 | Phase 2 | L1+L2 | Implement recon-ng modules sub-menu |
-| STEP-17 | Phase 3 | L0 | Implement Shadow Swap update system infrastructure (STRATEGIC-4) |
-| STEP-18 | Phase 3 | L2 | Implement Shadow Swap update settings UI (STRATEGIC-4) |
-| STEP-19 | Phase 3 | L0 | Implement OPSEC connectivity modes (STRATEGIC-3) |
-| STEP-P2 | Phase 3 | L0 | Implement DNS-Only Connectivity Check (deferred) |
-| STEP-20 | Phase 3 | L0 | Implement randomized connection check (STRATEGIC-5) |
-| STEP-21 | Phase 3 | L1 | Implement search index cache clearing on shadow swap |
-| STEP-22 | Phase 3 | L1 | Implement enhanced search algorithm |
-| STEP-23 | Phase 4 | L1 | Implement saved commands service |
-| STEP-24 | Phase 4 | L2 | Implement saved commands UI screen |
-| STEP-25 | Phase 4 | L1 | Implement saved scripts service |
-| STEP-26 | Phase 4 | L2 | Implement saved scripts UI screen |
-| STEP-27 | Phase 4 | L0 | Implement favorites storage in UserDataManager (NEW-2) |
-| STEP-28 | Phase 4 | L1 | Implement favorites service (NEW-2) |
-| STEP-29 | Phase 4 | L2 | Implement favorites UI toggle and menu (NEW-2) |
-| STEP-30 | Phase 4 | L0 | Implement recently viewed history in UserDataManager (NEW-3) |
-| STEP-31 | Phase 4 | L1 | Implement recently viewed history service (NEW-3) |
-| STEP-32 | Phase 4 | L2 | Implement recently viewed bar in main menu (NEW-3) |
-| STEP-33 | Phase 5 | L1 | Implement template selection and placeholder fill logic |
-| STEP-34 | Phase 5 | L2 | Implement generator wizard flow UI |
-| STEP-35 | Phase 5 | L1 | Implement .sh file generation and write logic |
-| STEP-36 | Phase 5 | L2 | Implement script save confirmation screen |
-| STEP-37 | Phase 5 | L1 | Implement live preview during build service (STRATEGIC-8) |
-| STEP-38 | Phase 5 | L2 | Implement live preview pane in generator UI (STRATEGIC-8) |
-| STEP-39 | Phase 5 | L1 | Implement copy to clipboard service (NEW-4) |
-| STEP-40 | Phase 5 | L2 | Implement copy to clipboard UI options (NEW-4) |
-| STEP-41 | Phase 6 | L0 | Implement extensions folder scanning (STRATEGIC-2) |
-| STEP-42 | Phase 6 | L1 | Implement runtime extension merge with priority (STRATEGIC-2) |
-| STEP-43 | Phase 7 | L1 | Implement flags filter service (FUTURE-2) |
-| STEP-44 | Phase 7 | L2 | Implement flags filter UI (FUTURE-2) |
-| STEP-45 | Phase 7 | L1 | Implement templates filter service (FUTURE-3) |
-| STEP-46 | Phase 7 | L2 | Implement templates filter UI (FUTURE-3) |
-| STEP-47 | Phase 7 | L1 | Implement vulnerability filter service (FUTURE-4) |
-| STEP-48 | Phase 7 | L2 | Implement vulnerability filter UI (FUTURE-4) |
-| STEP-49 | Phase 7 | L1 | Implement module filter service (FUTURE-5) |
-| STEP-50 | Phase 7 | L2 | Implement module filter UI (FUTURE-5) |
-| STEP-51 | Phase 8 | L1 | Implement database stats service (NEW-5) |
-| STEP-52 | Phase 8 | L2 | Implement database stats UI screen (NEW-5) |
-| STEP-53 | Phase 8 | L0 | Add Cloud Security tool modules to database (STRATEGIC-6) |
-| STEP-54 | Phase 8 | L0 | Add AI Hacking tool modules to database (STRATEGIC-7) |
-| STEP-55 | Phase 8 | L1 | Implement run script from inside tguide service (FUTURE-6) |
-| STEP-56 | Phase 8 | L2 | Implement run script UI (FUTURE-6) |
-| STEP-57 | Phase 8 | L1 | Implement script generator pre-loaded from tool detail service (FUTURE-7) |
-| STEP-58 | Phase 8 | L2 | Implement script generator pre-loaded from tool detail UI (FUTURE-7) |
-| STEP-59 | Phase 9 | L2 | Implement color toggle in settings screen |
-| STEP-60 | Phase 9 | L2 | Implement key bindings configuration in settings |
-| STEP-61 | Phase 9 | CLEANUP | Remove dev-only code before release |
-| STEP-62 | Phase 10 | QA | Cross-platform testing and validation |
-| STEP-63 | Phase 10 | PACKAGING | Create AUR package for Arch Linux (FUTURE-8) |
-| STEP-64 | Phase 10 | PACKAGING | Create Homebrew formula for macOS (FUTURE-8) |
-| STEP-65 | Phase 10 | PACKAGING | Create Termux package (FUTURE-8) |
-| STEP-66 | Phase 10 | PACKAGING | Create .deb package for Debian/Ubuntu (FUTURE-8) |
+| STEP-DB | Release R0 | TOOLING | Professional Python database builder (replaces data_adder.cpp) |
+| STEP-B1 | Release R1 | L0 | Fix database bootstrap (no internet on first boot) |
+| STEP-B2 | Release R1 | L0 | Cross-platform path resolution |
+| STEP-B3 | Release R1 | CROSS-PLATFORM | Windows support |
+| STEP-CP2 | Release R1 | QA | Cross-platform validation testing |
+| STEP-R1 | Release R2 | L1 | Implement enhanced search algorithm |
+| STEP-R2 | Release R2 | L1+L2 | Implement saved commands screen (was STEP-23+24) |
+| STEP-R3 | Release R2 | L1+L2 | Implement saved scripts screen (was STEP-25+26) |
+| STEP-R4 | Release R2 | L2 | Complete settings screen (color toggle + DB management) |
+| STEP-R5 | Release R2 | CLEANUP | Remove all "coming soon" stubs from codebase |
+| STEP-17 | Release R3 | L0 | Shadow Swap update system (was Phase 3 STEP-17) |
+| STEP-18 | Release R3 | L2 | Shadow Swap update UI (was Phase 3 STEP-18) |
+| STEP-MU | Release R3 | L0 | Fix manifest URL to use GitHub Releases |
+| STEP-61 | Release R4 | CLEANUP | Remove dev-only code before release (was Phase 9 STEP-61) |
+| STEP-62 | Release R4 | QA | Full QA testing (was Phase 10 STEP-62) |
+| STEP-PK1 | Release R4 | PACKAGING | AUR package for Arch Linux |
+| STEP-PK2 | Release R4 | PACKAGING | Homebrew formula for macOS |
+| STEP-PK3 | Release R4 | PACKAGING | .deb package for Debian/Kali/Ubuntu |
+| STEP-PK4 | Release R4 | PACKAGING | Windows installer (ZIP/NSIS) |
+| STEP-PK5 | Release R4 | RELEASE | Release v1.0.0 |
