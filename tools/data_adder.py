@@ -22,10 +22,14 @@ Usage:
 import argparse
 import hashlib
 import json
+import datetime
 import os
+import shutil
 import sqlite3
+import tempfile
 import sys
 import textwrap
+from schema import create_tables
 
 
 # Table name whitelist — prevents SQL injection via f-string table names
@@ -516,6 +520,126 @@ def cmd_manifest(db_path, args):
 # Interactive Mode
 # ──────────────────────────────────────────────
 
+
+# ──────────────────────────────────────────────
+# Reset
+# ──────────────────────────────────────────────
+
+def cmd_reset(db_path, force=False):
+    """Archive the current database and create a fresh empty one.
+
+    Creates a temporary fresh DB first, then atomically swaps it in.
+    This ensures the old DB is never deleted if creation of the new DB fails.
+
+    Moves archived DB to: <db_dir>/old_data/tguide_<timestamp>.db
+    Also archives any .bak file if present.
+
+    Args:
+        db_path: Path to existing SQLite database.
+        force: If True, skip confirmation prompt (interactive mode already
+               confirms before calling). When False and called from CLI,
+               prompts for confirmation.
+    """
+    if not force:
+        print("WARNING: This will archive the current database and create a fresh empty one.")
+        print("Archived databases in old_data/ are never deleted automatically.")
+        try:
+            resp = input("Are you sure? [y/N] ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return 1
+        if resp != "y" and resp != "yes":
+            _info("Reset cancelled.")
+            return 1
+
+    if not os.path.isfile(db_path):
+        _err(f"Database not found: {db_path}")
+        return 1
+
+    db_dir = os.path.dirname(os.path.abspath(db_path))
+    ts = datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    db_name = os.path.basename(db_path)
+    base_name, ext = os.path.splitext(db_name)
+
+    # ── Step 1: Create fresh DB in temp location ──
+    tmp_fd, tmp_path = tempfile.mkstemp(suffix=ext, prefix=f"{base_name}_fresh_")
+    os.close(tmp_fd)
+    try:
+        conn = sqlite3.connect(tmp_path)
+        conn.execute("PRAGMA foreign_keys = ON;")
+        cursor = conn.cursor()
+        create_tables(cursor)
+        conn.commit()
+        conn.close()
+    except sqlite3.Error as e:
+        _err(f"Failed to create fresh database: {e}")
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        return 1
+
+    # ── Step 2: Create archive directory ──
+    old_dir = os.path.join(db_dir, "old_data")
+    try:
+        os.makedirs(old_dir, exist_ok=True)
+    except OSError as e:
+        _err(f"Failed to create archive directory '{old_dir}': {e}")
+        os.unlink(tmp_path)
+        return 1
+
+    archive_name = os.path.join(old_dir, f"{base_name}_{ts}{ext}")
+    try:
+        shutil.copy2(db_path, archive_name)
+        _ok(f"Database archived to: {archive_name}")
+    except OSError as e:
+        _err(f"Failed to archive database: {e}")
+        os.unlink(tmp_path)
+        return 1
+
+    # Also archive any .bak file
+    bak_path = db_path + ".bak"
+    if os.path.isfile(bak_path):
+        bak_archive = os.path.join(old_dir, f"{base_name}_{ts}.bak")
+        try:
+            shutil.copy2(bak_path, bak_archive)
+            _ok(f"Backup archived to: {bak_archive}")
+        except OSError as e:
+            _warn(f"Could not archive backup: {e}")
+
+    # ── Step 3: Atomically swap old DB with fresh one ──
+    try:
+        os.remove(db_path)
+    except OSError as e:
+        _err(f"Failed to remove old database: {e}")
+        try:
+            shutil.move(tmp_path, db_path)
+        except OSError:
+            pass
+        return 1
+
+    shutil.move(tmp_path, db_path)
+    _ok("Fresh database created with all 7 tables (empty).")
+
+    # Warn about stale manifest
+    if os.path.isfile(DEFAULT_MANIFEST_PATH):
+        _warn("Existing signed_manifest.json is now stale — regenerate with 'manifest' command.")
+
+    _ok("Database reset complete.")
+    return 0
+
+
+def interactive_reset(db_path):
+    """Confirm and reset the database interactively."""
+    print("\n=== Reset Database ===")
+    _warn("This will archive the current database to old_data/ and create a fresh empty one.")
+    _warn("Archived databases in old_data/ are never deleted automatically.")
+    if not confirm("Are you sure you want to reset the database"):
+        _info("Reset cancelled.")
+        return
+    if cmd_reset(db_path, force=True) != 0:
+        _err("Reset failed -- see errors above.")
+
 def interactive_menu(db_path):
     """Run the interactive menu loop matching the original C++ data_adder."""
 
@@ -548,6 +672,7 @@ def interactive_menu(db_path):
         print("  20. Delete Category")
         print("  ---")
         print("  21. Generate Manifest")
+        print("  22. Reset Database (archive old → fresh empty)")
         print("  ---")
         print("  0. Exit")
 
@@ -611,6 +736,8 @@ def interactive_menu(db_path):
             interactive_delete(db_path, "categories", "Category")
         elif choice == "21":
             interactive_generate_manifest(db_path)
+        elif choice == "22":
+            interactive_reset(db_path)
         else:
             _warn(f"Unknown choice: {choice}")
 
@@ -1223,6 +1350,9 @@ def build_parser():
 
               # CLI manifest
               %(prog)s manifest --version 1.1.0
+
+              # CLI reset (archive old database, create fresh empty)
+              %(prog)s reset
         """),
     )
 
@@ -1319,6 +1449,14 @@ def build_parser():
     for tname in ("tool", "vulnerability", "module", "flag", "template", "category", "option"):
         p = del_sub.add_parser(tname, help=f"Delete a {tname}")
         p.add_argument("--id", type=int, required=True)
+
+    # ── reset ──
+    reset_parser = subparsers.add_parser("reset", help="Archive database to old_data/ and create fresh empty one")
+    reset_parser.add_argument(
+        "--force", "-f",
+        action="store_true",
+        help="Skip confirmation prompt (for scripting)",
+    )
 
     # ── manifest ──
     manifest_parser = subparsers.add_parser("manifest", help="Generate signed_manifest.json")
@@ -1425,6 +1563,9 @@ def main():
         if table:
             cmd_delete_by_id(db_path, table, args.id, label)
         return 0
+
+    elif args.command == "reset":
+        return cmd_reset(db_path, force=args.force)
 
     elif args.command == "manifest":
         cmd_manifest(db_path, args)
