@@ -13,6 +13,7 @@
 #include "../includes/UI_paginator.h"
 #include "../../L1-services/includes/svc_tools.h"
 #include "../../L1-services/includes/svc_strings.h"
+#include "../../L1-services/includes/svc_generator.h"
 #include <iostream>
 #include <string>
 #include <vector>
@@ -24,6 +25,8 @@ static void showToolDetail(const SvcDTO::ToolDTO& tool);
 static void showToolsByCategory(const string& category);
 static void showCategories();
 static void showSearch();
+static void showTemplateFill(const SvcDTO::ToolDTO& tool,
+                              const SvcDTO::TemplateDTO& templ);
 
 // ==================== HELPERS ====================
 
@@ -100,8 +103,10 @@ static void showToolDetail(const SvcDTO::ToolDTO& tool) {
             cout << "\n  " << (colorsEnabled() ? Color::BOLD : "")
                  << "templates:"
                  << (colorsEnabled() ? Color::RESET : "") << "\n";
-            for (const auto& t : templates) {
-                cout << "    " << (colorsEnabled() ? Color::CYAN : "") << t.template_name
+            for (size_t i = 0; i < templates.size(); i++) {
+                const auto& t = templates[i];
+                cout << "    [" << (i + 1) << "] "
+                     << (colorsEnabled() ? Color::CYAN : "") << t.template_name
                      << (colorsEnabled() ? Color::RESET : "");
                 if (!t.description.empty())
                     cout << "  \u2014 " << t.description;
@@ -125,8 +130,13 @@ static void showToolDetail(const SvcDTO::ToolDTO& tool) {
         if (isQuit(input)) { handleQuit(); return; }
         if (isBack(input)) return;
 
-        // If user typed just the tool name or a prefix, interpret as "back"
-        // (normal behavior: any unrecognized input → invalid, loop)
+        // Check if input is a template number (1..N)
+        int num = toNumber(input);
+        if (num >= 1 && num <= static_cast<int>(templates.size())) {
+            showTemplateFill(tool, templates[static_cast<size_t>(num - 1)]);
+            continue;
+        }
+
         cout << "  " << Strings::get(StringID::TOOLS_INVALID_CHOICE) << "\n";
         waitForEnter();
     }
@@ -299,6 +309,111 @@ static void showSearch() {
         cout << "\n";
         waitForEnter();
         // loop returns to search prompt
+    }
+}
+
+// ==================== TEMPLATE FILL ====================
+
+static void showTemplateFill(const SvcDTO::ToolDTO& tool,
+                              const SvcDTO::TemplateDTO& templ) {
+    string target, port;
+
+    while (true) {
+        UI::clearScreen();
+        UI::printBanner();
+        UI::printBreadcrumb("tools \u203a " + tool.category + " \u203a "
+                            + tool.name + " \u203a " + templ.template_name);
+        UI::printDivider();
+
+        // Template info
+        cout << "\n  " << (colorsEnabled() ? string(Color::BOLD) + Color::CYAN : "")
+             << templ.template_name
+             << (colorsEnabled() ? Color::RESET : "");
+        if (!templ.description.empty())
+            cout << "  \u2014 " << templ.description;
+        cout << "\n\n";
+
+        // ── placeholder prompts ──
+        cout << "  enter values for the placeholders below.\n\n";
+
+        // Target (always prompted, required)
+        cout << "  target (IP/hostname)";
+        if (!target.empty())
+            cout << " [" << target << "]";
+        cout << ": ";
+        string inp = readInput("");
+        if (!inp.empty()) {
+            if (isQuit(inp) || isBack(inp)) return;
+            target = sanitizeInput(inp);
+        }
+
+        // Port (only if template has protocols hint)
+        if (!templ.protocols.empty()) {
+            cout << "  port (e.g. 80, 1-1000)";
+            if (!port.empty())
+                cout << " [" << port << "]";
+            cout << ": ";
+            inp = readInput("");
+            if (inp.empty()) {
+                // keep existing
+            } else if (isQuit(inp) || isBack(inp)) {
+                return;
+            } else {
+                port = sanitizeInput(inp);
+            }
+        }
+
+        // ── command preview ──
+        string cmd = SvcTools::buildCommand(tool, templ, target, port);
+
+        cout << "\n  command preview:\n\n";
+
+        string label = "  $ " + cmd;
+        size_t inner = label.size() + 2; // 2 trailing spaces
+
+        string hline;
+        hline.reserve(inner * 3);
+        for (size_t i = 0; i < inner; ++i) hline += "\u2500";
+
+        cout << "  \u250c" << hline        << "\u2510\n"
+             << "  \u2502 " << label << "  " << "\u2502\n"
+             << "  \u2514" << hline        << "\u2518\n\n";
+
+        // ── options ──
+        cout << (colorsEnabled() ? Color::DIM : "")
+             << "  [s] save command   [0] cancel"
+             << (colorsEnabled() ? Color::RESET : "")
+             << "\n\n";
+
+        inp = readInput("  \u2192 ");
+        if (inp.empty()) continue;
+        if (isQuit(inp)) { handleQuit(); return; }
+
+        // Save
+        if (inp == "s" || inp == "S") {
+            cout << "  note (one-line description): ";
+            string note = readInput("");
+            if (note.empty()) note = tool.name + " \u2014 " + templ.template_name;
+
+            int id = SvcTools::saveTemplateCommand(tool.id, cmd, note);
+            if (id != -1) {
+                cout << "\n  " << (colorsEnabled() ? Color::CYAN : "")
+                     << "\u2713 command saved (id " << id << ")"
+                     << (colorsEnabled() ? Color::RESET : "") << "\n\n";
+            } else {
+                cout << "\n  " << (colorsEnabled() ? Color::YELLOW : "")
+                     << "! failed to save command"
+                     << (colorsEnabled() ? Color::RESET : "") << "\n\n";
+            }
+            waitForEnter();
+            return;
+        }
+
+        // Cancel / back
+        if (isBack(inp)) return;
+
+        cout << "  " << Strings::get(StringID::TOOLS_INVALID_CHOICE) << "\n";
+        waitForEnter();
     }
 }
 

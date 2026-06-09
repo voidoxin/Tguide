@@ -16,7 +16,7 @@ std::string sanitizeInput(const std::string& input) {
     std::string result;
     result.reserve(input.size());
     for (char c : input) {
-        if (c == ';' || c == '|' || c == '&' ||
+        if (c == ' ' || c == ';' || c == '|' || c == '&' ||
             c == '$' || c == '>' || c == '<' ||
             c == '`' || c == '\n' || c == '\r' ||
             c == '\'' || c == '"' || c == '\\' ||

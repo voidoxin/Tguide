@@ -352,11 +352,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L1+L2 |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | L2-Interface_Engine/src/UI_tools.cpp, L1-services/src/svc_tools.cpp, L0-core/src/UserDataManager.cpp |
 | Goal       | Enable template placeholder filling, command preview, and saving to saved commands |
 | Depends    | STEP-13 |
 | Done when  | User can select a template, fill placeholders, preview command, and save it to saved commands |
+| Completed  | **2026-06-09** — Template fill, placeholder prompting, and save command implemented. Added `buildCommand()` and `saveTemplateCommand()` to SvcTools service layer. Added interactive `showTemplateFill()` UI that prompts for target (IP/hostname) and optional port, displays a box-drawn command preview using `[sudo ]tool flags target [-p port]` format, and saves via `UserDataManager::saveCommand()`. Templates are numbered `[1]...[N]` in the tool detail screen for direct selection. Fixed argument injection vulnerability in `sanitizeInput()` (added space to rejection list). All navigation uses `isQuit()`/`isBack()` consistently. Build: zero warnings. Tests: 27/28 passing (1 pre-existing). Code review: APPROVED ✅. |
 
 ### STEP-15 — Implement metasploit vulnerabilities sub-menu
 | Field      | Value |

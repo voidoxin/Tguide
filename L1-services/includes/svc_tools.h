@@ -33,4 +33,14 @@ namespace SvcTools {
 
     // Fetch all templates belonging to a tool, ordered by id
     std::vector<SvcDTO::TemplateDTO> getTemplatesByToolId(int toolId);
+
+    // ── TEMPLATE FILL ───────────────────────────────────────────────────
+    // Build a command string from a tool, template, and user-provided values
+    std::string buildCommand(const SvcDTO::ToolDTO& tool,
+                             const SvcDTO::TemplateDTO& templ,
+                             const std::string& target,
+                             const std::string& port);
+
+    // Save a built command to UserDataManager saved commands; returns the new id or -1
+    int saveTemplateCommand(int toolId, const std::string& command, const std::string& note);
 } // namespace SvcTools

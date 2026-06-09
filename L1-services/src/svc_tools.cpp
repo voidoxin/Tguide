@@ -8,6 +8,8 @@
 #include "../includes/svc_tools.h"
 #include "../../L0-core/include/DatabaseManager.h"
 #include "../../L0-core/include/path_resolver.h"
+#include "../../L0-core/include/UserDataManager.h"
+#include "../includes/svc_generator.h"
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -99,6 +101,42 @@ vector<SvcDTO::TemplateDTO> getTemplatesByToolId(int toolId) {
     result.reserve(res.items.size());
     for (const auto& t : res.items) result.push_back(toDTO(t));
     return result;
+}
+
+// ── TEMPLATE FILL ────────────────────────────────────────────────────
+
+string buildCommand(const SvcDTO::ToolDTO& tool,
+                    const SvcDTO::TemplateDTO& templ,
+                    const string& target,
+                    const string& port) {
+    string cmd;
+
+    // Root prefix
+    if (templ.root)
+        cmd += "sudo ";
+
+    // Tool name
+    cmd += tool.name;
+
+    // Flags — use the tool's concatenated flags_all if the template has flag set
+    if (templ.flag && !tool.flags_all.empty())
+        cmd += " " + tool.flags_all;
+
+    // Target (always present when this function is called)
+    if (!target.empty())
+        cmd += " " + target;
+
+    // Port
+    // TODO: make port flag configurable per template — different tools use
+    // -p (nmap, masscan), --port (curl), -P (some tools), or none
+    if (!port.empty())
+        cmd += " -p " + port;
+
+    return cmd;
+}
+
+int saveTemplateCommand(int toolId, const string& command, const string& note) {
+    return UserDataManager::instance().saveCommand(toolId, command, note);
 }
 
 } // namespace SvcTools
