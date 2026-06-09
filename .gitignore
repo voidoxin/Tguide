@@ -69,3 +69,5 @@ roadmap_structure.md
 ROADMAP.md
 PRIORITY_ISSUES.md
 IMPLEMENTATION_PLAN.md
+__pycache__/
+data/database/tguide.db

@@ -19,7 +19,7 @@ endif()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 # ==============================================================
-# Dev Mode — enable dev-only features (BackupManager, data_adder)
+# Dev Mode — enable dev-only features (BackupManager)
 # remove before release build
 # ==============================================================
 option(TGUIDE_DEV_MODE "Enable dev-only features" ON)
@@ -240,24 +240,6 @@ target_include_directories(L3_interface PUBLIC
 target_link_libraries(L3_interface PRIVATE L1_services)
 
 # ==============================================================
-# data_adder — dev-only utility to populate the database
-# excluded from install targets — not shipped to users
-# ==============================================================
-add_executable(data_adder ${CMAKE_SOURCE_DIR}/data_adder.cpp)
-
-target_include_directories(data_adder PRIVATE
-    ${L0_INC}
-    ${L3_INC}
-    ${LIBS_DIR}
-)
-
-target_link_libraries(data_adder
-    PRIVATE L0_core
-    PRIVATE L3_interface
-)
-
-# data_adder is intentionally excluded from install()
-
 # ==============================================================
 # tguide — main binary
 # ==============================================================

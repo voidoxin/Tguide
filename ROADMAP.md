@@ -387,11 +387,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | TOOLING |
 | Priority   | HIGHEST |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | tools/build_db.py (NEW), tools/data/ (NEW directory), data_adder.cpp (DELETE) |
 | Goal       | Replace data_adder.cpp with a professional Python CLI toolchain: read YAML/JSON data files, produce a signed SQLite database, support CSV import for batch editing, generate release manifest, validate schema before build |
 | Depends    | none |
 | Done when  | `python tools/build_db.py` produces a valid `tguide.db` from YAML source files; data_adder.cpp is deleted from CMakeLists.txt; manifest is auto-generated; database is schema-validated before build |
+| Completed  | **2026-06-09** — Python database builder toolchain implemented: `tools/build_db.py` with 5 subcommands (init, build, validate, manifest, dump), `tools/schema.py` with all 7 SQLite table schemas matching C++ DDL exactly, `tools/db_builder.py` with YAML/JSON data loading, validation, and ordered insertion, `tools/manifest.py` for SHA-256 manifest generation. Seed data in `tools/data/` with 8 categories, 8 tools, 31 flags, 18 templates, 5 vulnerabilities, 13 options, 6 modules. Both YAML and JSON formats supported. Code review: 7 issues found and fixed (2 medium, 5 low). Old `data_adder.cpp` deleted and removed from CMakeLists.txt. |
 
 ## Release Phase R1 — Bootstrap & Cross-Platform Foundation
 ### STEP-B1 — Fix database bootstrap (no internet on first boot)

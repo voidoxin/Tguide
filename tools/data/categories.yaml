@@ -1,0 +1,25 @@
+categories:
+  - name: "Network Scanning"
+    display_order: 1
+    description: "Network discovery, port scanning, and service enumeration tools"
+  - name: "Vulnerability Analysis"
+    display_order: 2
+    description: "Vulnerability scanning, assessment, and management tools"
+  - name: "Web Application"
+    display_order: 3
+    description: "Web application security testing and analysis tools"
+  - name: "Exploitation"
+    display_order: 4
+    description: "Exploitation frameworks and tools for gaining access"
+  - name: "Post Exploitation"
+    display_order: 5
+    description: "Tools for maintaining access, privilege escalation, and lateral movement"
+  - name: "Password Attacks"
+    display_order: 6
+    description: "Password cracking, bruteforce, and authentication testing tools"
+  - name: "Wireless"
+    display_order: 7
+    description: "Wireless network auditing, cracking, and analysis tools"
+  - name: "Sniffing & Spoofing"
+    display_order: 8
+    description: "Network traffic capture, analysis, and packet manipulation tools"

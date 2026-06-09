@@ -1,0 +1,60 @@
+{
+  "tools": [
+    {
+      "name": "nmap",
+      "category": "Network Scanning",
+      "short_desc": "Network exploration tool and security/port scanner",
+      "description": "Nmap (Network Mapper) is a free and open-source utility for network discovery and security auditing. It uses raw IP packets to determine what hosts are available on the network, what services (application name and version) those hosts are offering, what operating systems they are running, what type of packet filters/firewalls are in use, and dozens of other characteristics.",
+      "flags_all": "-sS -sT -sV -O -A -T0-5 -p -Pn -sU -sC -oA -oN -oX -v --reason --top-ports --exclude-ports --min-rate --max-rate --scan-delay"
+    },
+    {
+      "name": "netcat",
+      "category": "Network Scanning",
+      "short_desc": "Networking utility for reading from and writing to network connections",
+      "description": "Netcat (nc) is a versatile networking tool used for reading from and writing to network connections using TCP or UDP. It can be used for port scanning, file transfers, banner grabbing, backdoor shells, and as a simple chat server. It is often called the Swiss Army knife of networking tools.",
+      "flags_all": "-l -p -v -n -z -w -e -u -k -4 -6 -s -t --send-only --recv-only --no-DNS --allow --deny"
+    },
+    {
+      "name": "sqlmap",
+      "category": "Web Application",
+      "short_desc": "Automatic SQL injection and database takeover tool",
+      "description": "Sqlmap is an open-source penetration testing tool that automates the process of detecting and exploiting SQL injection flaws and taking over database servers. It comes with a powerful detection engine, many niche features for the ultimate penetration tester, and a broad range of switches lasting from database fingerprinting to data extraction and file system access.",
+      "flags_all": "-u --data --cookie --level --risk --dbms --os --dump --tables --batch --threads --random-agent --headers --technique --proxy --tor --delay --time-sec --eta --verbose"
+    },
+    {
+      "name": "metasploit",
+      "category": "Exploitation",
+      "short_desc": "Advanced open-source platform for developing, testing, and executing exploits",
+      "description": "The Metasploit Framework is a powerful penetration testing platform that enables security professionals to find, exploit, and validate vulnerabilities. It includes hundreds of working exploits, payload generators, encoders, and post-exploitation modules. Metasploit supports both manual and automated exploitation workflows and integrates with external scanners and tools.",
+      "flags_all": "-q -r -x -m -L -l -o -v -h --help --version --console --nogui --quiet --resource --module-path --payload --encoder --target --format"
+    },
+    {
+      "name": "hydra",
+      "category": "Password Attacks",
+      "short_desc": "Fast network login cracker supporting many protocols",
+      "description": "Hydra is a parallelized network login cracker built to attack various authentication protocols. It supports numerous protocols including SSH, FTP, HTTP, HTTPS, SMB, MySQL, PostgreSQL, RDP, VNC, SMTP, POP3, IMAP, Telnet, LDAP, SNMP, and many more. Hydra uses multiple parallel connections to rapidly test username/password combinations.",
+      "flags_all": "-l -L -p -P -s -t -f -v -V -o -M -R -I -e nsr -w -4 -6 -m --http-form --http-get --http-post --service-name --ssl --protocol"
+    },
+    {
+      "name": "aircrack-ng",
+      "category": "Wireless",
+      "short_desc": "Complete suite for wireless network security auditing",
+      "description": "Aircrack-ng is a complete suite of tools for assessing WiFi network security. It focuses on monitoring, attacking, testing, and cracking of WEP and WPA/WPA2 PSK networks. The suite includes tools for packet capture (airodump-ng), packet injection (aireplay-ng), WEP/WPA cracking (aircrack-ng), and wireless card management (airmon-ng).",
+      "flags_all": "-w -b -e -p -n -a -s -q -l -f -K -c -j -z --bssid --essid --channel --encrypt --help --ivs --ptw --korek --guess --dict"
+    },
+    {
+      "name": "wireshark",
+      "category": "Sniffing & Spoofing",
+      "short_desc": "World's foremost network protocol analyzer",
+      "description": "Wireshark is the world's most widely used network protocol analyzer. It lets you capture and interactively browse the traffic running on a computer network in real time. It supports deep inspection of hundreds of protocols, live capture and offline analysis, standard three-pane packet browser, rich display filter language, and powerful VoIP and statistical analysis features.",
+      "flags_all": "-i -k -Y -r -w -S -f -l -a -b -c -n -o -t -z -X --color --disable-protocols --enable-protocols --display --read-filter --stop-capture"
+    },
+    {
+      "name": "john",
+      "category": "Password Attacks",
+      "short_desc": "John the Ripper password security auditing and recovery tool",
+      "description": "John the Ripper is a fast password cracker designed to detect weak Unix and Windows passwords. It combines several cracking modes in one program and is highly customizable. It supports hundreds of hash and cipher types, including DES, MD5, Blowfish, SHA, LM, NTLM, and many modern password hashing schemes. It can be used for both dictionary attacks and brute force attacks.",
+      "flags_all": "--wordlist --rules --stdin --incremental --mask --session --restore --show --test --format --fork --mem-file-size --markov --external --loopback --node --pot --encoding"
+    }
+  ]
+}
