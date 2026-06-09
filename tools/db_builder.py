@@ -249,6 +249,57 @@ def _load_and_validate_vulnerabilities(data_dir):
 # Database building
 # ──────────────────────────────────────────────
 
+
+# Which columns can be translated per content table
+TRANSLATABLE_COLUMNS = {
+    "tools":            {"name", "short_desc", "description"},
+    "categories":       {"name", "description"},
+    "vulnerabilities":  {"name", "description", "metasploit_name"},
+    "modules":          {"name", "description"},
+    "tool_flags":       {"name", "description"},
+    "templates":        {"template_name", "description"},
+}
+
+
+def _load_and_validate_translations(data_dir, known_ids):
+    """Load translations from YAML/JSON and validate FK references.
+
+    known_ids is a dict: {table_name: {name_lookup: row_id}}
+    e.g. {"tools": {"nmap": 1, "netcat": 2}, ...}
+    Translation entries reference rows by name, then get resolved to IDs.
+    """
+    raw = _load_data_dir(data_dir, "translations")
+    items = raw.get("translations", [])
+    issues = []
+    for i, tr in enumerate(items):
+        issues += _check_required(
+            tr, ["table_name", "row_name", "column_name", "lang", "value"],
+            f"translations[{i}]"
+        )
+        tbl = tr.get("table_name", "")
+        if tbl and tbl not in known_ids:
+            issues.append(f"translations[{i}]: unknown table '{tbl}'")
+            continue
+
+        # Validate column name against translatable columns whitelist
+        col = tr.get("column_name", "")
+        if tbl and col:
+            allowed = TRANSLATABLE_COLUMNS.get(tbl, set())
+            if col not in allowed:
+                issues.append(
+                    f"translations[{i}]: column '{col}' is not translatable "
+                    f"for table '{tbl}' (allowed: {sorted(allowed)})"
+                )
+                continue
+
+        row_name = tr.get("row_name", "")
+        if tbl and row_name and row_name not in known_ids.get(tbl, {}):
+            issues.append(
+                f"translations[{i}]: references unknown {tbl} row '{row_name}'"
+            )
+    return items, issues
+
+
 def build_database(db_path, data_dir):
     """
     Build the tguide.db from YAML/JSON data files.
@@ -426,6 +477,51 @@ def build_database(db_path, data_dir):
                 ),
             )
 
+        # 8. translations (after all content tables have IDs assigned)
+        # Build known_ids lookup for all tables with name-based references
+        known_ids = {}
+        # categories
+        known_ids["categories"] = {}
+        c_cursor = conn.execute("SELECT id, name FROM categories")
+        for row in c_cursor.fetchall():
+            known_ids["categories"][row[1]] = row[0]
+        # tools
+        known_ids["tools"] = {}
+        t_cursor = conn.execute("SELECT id, name FROM tools")
+        for row in t_cursor.fetchall():
+            known_ids["tools"][row[1]] = row[0]
+        # vulnerabilities
+        known_ids["vulnerabilities"] = {}
+        v_cursor = conn.execute("SELECT id, name FROM vulnerabilities")
+        for row in v_cursor.fetchall():
+            known_ids["vulnerabilities"][row[1]] = row[0]
+        # modules
+        known_ids["modules"] = {}
+        m_cursor = conn.execute("SELECT id, name FROM modules")
+        for row in m_cursor.fetchall():
+            known_ids["modules"][row[1]] = row[0]
+
+        translations, tr_issues = _load_and_validate_translations(data_dir, known_ids)
+        all_issues += tr_issues
+
+        for tr in translations:
+            tbl = tr["table_name"]
+            row_name = tr["row_name"]
+            row_id = known_ids.get(tbl, {}).get(row_name)
+            if row_id is None:
+                continue  # already reported as validation issue
+            cursor.execute(
+                "INSERT OR IGNORE INTO translations(table_name, row_id, column_name, lang, value) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (
+                    tbl,
+                    row_id,
+                    tr["column_name"],
+                    tr["lang"],
+                    tr["value"],
+                ),
+            )
+
         conn.commit()
 
     except sqlite3.Error as e:
@@ -511,7 +607,9 @@ def validate_database(db_path):
             cursor.execute(f"SELECT COUNT(*) FROM {tbl}")
             count = cursor.fetchone()[0]
             if count == 0:
-                issues.append(f"Table '{tbl}' is empty (warning)")
+                # translations can legitimately be empty
+                if tbl != "translations":
+                    issues.append(f"Table '{tbl}' is empty (warning)")
 
         conn.close()
 

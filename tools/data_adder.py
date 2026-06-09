@@ -35,7 +35,7 @@ from schema import create_tables
 # Table name whitelist — prevents SQL injection via f-string table names
 ALLOWED_TABLES = frozenset({
     "vulnerabilities", "options", "modules", "tools",
-    "tool_flags", "templates", "categories"
+    "tool_flags", "templates", "categories", "translations"
 })
 
 def _assert_table(table):
@@ -516,6 +516,351 @@ def cmd_manifest(db_path, args):
     print(f"    db_url   : {db_url}")
 
 
+
+
+# ──────────────────────────────────────────────
+# Translation CRUD
+# ──────────────────────────────────────────────
+
+# Column name whitelist — which columns can be translated per table
+TRANSLATABLE_COLUMNS = {
+    "tools":            frozenset({"name", "short_desc", "description"}),
+    "categories":       frozenset({"name", "description"}),
+    "vulnerabilities":  frozenset({"name", "description", "metasploit_name"}),
+    "modules":          frozenset({"name", "description"}),
+    "tool_flags":       frozenset({"name", "description"}),
+    "templates":        frozenset({"template_name", "description"}),
+}
+
+
+def _get_content_tables():
+    """Return list of table names that can have translations (in display order)."""
+    return ["categories", "tools", "tool_flags", "templates", "vulnerabilities", "modules"]
+
+
+def _get_content_rows(db_path, table_name):
+    """Return list of (id, display_name) tuples for a content table."""
+    _assert_table(table_name)
+    # Determine which column to use as display name
+    name_cols = {
+        "tools": "name",
+        "categories": "name",
+        "vulnerabilities": "name",
+        "modules": "name",
+        "tool_flags": "name",
+        "templates": "template_name",
+    }
+    name_col = name_cols.get(table_name, "name")
+    conn = sqlite3.connect(db_path)
+    try:
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT id, {name_col} FROM {table_name} ORDER BY id")
+        return cursor.fetchall()
+    except sqlite3.Error as e:
+        _err(f"Error reading {table_name}: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+def cmd_add_translation(db_path, args):
+    """CLI: add a translation entry."""
+    # Validate table
+    if args.table not in _get_content_tables():
+        _err(f"Unknown content table: '{args.table}' — use one of: {', '.join(_get_content_tables())}")
+        return 1
+
+    # Validate column
+    allowed_cols = TRANSLATABLE_COLUMNS.get(args.table, frozenset())
+    if args.column not in allowed_cols:
+        _err(f"Column '{args.column}' is not translatable for table '{args.table}' — "
+             f"allowed: {', '.join(sorted(allowed_cols))}")
+        return 1
+
+    # Validate lang
+    if not args.lang or len(args.lang) < 2:
+        _err("Language code must be at least 2 characters (e.g. 'en', 'fr', 'es')")
+        return 1
+
+    # Validate row_id exists
+    conn = sqlite3.connect(db_path)
+    try:
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT id FROM {args.table} WHERE id = ?", (args.row_id,))
+        if not cursor.fetchone():
+            _err(f"Row id {args.row_id} not found in table '{args.table}'")
+            return 1
+
+        # Insert or replace
+        cursor.execute(
+            "INSERT INTO translations(table_name, row_id, column_name, lang, value) "
+            "VALUES (?, ?, ?, ?, ?) "
+            "ON CONFLICT(table_name, row_id, column_name, lang) "
+            "DO UPDATE SET value = excluded.value",
+            (args.table, args.row_id, args.column, args.lang, args.value),
+        )
+        conn.commit()
+        _ok(f"Translation added: {args.table}(id={args.row_id}).{args.column}[{args.lang}] = '{args.value}'")
+        return 0
+    except sqlite3.IntegrityError as e:
+        _err(f"Database integrity error: {e}")
+        return 1
+    except sqlite3.Error as e:
+        _err(f"SQLite error: {e}")
+        return 1
+    finally:
+        conn.close()
+
+
+def cmd_list_translations(db_path, args):
+    """CLI: list translation entries, optionally filtered by table and/or lang."""
+    conn = sqlite3.connect(db_path)
+    try:
+        cursor = conn.cursor()
+
+        where_clauses = []
+        params = []
+        if args.table:
+            where_clauses.append("table_name = ?")
+            params.append(args.table)
+        if args.lang:
+            where_clauses.append("lang = ?")
+            params.append(args.lang)
+
+        where_sql = ""
+        if where_clauses:
+            where_sql = " WHERE " + " AND ".join(where_clauses)
+
+        sql = f"SELECT id, table_name, row_id, column_name, lang, value FROM translations{where_sql} ORDER BY table_name, row_id, column_name, lang"
+        cursor.execute(sql, params)
+        rows = cursor.fetchall()
+
+        if not rows:
+            _info("No translations found.")
+            return 0
+
+        # Print header
+        print(f"\n{Colors.BOLD}Translations{Colors.RESET} ({len(rows)} entries)")
+        print(f"  {'ID':<4} {'Table':<16} {'RowID':<6} {'Column':<20} {'Lang':<6} Value")
+        print(f"  {'-'*4} {'-'*16} {'-'*6} {'-'*20} {'-'*6} {'-'*40}")
+
+        for row in rows:
+            tid, tbl, rid, col, lang, val = row
+            val_display = val[:50] + "..." if len(val) > 50 else val
+            print(f"  {tid:<4} {tbl:<16} {rid:<6} {col:<20} {lang:<6} {val_display}")
+
+        return 0
+    except sqlite3.Error as e:
+        _err(f"SQLite error: {e}")
+        return 1
+    finally:
+        conn.close()
+
+
+def cmd_delete_translation(db_path, args):
+    """CLI: delete a translation by ID."""
+    conn = sqlite3.connect(db_path)
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, table_name, column_name, lang, value FROM translations WHERE id = ?", (args.id,))
+        row = cursor.fetchone()
+        if not row:
+            _err(f"Translation with id {args.id} not found.")
+            return 1
+        cursor.execute("DELETE FROM translations WHERE id = ?", (args.id,))
+        conn.commit()
+        _ok(f"Translation deleted: {row[1]}.{row[2]}[{row[3]}] = '{row[4]}'")
+        return 0
+    except sqlite3.Error as e:
+        _err(f"SQLite error: {e}")
+        return 1
+    finally:
+        conn.close()
+
+
+def interactive_add_translation(db_path):
+    """Interactively add a translation."""
+    print("\n=== Add Translation ===")
+    _info("Step 1: Choose the content table")
+    tables = _get_content_tables()
+    for i, t in enumerate(tables, 1):
+        print(f"  {i}. {t}")
+    t_choice = prompt("Table number", required=True)
+    if t_choice is None:
+        return
+    try:
+        table_idx = int(t_choice) - 1
+        if table_idx < 0 or table_idx >= len(tables):
+            _err("Invalid table number.")
+            return
+    except ValueError:
+        _err("Invalid number.")
+        return
+    table_name = tables[table_idx]
+
+    # Step 2: Choose row
+    rows = _get_content_rows(db_path, table_name)
+    if not rows:
+        _warn(f"No rows found in '{table_name}'. Add some records first.")
+        return
+    print(f"\n  Rows in '{table_name}':")
+    for rid, rname in rows:
+        print(f"    {rid}. {rname}")
+    r_choice = prompt("Row ID", required=True)
+    if r_choice is None:
+        return
+    try:
+        row_id = int(r_choice)
+        if not any(r[0] == row_id for r in rows):
+            _err(f"Row {row_id} not found.")
+            return
+    except ValueError:
+        _err("Invalid ID.")
+        return
+
+    # Step 3: Choose column
+    allowed_cols = sorted(TRANSLATABLE_COLUMNS.get(table_name, frozenset()))
+    print(f"\n  Translatable columns for '{table_name}':")
+    for i, col in enumerate(allowed_cols, 1):
+        print(f"    {i}. {col}")
+    col_choice = prompt("Column number", required=True)
+    if col_choice is None:
+        return
+    try:
+        col_idx = int(col_choice) - 1
+        if col_idx < 0 or col_idx >= len(allowed_cols):
+            _err("Invalid column number.")
+            return
+    except ValueError:
+        _err("Invalid number.")
+        return
+    column_name = allowed_cols[col_idx]
+
+    # Step 4: Language
+    lang = prompt("Language code (e.g. en, fr, es)", required=True)
+    if lang is None:
+        return
+    lang = lang.strip().lower()
+    if len(lang) < 2:
+        _err("Language code must be at least 2 characters.")
+        return
+
+    # Step 5: Translated value
+    value = prompt("Translated value", required=True)
+    if value is None:
+        return
+    value = value.strip()
+    if not value:
+        _err("Value cannot be empty.")
+        return
+
+    # Confirm & insert
+    conn = sqlite3.connect(db_path)
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO translations(table_name, row_id, column_name, lang, value) "
+            "VALUES (?, ?, ?, ?, ?) "
+            "ON CONFLICT(table_name, row_id, column_name, lang) "
+            "DO UPDATE SET value = excluded.value",
+            (table_name, row_id, column_name, lang, value),
+        )
+        conn.commit()
+        _ok(f"Translation added: {table_name}(id={row_id}).{column_name}[{lang}] = '{value}'")
+    except sqlite3.Error as e:
+        conn.rollback()
+        _err(f"Failed to add translation: {e}")
+    finally:
+        conn.close()
+
+
+def interactive_view_translations(db_path):
+    """Interactively view translations with optional filtering."""
+    print("\n=== View Translations ===")
+    print("Filter options:")
+    print("  1. Show all translations")
+    print("  2. Filter by table")
+    print("  3. Filter by language")
+    print("  4. Filter by table + language")
+    print("  0. Cancel")
+    choice = prompt("Choice", required=True)
+    if choice is None or choice == "0":
+        return
+
+    table_filter = None
+    lang_filter = None
+
+    if choice == "2" or choice == "4":
+        tables = _get_content_tables()
+        print("\n  Tables:")
+        for i, t in enumerate(tables, 1):
+            print(f"    {i}. {t}")
+        t_choice = prompt("Table number", required=True)
+        if t_choice is None:
+            return
+        try:
+            idx = int(t_choice) - 1
+            if 0 <= idx < len(tables):
+                table_filter = tables[idx]
+        except ValueError:
+            pass
+
+    if choice == "3" or choice == "4":
+        lang_filter = prompt("Language code (e.g. en, fr)", required=True)
+        if lang_filter is None:
+            return
+        lang_filter = lang_filter.strip().lower()
+
+    # Build args-like object
+    class Args:
+        pass
+    args = Args()
+    args.table = table_filter
+    args.lang = lang_filter
+    cmd_list_translations(db_path, args)
+
+
+def interactive_delete_translation(db_path):
+    """Interactively delete a translation."""
+    print("\n=== Delete Translation ===")
+    # Show recent translations
+    conn = sqlite3.connect(db_path)
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, table_name, row_id, column_name, lang, value FROM translations ORDER BY id DESC LIMIT 20")
+        rows = cursor.fetchall()
+        if not rows:
+            _info("No translations found.")
+            return
+        print("  Recent translations (last 20):")
+        print(f"    {'ID':<4} {'Table':<16} {'RowID':<6} {'Column':<20} {'Lang':<6} Value")
+        print(f"    {'-'*4} {'-'*16} {'-'*6} {'-'*20} {'-'*6} {'-'*40}")
+        for row in rows:
+            tid, tbl, rid, col, lang, val = row
+            val_display = val[:40] + "..." if len(val) > 40 else val
+            print(f"    {tid:<4} {tbl:<16} {rid:<6} {col:<20} {lang:<6} {val_display}")
+    except sqlite3.Error as e:
+        _err(f"Error reading translations: {e}")
+        return
+    finally:
+        conn.close()
+
+    t_id = prompt("Translation ID to delete (or 0 to cancel)", required=True)
+    if t_id is None or t_id == "0":
+        return
+    try:
+        del_id = int(t_id)
+    except ValueError:
+        _err("Invalid ID.")
+        return
+
+    class Args:
+        pass
+    args = Args()
+    args.id = del_id
+    cmd_delete_translation(db_path, args)
+
+
 # ──────────────────────────────────────────────
 # Interactive Mode
 # ──────────────────────────────────────────────
@@ -673,6 +1018,10 @@ def interactive_menu(db_path):
         print("  ---")
         print("  21. Generate Manifest")
         print("  22. Reset Database (archive old → fresh empty)")
+        print("  --- Translations ---")
+        print("  23. Add Translation")
+        print("  24. View Translations")
+        print("  25. Delete Translation")
         print("  ---")
         print("  0. Exit")
 
@@ -738,6 +1087,12 @@ def interactive_menu(db_path):
             interactive_generate_manifest(db_path)
         elif choice == "22":
             interactive_reset(db_path)
+        elif choice == "23":
+            interactive_add_translation(db_path)
+        elif choice == "24":
+            interactive_view_translations(db_path)
+        elif choice == "25":
+            interactive_delete_translation(db_path)
         else:
             _warn(f"Unknown choice: {choice}")
 
@@ -1353,6 +1708,13 @@ def build_parser():
 
               # CLI reset (archive old database, create fresh empty)
               %(prog)s reset
+
+              # CLI translation management
+              %(prog)s translation add --table tools --row-id 1 --column name --lang fr --value "Nmap"
+              %(prog)s translation add --table categories --row-id 1 --column name --lang fr --value "Scan Réseau"
+              %(prog)s translation list --lang fr
+              %(prog)s translation list --table tools
+              %(prog)s translation delete --id 5
         """),
     )
 
@@ -1457,6 +1819,27 @@ def build_parser():
         action="store_true",
         help="Skip confirmation prompt (for scripting)",
     )
+
+    # ── translation (add/list/delete) ──
+    tr_parser = subparsers.add_parser("translation", help="Manage translations (aliases: tr, trans)")
+    tr_sub = tr_parser.add_subparsers(dest="tr_command", title="Translation commands")
+
+    # add translation
+    tr_add = tr_sub.add_parser("add", help="Add a translation entry")
+    tr_add.add_argument("--table", required=True, help="Content table name (e.g. tools, categories)")
+    tr_add.add_argument("--row-id", type=int, required=True, help="Row ID in the content table")
+    tr_add.add_argument("--column", required=True, help="Column name to translate (e.g. name, description)")
+    tr_add.add_argument("--lang", required=True, help="Language code (e.g. en, fr, es)")
+    tr_add.add_argument("--value", required=True, help="Translated text")
+
+    # list translations
+    tr_list = tr_sub.add_parser("list", help="List translation entries")
+    tr_list.add_argument("--table", default=None, help="Filter by table name")
+    tr_list.add_argument("--lang", default=None, help="Filter by language code")
+
+    # delete translation
+    tr_del = tr_sub.add_parser("delete", help="Delete a translation by ID")
+    tr_del.add_argument("--id", type=int, required=True, help="Translation ID")
 
     # ── manifest ──
     manifest_parser = subparsers.add_parser("manifest", help="Generate signed_manifest.json")
@@ -1566,6 +1949,18 @@ def main():
 
     elif args.command == "reset":
         return cmd_reset(db_path, force=args.force)
+
+    elif args.command in ("translation", "tr", "trans"):
+        if args.tr_command is None:
+            parser.parse_args(["translation", "--help"])
+            return 1
+        if args.tr_command == "add":
+            return cmd_add_translation(db_path, args)
+        elif args.tr_command == "list":
+            return cmd_list_translations(db_path, args)
+        elif args.tr_command == "delete":
+            return cmd_delete_translation(db_path, args)
+        return 0
 
     elif args.command == "manifest":
         cmd_manifest(db_path, args)

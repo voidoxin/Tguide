@@ -1,0 +1,144 @@
+{
+  "translations": [
+    {
+      "table_name": "categories",
+      "row_name": "Network Scanning",
+      "column_name": "name",
+      "lang": "fr",
+      "value": "Scan Réseau"
+    },
+    {
+      "table_name": "categories",
+      "row_name": "Network Scanning",
+      "column_name": "description",
+      "lang": "fr",
+      "value": "Outils de découverte réseau, scan de ports et énumération de services"
+    },
+    {
+      "table_name": "categories",
+      "row_name": "Vulnerability Analysis",
+      "column_name": "name",
+      "lang": "fr",
+      "value": "Analyse de Vulnérabilités"
+    },
+    {
+      "table_name": "categories",
+      "row_name": "Vulnerability Analysis",
+      "column_name": "description",
+      "lang": "fr",
+      "value": "Outils de scan de vulnérabilités, évaluation et gestion"
+    },
+    {
+      "table_name": "categories",
+      "row_name": "Web Application",
+      "column_name": "name",
+      "lang": "fr",
+      "value": "Application Web"
+    },
+    {
+      "table_name": "categories",
+      "row_name": "Web Application",
+      "column_name": "description",
+      "lang": "fr",
+      "value": "Outils de test de sécurité et d'analyse pour applications web"
+    },
+    {
+      "table_name": "categories",
+      "row_name": "Exploitation",
+      "column_name": "name",
+      "lang": "fr",
+      "value": "Exploitation"
+    },
+    {
+      "table_name": "categories",
+      "row_name": "Exploitation",
+      "column_name": "description",
+      "lang": "fr",
+      "value": "Frameworks et outils d'exploitation pour obtenir un accès"
+    },
+    {
+      "table_name": "categories",
+      "row_name": "Post Exploitation",
+      "column_name": "name",
+      "lang": "fr",
+      "value": "Post-Exploitation"
+    },
+    {
+      "table_name": "categories",
+      "row_name": "Post Exploitation",
+      "column_name": "description",
+      "lang": "fr",
+      "value": "Outils pour maintien d'accès, élévation de privilèges et mouvement latéral"
+    },
+    {
+      "table_name": "categories",
+      "row_name": "Password Attacks",
+      "column_name": "name",
+      "lang": "fr",
+      "value": "Attaques de Mots de Passe"
+    },
+    {
+      "table_name": "categories",
+      "row_name": "Password Attacks",
+      "column_name": "description",
+      "lang": "fr",
+      "value": "Outils de craquage de mots de passe, bruteforce et test d'authentification"
+    },
+    {
+      "table_name": "categories",
+      "row_name": "Wireless",
+      "column_name": "name",
+      "lang": "fr",
+      "value": "Sans-Fil"
+    },
+    {
+      "table_name": "categories",
+      "row_name": "Wireless",
+      "column_name": "description",
+      "lang": "fr",
+      "value": "Outils d'audit, craquage et analyse de réseaux sans-fil"
+    },
+    {
+      "table_name": "categories",
+      "row_name": "Sniffing & Spoofing",
+      "column_name": "name",
+      "lang": "fr",
+      "value": "Capture & Usurpation"
+    },
+    {
+      "table_name": "categories",
+      "row_name": "Sniffing & Spoofing",
+      "column_name": "description",
+      "lang": "fr",
+      "value": "Outils de capture de trafic réseau, analyse et manipulation de paquets"
+    },
+    {
+      "table_name": "tools",
+      "row_name": "nmap",
+      "column_name": "short_desc",
+      "lang": "fr",
+      "value": "Outil d'exploration réseau et scanner de ports/sécurité"
+    },
+    {
+      "table_name": "tools",
+      "row_name": "nmap",
+      "column_name": "description",
+      "lang": "fr",
+      "value": "Nmap (Network Mapper) est un utilitaire libre et open-source pour la découverte de réseau et l'audit de sécurité. Il utilise des paquets IP bruts pour déterminer quels hôtes sont disponibles sur le réseau, quels services ils offrent, quels systèmes d'exploitation ils exécutent, et bien d'autres caractéristiques."
+    },
+    {
+      "table_name": "tools",
+      "row_name": "sqlmap",
+      "column_name": "short_desc",
+      "lang": "fr",
+      "value": "Outil automatique de détection et d'exploitation d'injections SQL"
+    },
+    {
+      "table_name": "tools",
+      "row_name": "metasploit",
+      "column_name": "short_desc",
+      "lang": "fr",
+      "value": "Plateforme avancée open-source pour développer, tester et exécuter des exploits"
+    }
+  ]
+}

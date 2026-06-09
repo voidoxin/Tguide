@@ -104,6 +104,18 @@ TABLES = [
             ("description",    "TEXT",    ""),
         ],
     },
+    {
+        "name": "translations",
+        "columns": [
+            ("id",          "INTEGER", "PRIMARY KEY AUTOINCREMENT"),
+            ("table_name",  "TEXT",    "NOT NULL"),
+            ("row_id",      "INTEGER", "NOT NULL"),
+            ("column_name", "TEXT",    "NOT NULL"),
+            ("lang",        "TEXT",    "NOT NULL"),
+            ("value",       "TEXT",    "NOT NULL"),
+        ],
+        "extra": "UNIQUE(table_name, row_id, column_name, lang)",
+    },
 ]
 
 # Order for insertion — respects foreign-key dependencies
@@ -115,6 +127,7 @@ INSERTION_ORDER = [
     "vulnerabilities",  # no dependencies
     "options",          # depends on vulnerabilities
     "modules",          # no dependencies
+    "translations",     # depends on all content tables
 ]
 
 
@@ -144,26 +157,25 @@ def get_create_sql(table_def):
 
     col_text = ",\n".join(col_defs)
     fk = table_def.get("foreign_key")
+    extra = table_def.get("extra", "")
 
+    clauses = [col_text]
     if fk:
         local_col, ref_table, ref_col, on_delete = fk
         fk_text = (
             f"    FOREIGN KEY({local_col}) "
             f"REFERENCES {ref_table}({ref_col}) ON DELETE {on_delete}"
         )
-        return (
-            f"CREATE TABLE IF NOT EXISTS {table_def['name']} (\n"
-            f"{col_text},\n"
-            f"{fk_text}\n"
-            f");"
-        )
-    else:
-        return (
-            f"CREATE TABLE IF NOT EXISTS {table_def['name']} (\n"
-            f"{col_text}\n"
-            f");"
-        )
-    return "\n".join(parts)
+        clauses.append(fk_text)
+    if extra:
+        clauses.append(f"    {extra}")
+
+    return (
+        f"CREATE TABLE IF NOT EXISTS {table_def['name']} (\n"
+        + f",\n".join(clauses)
+        + "\n"
+        + ");"
+    )
 
 
 def create_tables(cursor):
