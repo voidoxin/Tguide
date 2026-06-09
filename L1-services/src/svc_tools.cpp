@@ -28,6 +28,14 @@ static std::vector<SvcDTO::ToolDTO> toDTOs(const std::vector<Tool>& tools) {
     return result;
 }
 
+static SvcDTO::ToolFlagDTO toDTO(const ToolFlag& f) {
+    return { f.id, f.tool_id, f.name, f.description, f.loud, f.root, f.protocols };
+}
+
+static SvcDTO::TemplateDTO toDTO(const Template& t) {
+    return { t.id, t.tool_id, t.template_name, t.description, t.root, t.protocols, t.flag };
+}
+
 namespace SvcTools {
 // ── TOOLS BY CATEGORY ───────────────────────────────────────────────────────
 
@@ -63,6 +71,33 @@ vector<SvcDTO::CategoryDTO> getCategoryList() {
     for (const auto& c : res.items) {
         result.push_back({c.id, c.name, c.description});
     }
+    return result;
+}
+
+// ── TOOL DETAIL ─────────────────────────────────────────────────────
+
+SvcDTO::ToolDTO getToolById(int id) {
+    ToolD db(PathResolver::dbFile().string());
+    ToolResults res = db.getWhere({"id"}, {to_string(id)});
+    if (res.items.empty()) return {};
+    return toDTO(res.items[0]);
+}
+
+vector<SvcDTO::ToolFlagDTO> getFlagsByToolId(int toolId) {
+    ToolFlagD db(PathResolver::dbFile().string());
+    ToolFlagResults res = db.getWhere(toolId);
+    vector<SvcDTO::ToolFlagDTO> result;
+    result.reserve(res.items.size());
+    for (const auto& f : res.items) result.push_back(toDTO(f));
+    return result;
+}
+
+vector<SvcDTO::TemplateDTO> getTemplatesByToolId(int toolId) {
+    TemplateD db(PathResolver::dbFile().string());
+    TemplateResults res = db.getWhere(toolId);
+    vector<SvcDTO::TemplateDTO> result;
+    result.reserve(res.items.size());
+    for (const auto& t : res.items) result.push_back(toDTO(t));
     return result;
 }
 

@@ -12,7 +12,7 @@
 #include "../includes/UI_input.h"
 #include "../includes/UI_paginator.h"
 #include "../../L1-services/includes/svc_tools.h"
-#include "../../L0-core/include/strings.h"
+#include "../../L1-services/includes/svc_strings.h"
 #include <iostream>
 #include <string>
 #include <vector>
@@ -55,20 +55,81 @@ static bool isAmbiguous(const string& input, const vector<string>& opts) {
 
 // ==================== TOOL DETAIL (STUB) ====================
 
-// TODO: implement full detail screen in Task 4
 static void showToolDetail(const SvcDTO::ToolDTO& tool) {
-    UI::clearScreen();
-    UI::printBanner();
-    UI::printBreadcrumb("tools \u203a " + tool.name);
-    UI::printDivider();
-    cout << "\n"
-         << (colorsEnabled() ? Color::DIM : "")
-         << "  tool detail \u2014 coming in Task 4"
-         << (colorsEnabled() ? Color::RESET : "")
-         << "\n\n";
-    UI::printDivider();
-    cout << "\n";
-    waitForEnter();
+    vector<SvcDTO::ToolFlagDTO> flags    = SvcTools::getFlagsByToolId(tool.id);
+    vector<SvcDTO::TemplateDTO> templates = SvcTools::getTemplatesByToolId(tool.id);
+
+    while (true) {
+        UI::clearScreen();
+        UI::printBanner();
+        UI::printBreadcrumb("tools \u203a " + tool.category + " \u203a " + tool.name);
+        UI::printDivider();
+
+        // ── description ──
+        cout << "\n  "
+             << (colorsEnabled() ? string(Color::BOLD) + Color::CYAN : "")
+             << tool.name
+             << (colorsEnabled() ? Color::RESET : "") << "\n\n  "
+             << tool.description << "\n\n";
+
+        // ── options banner (always visible) ──
+        cout << (colorsEnabled() ? Color::DIM : "");
+        cout << "  [0] " << Strings::get(StringID::TOOLS_BACK) << "\n";
+        cout << (colorsEnabled() ? Color::RESET : "");
+
+        // ── flags ──
+        if (!flags.empty()) {
+            cout << "\n  " << (colorsEnabled() ? Color::BOLD : "")
+                 << "flags:"
+                 << (colorsEnabled() ? Color::RESET : "") << "\n";
+            for (const auto& f : flags) {
+                cout << "    " << (colorsEnabled() ? Color::CYAN : "") << f.name
+                     << (colorsEnabled() ? Color::RESET : "");
+                if (!f.description.empty())
+                    cout << "  \u2014 " << f.description;
+                if (!f.protocols.empty())
+                    cout << "  (" << f.protocols << ")";
+                if (f.root)
+                    cout << "  [root]";
+                cout << "\n";
+            }
+        }
+
+        // ── templates ──
+        if (!templates.empty()) {
+            cout << "\n  " << (colorsEnabled() ? Color::BOLD : "")
+                 << "templates:"
+                 << (colorsEnabled() ? Color::RESET : "") << "\n";
+            for (const auto& t : templates) {
+                cout << "    " << (colorsEnabled() ? Color::CYAN : "") << t.template_name
+                     << (colorsEnabled() ? Color::RESET : "");
+                if (!t.description.empty())
+                    cout << "  \u2014 " << t.description;
+                if (!t.protocols.empty())
+                    cout << "  (" << t.protocols << ")";
+                if (t.root)
+                    cout << "  [root]";
+                cout << "\n";
+            }
+        }
+
+        // ── metasploit / recon-ng placeholder (future steps) ──
+        // TODO: STEP-15 — vulnerabilities sub-menu for metasploit
+        // TODO: STEP-16 — modules sub-menu for recon-ng
+
+        UI::printDivider();
+        cout << "\n";
+
+        string input = readInput("  \u2192 ");
+        if (input.empty()) continue;
+        if (isQuit(input)) { handleQuit(); return; }
+        if (isBack(input)) return;
+
+        // If user typed just the tool name or a prefix, interpret as "back"
+        // (normal behavior: any unrecognized input → invalid, loop)
+        cout << "  " << Strings::get(StringID::TOOLS_INVALID_CHOICE) << "\n";
+        waitForEnter();
+    }
 }
 
 // ==================== TOOL LIST ====================
@@ -131,9 +192,9 @@ static void showToolsByCategory(const string& category) {
         }
         if (idx == -1) {
             if (isAmbiguous(input, clean))
-                cout << "  ambiguous \u2014 be more specific.\n";
+                cout << "  " << Strings::get(StringID::TOOLS_AMBIGUOUS) << "\n";
             else
-                cout << "  invalid choice \u2014 try again.\n";
+                cout << "  " << Strings::get(StringID::TOOLS_INVALID_CHOICE) << "\n";
             continue;
         }
 

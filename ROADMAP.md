@@ -340,11 +340,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L1+L2 |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | L2-Interface_Engine/src/UI_tools.cpp, L1-services/src/svc_tools.cpp, L1-services/includes/svc_tools.h |
 | Goal       | Implement tool detail screen with description, flags, templates, and special options for metasploit/recon-ng |
 | Depends    | STEP-12 |
 | Done when  | Tool detail screen shows description, all flags, and templates for any selected tool |
+| Completed  | **2026-06-09** — Tool detail screen implemented with full description, individual flags (name, description, protocols, root indicator), and templates (template_name, description, protocols, root/flag indicators). Added `getToolById()`, `getFlagsByToolId()`, `getTemplatesByToolId()` to SvcTools service layer with L0→DTO mappers for ToolFlag and Template. Created `svc_strings.h` as L1 re-export header to fix L2→L0 direct `strings.h` include (architectural layering). All user-facing strings in detail screen use `Strings::get()` from the string table. Build: zero warnings across all targets. Tests: 27/28 passing (1 pre-existing). Code review: APPROVED ✅. |
 
 ### STEP-14 — Implement template fill + placeholder prompting + save command
 | Field      | Value |

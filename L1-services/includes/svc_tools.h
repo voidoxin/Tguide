@@ -23,4 +23,14 @@ namespace SvcTools {
     // TODO: implement search algorithm
     // returns empty vector until algorithm is ready
     std::vector<SvcDTO::ToolDTO> searchTools(const std::string& query);
+
+    // ── TOOL DETAIL ─────────────────────────────────────────────────────
+    // Fetch a single tool by its primary key
+    SvcDTO::ToolDTO getToolById(int id);
+
+    // Fetch all flags belonging to a tool, ordered by id
+    std::vector<SvcDTO::ToolFlagDTO> getFlagsByToolId(int toolId);
+
+    // Fetch all templates belonging to a tool, ordered by id
+    std::vector<SvcDTO::TemplateDTO> getTemplatesByToolId(int toolId);
 } // namespace SvcTools
