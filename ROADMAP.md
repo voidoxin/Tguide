@@ -388,11 +388,11 @@ L0-core → L1-services → L2-Interface_Engine
 | Layer      | TOOLING |
 | Priority   | HIGHEST |
 | Status     | [x] DONE |
-| Files      | tools/build_db.py (NEW), tools/data/ (NEW directory), data_adder.cpp (DELETE) |
-| Goal       | Replace data_adder.cpp with a professional Python CLI toolchain: read YAML/JSON data files, produce a signed SQLite database, support CSV import for batch editing, generate release manifest, validate schema before build |
+| Files      | tools/data_adder.py (NEW), tools/build_db.py (NEW), tools/data/ (NEW directory), data_adder.cpp (DELETE) |
+| Goal       | Replace data_adder.cpp with a Python CLI tool that add/list/delete database records interactively or via CLI commands, plus a YAML/JSON batch builder for producing signed seed databases with release manifests |
 | Depends    | none |
-| Done when  | `python tools/build_db.py` produces a valid `tguide.db` from YAML source files; data_adder.cpp is deleted from CMakeLists.txt; manifest is auto-generated; database is schema-validated before build |
-| Completed  | **2026-06-09** — Python database builder toolchain implemented: `tools/build_db.py` with 5 subcommands (init, build, validate, manifest, dump), `tools/schema.py` with all 7 SQLite table schemas matching C++ DDL exactly, `tools/db_builder.py` with YAML/JSON data loading, validation, and ordered insertion, `tools/manifest.py` for SHA-256 manifest generation. Seed data in `tools/data/` with 8 categories, 8 tools, 31 flags, 18 templates, 5 vulnerabilities, 13 options, 6 modules. Both YAML and JSON formats supported. Code review: 7 issues found and fixed (2 medium, 5 low). Old `data_adder.cpp` deleted and removed from CMakeLists.txt. |
+| Done when  | `python tools/data_adder.py` can add/list/delete records in an existing DB; `python tools/build_db.py` can produce a valid seed DB from YAML; data_adder.cpp is deleted; manifest is auto-generated; schema validates |
+| Completed  | **2026-06-09** — Two tools replace `data_adder.cpp`: `tools/data_adder.py` (interactive menu + CLI commands for add/list/delete/manifest on existing DB) and `tools/build_db.py` (YAML/JSON→DB batch builder with init/build/validate/manifest/dump). Seed data in `tools/data/` with 8 categories, 8 tools, 31 flags, 18 templates, 5 vulnerabilities, 13 options, 6 modules in both .yaml and .json. Code review: 8+7=15 issues found and fixed. `data_adder.cpp` deleted from repo and CMakeLists.txt build. |
 
 ## Release Phase R1 — Bootstrap & Cross-Platform Foundation
 ### STEP-B1 — Fix database bootstrap (no internet on first boot)
