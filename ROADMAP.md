@@ -546,11 +546,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L1 |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
-| Files      | L1-services/src/svc_savedScripts.cpp (NEW), L1-services/includes/svc_savedScripts.h (NEW) |
+| Status     | [x] DONE |
+| Files      | L1-services/includes/svc_savedScripts.h, L1-services/src/svc_savedScripts.cpp, L1-services/includes/svc_dto.h, L0-core/include/UserDataManager.h, L0-core/src/UserDataManager.cpp, tests/test_saved_scripts.cpp |
 | Goal       | Create saved scripts service layer with CRUD operations via UserDataManager: list(), getById(), save(), update(), delete(). Mirror saved commands pattern from STEP-R2a. |
 | Depends    | STEP-R2b |
 | Done when  | svc_savedScripts provides complete CRUD API; all operations work through UserDataManager singleton |
+| Completed  | **2026-06-17** (commit 969fa06) — Mirrored STEP-R2a pattern exactly for scripts. Added updateScript() and getScriptById() to UserDataManager (L0). Implemented SvcSavedScripts namespace with full CRUD API: getAllScripts() sorts by note; getScriptById(), saveScript(), updateScript(), deleteScript() delegate to UserDataManager. Added 9 test cases in tests/test_saved_scripts.cpp. All 60/60 tests pass (195 assertions). Code review: APPROVED ✅. Testing: PASS ✅. |
 
 ### STEP-R3b — Saved scripts UI screen
 | Field      | Value |
@@ -799,7 +800,7 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-R1 | Release R2 | L1 | Implement enhanced search algorithm | [x] DONE |
 | STEP-R2a | Release R2 | L1 | Saved commands service layer | [x] DONE |
 | STEP-R2b | Release R2 | L2 | Saved commands UI screen | [x] DONE |
-| STEP-R3a | Release R2 | L1 | Saved scripts service layer |
+| STEP-R3a | Release R2 | L1 | Saved scripts service layer | [x] DONE |
 | STEP-R3b | Release R2 | L2 | Saved scripts UI screen |
 | STEP-R4a | Release R2 | L2 | Settings: color enable/disable toggle |
 | STEP-R4b | Release R2 | L2 | Settings: database management |
