@@ -534,11 +534,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L2 |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
-| Files      | L2-Interface_Engine/src/UI_savedCommands.cpp (NEW), L2-Interface_Engine/includes/UI_savedCommands.h (NEW), L2-Interface_Engine/src/UI_Engine.cpp (modified) |
+| Status     | [x] DONE |
+| Files      | L2-Interface_Engine/src/UI_savedCommands.cpp, L0-core/include/string_utils.h, L0-core/src/string_utils.cpp |
 | Goal       | Implement saved commands UI screen: list, select, fill placeholders, delete, and command preview. Reuse template fill flow from STEP-14. |
 | Depends    | STEP-R2a |
 | Done when  | User can browse saved commands, fill placeholders, delete, and see command preview |
+| Completed  | **2026-06-17** (commit 7474827) — Implemented interactive Saved Commands screen: entry menu with List and Add options; paginated command list with note + tool name display; detail screen with command preview box, edit note, and delete with confirmation; add form with note (optional) and command (required). Added 12 new StringIDs for saved commands messages. All patterns match existing UI_tools.cpp style. All 51/51 tests pass. Code review: APPROVED ✅. Testing: PASS ✅. |
 
 ### STEP-R3a — Saved scripts service layer
 | Field      | Value |
@@ -797,7 +798,7 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-CP2 | Release R1 | QA | Cross-platform validation testing | [x] DONE |
 | STEP-R1 | Release R2 | L1 | Implement enhanced search algorithm | [x] DONE |
 | STEP-R2a | Release R2 | L1 | Saved commands service layer | [x] DONE |
-| STEP-R2b | Release R2 | L2 | Saved commands UI screen |
+| STEP-R2b | Release R2 | L2 | Saved commands UI screen | [x] DONE |
 | STEP-R3a | Release R2 | L1 | Saved scripts service layer |
 | STEP-R3b | Release R2 | L2 | Saved scripts UI screen |
 | STEP-R4a | Release R2 | L2 | Settings: color enable/disable toggle |
