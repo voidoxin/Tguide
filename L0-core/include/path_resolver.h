@@ -125,8 +125,8 @@ namespace PathResolver {
             if (prefix) return fs::path(prefix) / "share/tguide/tguide.db";
             return fs::path(".");   // consistent fallback
         }
-        // Linux — system‑wide install path, distinct from user dbFile()
-        return fs::path("/usr/share/tguide/tguide.db");
+        // Linux — system‑wide install path under /usr/local, distinct from user dbFile()
+        return fs::path("/usr/local/share/tguide/tguide.db");
 #endif
     }
 

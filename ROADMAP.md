@@ -13,7 +13,7 @@
 - **L1-services**: svc_tools with search index, svc_generator with input sanitization, svc_dto decoupling layer, string table re-export, A6 DTO pattern fixed.
 - **L2-Interface_Engine**: UI_Engine with readInput(), colors with isatty()/g_colorEnabled, tool detail/category/vulnerability/module screens, template fill workflow, generator wizard, A4 header isolation fixed, A7 build-time layer enforcement fixed.
 - **Testing**: doctest framework with 28+ test cases across SHA256, ConfigManager, UserDataManager, DB recovery. CTest integration.
-- **Key remaining work before v1.0**: Replace data_adder.cpp with professional Python toolchain (STEP-DB — DONE), fix database bootstrap for no-internet first boot: installDbFile() done (STEP-B1a — DONE), still need bundle seed DB in CMake (STEP-B1b), fix copyDefaultToConfig() (STEP-B1c), make manifest fetch non-fatal (STEP-B1d); cross-platform path resolution (STEP-B2), Windows support (STEP-B3), cross-platform validation (STEP-CP2), enhanced search (STEP-R1), saved commands/scripts screens (STEP-R2/R3), settings screen completion (STEP-R4), remove all stubs (STEP-R5), shadow swap update system (STEP-17/18), fix manifest URL to use GitHub Releases (STEP-MU), remove dev-only code (STEP-61), full QA (STEP-62), and packaging for AUR/Homebrew/Deb/Windows + v1.0 release (STEP-PK1-5).
+- **Key remaining work before v1.0**: Replace data_adder.cpp with professional Python toolchain (STEP-DB — DONE), fix database bootstrap for no-internet first boot: installDbFile() done (STEP-B1a — DONE), bundle seed DB in CMake (STEP-B1b — DONE), still need fix copyDefaultToConfig() (STEP-B1c), make manifest fetch non-fatal (STEP-B1d); cross-platform path resolution (STEP-B2), Windows support (STEP-B3), cross-platform validation (STEP-CP2), enhanced search (STEP-R1), saved commands/scripts screens (STEP-R2/R3), settings screen completion (STEP-R4), remove all stubs (STEP-R5), shadow swap update system (STEP-17/18), fix manifest URL to use GitHub Releases (STEP-MU), remove dev-only code (STEP-61), full QA (STEP-62), and packaging for AUR/Homebrew/Deb/Windows + v1.0 release (STEP-PK1-5).
 
 ## Architecture Reference
 ```
@@ -412,11 +412,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L0 |
 | Priority   | CRITICAL |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | CMakeLists.txt, tools/build_db.py |
 | Goal       | Add CMake install targets to bundle seed database: `install(FILES .../tguide.db DESTINATION ...)` for Linux (share/tguide), macOS (Application Support), Windows (APPDATA). Add `tools/build_db.py build` command to generate seed DB during build. |
 | Depends    | STEP-B1a, STEP-DB (DONE) |
 | Done when  | `cmake --install build` copies tguide.db to system install prefix; `cmake --build build` auto-generates seed DB |
+| Completed  | **2026-06-17** — Added CMake seed DB auto-generation via `add_custom_command` + `add_custom_target(seed_db)`. `installDbFile()` Linux path updated to `/usr/local/share/tguide/tguide.db` to match CMake. macOS `TGUIDE_INSTALL_DATA` fixed. Install target now unconditional across Linux/Termux/macOS. Data file dependency tracking via `file(GLOB_RECURSE CONFIGURE_DEPENDS)`. PyYAML detection. Python3 `find_package` integration. Code review: H1/M1/M2 fixed and re-approved. |
 
 ### STEP-B1c — Fix copyDefaultToConfig() to use installDbFile()
 | Field      | Value |
