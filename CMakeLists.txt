@@ -104,7 +104,7 @@ elseif(IS_WINDOWS)
     set(TGUIDE_INSTALL_CONFIG "config")
 elseif(IS_MACOS)
     set(TGUIDE_INSTALL_BIN    "/usr/local/bin")
-    set(TGUIDE_INSTALL_DATA   "/Library/Application Support/tguide")
+    set(TGUIDE_INSTALL_DATA   "data")
     set(TGUIDE_INSTALL_CONFIG "config")
 endif()
 
@@ -131,53 +131,6 @@ set_target_properties(sqlite3_obj PROPERTIES
 )
 target_include_directories(sqlite3_obj PRIVATE ${LIBS_DIR})
 target_compile_options(sqlite3_obj PRIVATE -O0)
-
-# ==============================================================
-# Seed Database — auto-generated from YAML/JSON data during build
-# ==============================================================
-
-# Locate Python3 interpreter — required for seed DB generation
-find_package(Python3 REQUIRED COMPONENTS Interpreter)
-
-# Check PyYAML availability (JSON-only fallback if missing)
-execute_process(
-    COMMAND ${Python3_EXECUTABLE} -c "import yaml; print('yes')"
-    OUTPUT_VARIABLE PYTHON_HAS_YAML
-    ERROR_QUIET
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-if(PYTHON_HAS_YAML STREQUAL "yes")
-    message(STATUS "PyYAML: found — YAML data files supported")
-else()
-    message(STATUS "PyYAML: not found — using JSON data files only")
-endif()
-
-# Collect data files so CMake rebuilds the DB when any data changes
-file(GLOB_RECURSE SEED_DATA_FILES CONFIGURE_DEPENDS
-    ${CMAKE_SOURCE_DIR}/tools/data/*.yaml
-    ${CMAKE_SOURCE_DIR}/tools/data/*.json
-)
-
-set(SEED_DB_PATH "${CMAKE_BINARY_DIR}/tguide.db")
-
-add_custom_command(
-    OUTPUT ${SEED_DB_PATH}
-    COMMAND ${CMAKE_COMMAND} -E env
-        "PYTHONPATH=${CMAKE_SOURCE_DIR}/tools"
-        ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/build_db.py
-        --db ${SEED_DB_PATH}
-        build
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    MAIN_DEPENDENCY ${CMAKE_SOURCE_DIR}/tools/build_db.py
-    DEPENDS
-        ${CMAKE_SOURCE_DIR}/tools/schema.py
-        ${CMAKE_SOURCE_DIR}/tools/db_builder.py
-        ${CMAKE_SOURCE_DIR}/tools/manifest.py
-        ${SEED_DATA_FILES}
-    COMMENT "Generating seed database from YAML/JSON data"
-)
-
-add_custom_target(seed_db DEPENDS ${SEED_DB_PATH})
 
 # ==============================================================
 # json.hpp — header-only (nlohmann/json)
@@ -309,9 +262,6 @@ target_link_libraries(tguide
     PRIVATE L3_interface
 )
 
-# Seed database must be generated before install
-add_dependencies(tguide seed_db)
-
 # ==============================================================
 # Install Targets
 # Linux/Termux only — Windows resolves paths at runtime
@@ -325,18 +275,26 @@ if(IS_LINUX OR IS_TERMUX OR IS_MACOS)
         RUNTIME DESTINATION ${TGUIDE_INSTALL_BIN}
     )
 
-    # seed database — installed on all platforms where install target exists
-    # Auto-generated during build from YAML/JSON data in tools/data/
-    install(FILES ${SEED_DB_PATH}
-        DESTINATION ${TGUIDE_INSTALL_DATA}
-        RENAME tguide.db
-    )
+    # database & config — only for Linux/Termux where system paths are expected
+    # macOS provisions these at runtime in ~/Library/Application Support/tguide/
+    if(IS_LINUX OR IS_TERMUX)
+        if(EXISTS ${CMAKE_SOURCE_DIR}/data/database/tguide.db)
+            install(FILES ${CMAKE_SOURCE_DIR}/data/database/tguide.db
+                DESTINATION ${TGUIDE_INSTALL_DATA}
+            )
+        else()
+            message(WARNING
+                "tguide.db not found in data/database/ — "
+                "it will not be included in the install. "
+                "The app will attempt to download it on first run."
+            )
+        endif()
 
-    # config template (optional — shipped with package only if present)
-    if(EXISTS ${CMAKE_SOURCE_DIR}/config/config.json)
-        install(FILES ${CMAKE_SOURCE_DIR}/config/config.json
-            DESTINATION ${TGUIDE_INSTALL_CONFIG}
-        )
+        if(EXISTS ${CMAKE_SOURCE_DIR}/config/config.json)
+            install(FILES ${CMAKE_SOURCE_DIR}/config/config.json
+                DESTINATION ${TGUIDE_INSTALL_CONFIG}
+            )
+        endif()
     endif()
 
 endif()
@@ -417,6 +375,5 @@ message(STATUS "  libcurl    : ${CURL_VERSION_STRING}")
 message(STATUS "  Install    : ${TGUIDE_INSTALL_BIN}")
 message(STATUS "  Data       : ${TGUIDE_INSTALL_DATA}")
 message(STATUS "  Config     : ${TGUIDE_INSTALL_CONFIG}")
-message(STATUS "  Seed DB    : ${SEED_DB_PATH}")
 message(STATUS "======================================================")
 message(STATUS "")
