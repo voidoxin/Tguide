@@ -96,10 +96,22 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    // ── warn if DB is still missing after non-fatal resolve ────────────────
+    // With STEP-B1b/B1c, the seed DB should always be available from the
+    // install path. This check catches edge cases (corrupt install, dev
+    // running from build tree without cmake --install).
+    if (!std::filesystem::exists(PathResolver::dbFile())) {
+        UI_errors("Database file is missing. Tool data will be unavailable.\n"
+                  "Install tguide properly using 'cmake --install' or "
+                  "check your internet connection for an update.");
+    }
+
     // ── database integrity check ──────────────────────────────────────────
     // Runs PRAGMA integrity_check to detect corruption that may have passed
     // schema validation. If corruption is found, offers recovery from backup.
-    {
+    // Guarded by existence check — sqlite3_open() would create an empty file
+    // if the DB is absent (e.g. after non-fatal resolve failure).
+    if (std::filesystem::exists(PathResolver::dbFile())) {
         sqlite3* db = nullptr;
         if (sqlite3_open(PathResolver::dbFile().string().c_str(), &db) == SQLITE_OK) {
             bool needsRecovery = false;

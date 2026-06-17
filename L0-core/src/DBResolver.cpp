@@ -513,15 +513,10 @@ std::string DBResolver::resolve(const std::string& configPath) {
         Manifest m = fetchManifest();
 
         if (m.db_url.empty()) {
-            std::string lastVer = DBCacheManager::instance().getLastSeenVersion();
-            if (g_errorHandler.fatal) g_errorHandler.fatal(
-                "Database not found and version manifest is unavailable. "
-                "Please check your internet connection "
-                + (lastVer.empty()
-                    ? "and try again."
-                    : "or reinstall tguide (last seen version: " + lastVer + ").")
-            );
-            fatal_ = true;
+            if (g_errorHandler.error) g_errorHandler.error(
+                "Could not fetch database manifest. "
+                "The local database may be out of date. "
+                "Check your internet connection to get the latest version.");
             return "";
         }
 
@@ -536,11 +531,9 @@ std::string DBResolver::resolve(const std::string& configPath) {
                 std::string restoredHash = SHA256::hashFile(configPath);
                 return cacheResult(configPath, configPath, restoredHash);
             }
-            if (g_errorHandler.fatal) g_errorHandler.fatal(
+            if (g_errorHandler.error) g_errorHandler.error(
                 "Failed to download database from GitHub. "
-                "Please check your internet connection and try again."
-            );
-            fatal_ = true;
+                "Check your internet connection and try again.");
             return "";
         }
 
@@ -562,9 +555,8 @@ std::string DBResolver::resolve(const std::string& configPath) {
                 std::string restoredHash = SHA256::hashFile(configPath);
                 return cacheResult(configPath, configPath, restoredHash);
             }
-            if (g_errorHandler.fatal) g_errorHandler.fatal(
+            if (g_errorHandler.error) g_errorHandler.error(
                 "Downloaded database failed schema validation.");
-            fatal_ = true;
             return "";
         }
 
@@ -579,18 +571,14 @@ std::string DBResolver::resolve(const std::string& configPath) {
                 std::string restoredHash = SHA256::hashFile(configPath);
                 return cacheResult(configPath, configPath, restoredHash);
             }
-            if (g_errorHandler.fatal) g_errorHandler.fatal(
+            if (g_errorHandler.error) g_errorHandler.error(
                 "Downloaded database hash does not match the version manifest. "
-                "The file may have been tampered with. Aborting."
-            );
-            fatal_ = true;
+                "The file may have been tampered with. Download ignored.");
             return "";
         }
 
         return cacheResult(configPath, configPath, dlHash);
     }
 
-    // Unreachable
-    fatal_ = true;
     return "";
 }
