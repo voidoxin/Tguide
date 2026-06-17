@@ -254,6 +254,33 @@ int UserDataManager::saveScript(const std::string& name, const std::string& path
     return s.id;
 }
 
+bool UserDataManager::updateScript(int id, const std::string& name,
+                                    const std::string& path,
+                                    const std::string& note) {
+    if (!m_initialized) return false;
+    auto it = std::find_if(m_scripts.begin(), m_scripts.end(),
+        [id](const SavedScript& s) { return s.id == id; });
+    if (it == m_scripts.end()) return false;
+
+    SavedScript backup = *it;
+    it->name = name;
+    it->path = path;
+    it->note = note;
+
+    if (!save()) {
+        *it = backup;
+        return false;
+    }
+    return true;
+}
+
+SavedScript UserDataManager::getScriptById(int id) {
+    auto it = std::find_if(m_scripts.begin(), m_scripts.end(),
+        [id](const SavedScript& s) { return s.id == id; });
+    if (it != m_scripts.end()) return *it;
+    return SavedScript{};
+}
+
 bool UserDataManager::deleteScript(int id) {
     if (!m_initialized) return false;
     auto it = std::find_if(m_scripts.begin(), m_scripts.end(),

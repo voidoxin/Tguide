@@ -57,6 +57,9 @@ public:
     // returns new id on success, -1 on failure
     int  saveScript(const std::string& name, const std::string& path,
                     const std::string& note);
+    bool updateScript(int id, const std::string& name,
+                      const std::string& path, const std::string& note);
+    SavedScript getScriptById(int id);
     bool deleteScript(int id);
     std::vector<SavedScript> getScripts();
 

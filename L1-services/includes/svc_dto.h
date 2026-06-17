@@ -92,4 +92,11 @@ namespace SvcDTO {
         std::string tool_name;       // resolved by L1 service from tool_id
     };
 
+    struct SavedScriptDTO {
+        int         id;
+        std::string name;
+        std::string path;
+        std::string note;
+    };
+
 } // namespace SvcDTO

@@ -11,6 +11,7 @@ set(TEST_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test_search.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test_user_data_manager.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test_saved_commands.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_saved_scripts.cpp
 )
 
 add_executable(tguide_tests ${TEST_SOURCES})
