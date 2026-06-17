@@ -31,14 +31,14 @@ namespace fs = std::filesystem;
 #ifdef _WIN32
 static BOOL WINAPI ctrlHandler(DWORD dwCtrlType) {
     if (dwCtrlType == CTRL_C_EVENT || dwCtrlType == CTRL_BREAK_EVENT) {
-        g_interrupted = true;
+        g_interrupted = 1;
         return TRUE;   // handled — don't pass to next handler
     }
     return FALSE;      // unhandled — pass to next handler
 }
 #else
 extern "C" void handleSIGINT(int /*sig*/) {
-    g_interrupted = true;
+    g_interrupted = 1;
 }
 #endif
 

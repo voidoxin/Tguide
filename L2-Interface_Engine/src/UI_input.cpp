@@ -50,7 +50,8 @@ string readInput(const string& prompt) noexcept {
         // If Ctrl+C was pressed (signal handler set the flag),
         // return "quit" so callers exit gracefully.
         // Otherwise (EOF/pipe close), return empty as before.
-        if (g_interrupted.exchange(false)) {
+        if (g_interrupted) {
+            g_interrupted = 0;
             cin.clear();
             return "quit";
         }

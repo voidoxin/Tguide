@@ -39,8 +39,8 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
         add_compile_options(-O2)
     endif()
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    message(STATUS "Compiler: Clang ${CMAKE_CXX_COMPILER_VERSION}")
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang|IntelLLVM")
+    message(STATUS "Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
     add_compile_options(-Wall -Wextra -Wpedantic)
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
         add_compile_options(-O2)
@@ -58,7 +58,7 @@ endif()
 # _CRT_SECURE_NO_WARNINGS suppresses deprecation warnings for
 # standard C functions (used by sqlite3.c)
 # ==============================================================
-if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC" OR CMAKE_CXX_SIMULATE_ID MATCHES "MSVC")
     add_compile_definitions(NOMINMAX _CRT_SECURE_NO_WARNINGS)
 endif()
 
@@ -113,9 +113,16 @@ elseif(IS_LINUX)
 elseif(IS_WINDOWS)
     # Windows: system-wide install under %PROGRAMDATA% matches
     # PathResolver::installDbFile() which returns %PROGRAMDATA%/tguide/tguide.db
-    set(TGUIDE_INSTALL_BIN    "$ENV{PROGRAMDATA}/tguide/bin")
-    set(TGUIDE_INSTALL_DATA   "$ENV{PROGRAMDATA}/tguide")
-    set(TGUIDE_INSTALL_CONFIG "$ENV{PROGRAMDATA}/tguide")
+    # Fallback to C:\ProgramData if env var is unset (rare but safe)
+    if(DEFINED ENV{PROGRAMDATA})
+        set(_PGDATA "$ENV{PROGRAMDATA}")
+    else()
+        message(WARNING "PROGRAMDATA not set — falling back to C:\\ProgramData")
+        set(_PGDATA "C:\\ProgramData")
+    endif()
+    set(TGUIDE_INSTALL_BIN    "${_PGDATA}/tguide/bin")
+    set(TGUIDE_INSTALL_DATA   "${_PGDATA}/tguide")
+    set(TGUIDE_INSTALL_CONFIG "${_PGDATA}/tguide")
 elseif(IS_MACOS)
     set(TGUIDE_INSTALL_BIN    "/usr/local/bin")
     set(TGUIDE_INSTALL_DATA   "/Library/Application Support/tguide")
@@ -182,7 +189,7 @@ set(L0_SOURCES
     ${CMAKE_SOURCE_DIR}/L0-core/src/config_manager.cpp
     ${CMAKE_SOURCE_DIR}/L0-core/src/db_cache_manager.cpp
     ${CMAKE_SOURCE_DIR}/L0-core/src/sha256.cpp
-    ${CMAKE_SOURCE_DIR}/L0-core/src/strings.cpp
+    ${CMAKE_SOURCE_DIR}/L0-core/src/string_utils.cpp
     ${CMAKE_SOURCE_DIR}/L0-core/src/UserDataManager.cpp
 )
 
@@ -253,6 +260,10 @@ target_include_directories(L3_interface PUBLIC
     ${L3_INC}
     ${L1_INC}
 )
+target_include_directories(L3_interface PRIVATE
+    ${L0_INC}
+    ${LIBS_DIR}
+)
 
 target_link_libraries(L3_interface PRIVATE L1_services)
 
@@ -267,7 +278,6 @@ set_target_properties(tguide PROPERTIES OUTPUT_NAME "tguide")
 target_include_directories(tguide PRIVATE
     ${L0_INC}
     ${L1_INC}
-    ${L2_INC}
     ${L3_INC}
     ${LIBS_DIR}
 )

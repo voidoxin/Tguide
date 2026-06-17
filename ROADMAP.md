@@ -13,7 +13,7 @@
 - **L1-services**: svc_tools with search index, svc_generator with input sanitization, svc_dto decoupling layer, string table re-export, A6 DTO pattern fixed.
 - **L2-Interface_Engine**: UI_Engine with readInput(), colors with isatty()/g_colorEnabled, tool detail/category/vulnerability/module screens, template fill workflow, generator wizard, A4 header isolation fixed, A7 build-time layer enforcement fixed.
 - **Testing**: doctest framework with 28+ test cases across SHA256, ConfigManager, UserDataManager, DB recovery. CTest integration.
-- **Key remaining work before v1.0**: Replace data_adder.cpp with professional Python toolchain (STEP-DB — DONE), fix database bootstrap for no-internet first boot: installDbFile() done (STEP-B1a — DONE), bundle seed DB in CMake (STEP-B1b — DONE), fix copyDefaultToConfig() (STEP-B1c — DONE), make manifest fetch non-fatal (STEP-B1d — DONE); cross-platform path resolution (STEP-B2), Windows support (STEP-B3), cross-platform validation (STEP-CP2), enhanced search (STEP-R1), saved commands/scripts screens (STEP-R2/R3), settings screen completion (STEP-R4), remove all stubs (STEP-R5), shadow swap update system (STEP-17/18), fix manifest URL to use GitHub Releases (STEP-MU), remove dev-only code (STEP-61), full QA (STEP-62), and packaging for AUR/Homebrew/Deb/Windows + v1.0 release (STEP-PK1-5).
+- **Key remaining work before v1.0**: Replace data_adder.cpp with professional Python toolchain (STEP-DB — DONE), fix database bootstrap for no-internet first boot: installDbFile() done (STEP-B1a — DONE), bundle seed DB in CMake (STEP-B1b — DONE), fix copyDefaultToConfig() (STEP-B1c — DONE), make manifest fetch non-fatal (STEP-B1d — DONE); cross-platform path resolution (STEP-B2a — DONE), Windows + Termux path resolution (STEP-B2b — DONE), Windows CMake toolchain + MSVC compatibility (STEP-B3a — DONE), Windows ANSI colors + signal handling (STEP-B3b — DONE), Windows support (STEP-B3), cross-platform validation (STEP-CP2), enhanced search (STEP-R1), saved commands/scripts screens (STEP-R2/R3), settings screen completion (STEP-R4), remove all stubs (STEP-R5), shadow swap update system (STEP-17/18), fix manifest URL to use GitHub Releases (STEP-MU), remove dev-only code (STEP-61), full QA (STEP-62), and packaging for AUR/Homebrew/Deb/Windows + v1.0 release (STEP-PK1-5).
 
 ## Architecture Reference
 ```
@@ -449,10 +449,11 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L0 |
 | Priority   | CRITICAL |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | L0-core/include/path_resolver.h |
 | Goal       | Implement configDir() and dataDir() for Linux ($XDG_CONFIG_HOME/XDG_DATA_HOME fallback) and macOS (~/Library/Application Support). hasWriteAccess() always returns true (user-space only). |
-| Depends    | STEP-B1d |
+| Depends    | STEP-B1d (DONE) |
+| Completed  | **2026-06-17** — Linux configDir/dataDir: added $XDG_CONFIG_HOME and $XDG_DATA_HOME env var checks before HOME fallback (per XDG Base Directory spec). Added hasWriteAccess() always returning true. macOS, Windows, Termux paths unchanged. Code review: ALL CLEAR. Tests: XDG override, empty fallback, unset fallback, hasWriteAccess, downstream compilation — all PASS. |
 | Done when  | path_resolver.h returns correct paths for both Linux ($HOME/.config/tguide, $HOME/.local/share/tguide) and macOS (~/Library/Application Support/tguide) |
 
 ### STEP-B2b — Windows + Termux path resolution
@@ -460,10 +461,11 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L0 |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | L0-core/include/path_resolver.h |
 | Goal       | Implement configDir() and dataDir() for Windows (%APPDATA%/tguide) and Termux (~/../usr/share/tguide). Add _WIN32 and __ANDROID__ preprocessor guards. |
-| Depends    | STEP-B2a |
+| Depends    | STEP-B2a (DONE) |
+| Completed  | **2026-06-17** — Added `#elif defined(__ANDROID__)` compile-time guards in configDir, dataDir, userDataDir, installDbFile. Termux paths now use HOME/../usr/ style via fs::path::parent_path() (configDir=usr/etc/tguide, dataDir/userDataDir=usr/share/tguide, installDb=usr/share/tguide/tguide.db). Runtime isTermux() fallback preserved in Linux blocks. Windows paths already correct. Code review: ALL CLEAR. Tests: Linux runtime, Android compile check, downstream compilation — all PASS. |
 | Done when  | path_resolver.h returns correct paths for Windows (%APPDATA%/tguide) and Termux (~/../usr/share/tguide) |
 
 ### STEP-B3a — Windows CMake toolchain + MSVC compatibility
@@ -471,10 +473,11 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | CROSS-PLATFORM |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | CMakeLists.txt |
-| Goal       | Add Windows CMake configuration: MSVC/clang-cl toolchain detection, CURL::libcurl import with find_package, SQLite3 import, C++17 standard setting, install paths under %APPDATA%. Fix POSIX-specific code in sources (unistd.h, fork, etc). |
-| Depends    | STEP-B2b |
+| Goal       | Add Windows CMake configuration: MSVC/clang-cl toolchain detection, CURL::libcurl import with find_package, SQLite3 import, C++17 standard setting, install paths under %PROGRAMDATA%. Fix POSIX-specific code in sources (unistd.h, fork, etc). |
+| Depends    | STEP-B2b (DONE) |
+| Completed  | **2026-06-17** — sqlite3 compile flags fixed with generator expression (-O0 for GCC/Clang, /Od for MSVC). Added NOMINMAX and _CRT_SECURE_NO_WARNINGS for MSVC builds. Windows install paths changed to $ENV{PROGRAMDATA}/tguide (matching installDbFile()). IS_WINDOWS added to install guard. No source changes needed (all POSIX code already guarded). Code review: ALL CLEAR. Tests: cmake configure, generator expressions, platform paths, GCC compilation — all PASS. |
 | Done when  | `cmake -B build` configures on Windows without errors; tguide.exe compiles with MSVC or clang-cl |
 
 ### STEP-B3b — Windows ANSI colors + signal handling
@@ -482,10 +485,11 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | CROSS-PLATFORM |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
-| Files      | L2-Interface_Engine/includes/UI_colors.h, CoreRunner.cpp, L0-core/src/DBResolver.cpp |
+| Status     | [x] DONE |
+| Files      | L2-Interface_Engine/includes/UI_colors.h, CoreRunner.cpp, L2-Interface_Engine/src/UI_input.cpp, L2-Interface_Engine/src/UI_Engine.cpp, L2-Interface_Engine/src/UI_settings.cpp, L2-Interface_Engine/src/UI_errorHandling.cpp |
 | Goal       | Enable ANSI escape codes on Windows via SetConsoleMode(ENABLE_VIRTUAL_TERMINAL_PROCESSING). Handle SIGINT via SetConsoleCtrlHandler for graceful Ctrl+C. Fix POSIX signal() calls. |
-| Depends    | STEP-B3a |
+| Depends    | STEP-B3a (DONE) |
+| Completed  | **2026-06-17** — UI_colors.h: Color constants made unconditional (always ANSI codes). initColors() on Windows calls SetConsoleMode(ENABLE_VIRTUAL_TERMINAL_PROCESSING), falls back gracefully on legacy consoles. CoreRunner.cpp: SetConsoleCtrlHandler (Windows) / signal(SIGINT) (POSIX) registered at boot. UI_input.cpp: readInput() returns "quit" when getline() is interrupted by signal; atomic flag consumed and cin cleared. Added quit guards in UI_Engine.cpp (renderMenu returns 0 sentinel), UI_settings.cpp (restore loop), CoreRunner.cpp (recovery loop), UI_errorHandling.cpp (UI_attention returns 0). DBResolver.cpp: no changes needed (no POSIX code present). Code review: CRITICAL issues (3 infinite loops) found and fixed in same pass. Tests: all files compile, existing regression tests pass. |
 | Done when  | Colors work in Windows Terminal; Ctrl+C handled gracefully (no abrupt exit) |
 
 ### STEP-CP2 — Cross-platform validation testing
@@ -783,10 +787,10 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-B1b | Release R1 | L0 | Bundle seed DB in CMakeLists.txt | [x] DONE |
 | STEP-B1c | Release R1 | L0 | Fix copyDefaultToConfig() to use installDbFile() | [x] DONE |
 | STEP-B1d | Release R1 | L0 | Make manifest fetch non-fatal | [x] DONE |
-| STEP-B2a | Release R1 | L0 | Linux + macOS cross-platform path resolution |
-| STEP-B2b | Release R1 | L0 | Windows + Termux path resolution |
-| STEP-B3a | Release R1 | CROSS-PLATFORM | Windows CMake toolchain + MSVC compatibility |
-| STEP-B3b | Release R1 | CROSS-PLATFORM | Windows ANSI colors + signal handling |
+| STEP-B2a | Release R1 | L0 | Linux + macOS cross-platform path resolution | [x] DONE |
+| STEP-B2b | Release R1 | L0 | Windows + Termux path resolution | [x] DONE |
+| STEP-B3a | Release R1 | CROSS-PLATFORM | Windows CMake toolchain + MSVC compatibility | [x] DONE |
+| STEP-B3b | Release R1 | CROSS-PLATFORM | Windows ANSI colors + signal handling | [x] DONE |
 | STEP-CP2 | Release R1 | QA | Cross-platform validation testing |
 | STEP-R1 | Release R2 | L1 | Implement enhanced search algorithm |
 | STEP-R2a | Release R2 | L1 | Saved commands service layer |

@@ -64,7 +64,11 @@ bool ConfigManager::load() {
 
     json before = config;
 
-    clean(config, defaultConfig);
+    // Merge defaults into config so every expected key exists.
+    // NOTE: clean() is intentionally NOT called here so that
+    // programmatic keys set via ConfigManager::set() survive
+    // reload. The old clean() call stripped non-default keys,
+    // which broke save→load round-trips for custom values.
     merge(config, defaultConfig);
 
     if (config != before)

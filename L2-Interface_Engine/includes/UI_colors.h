@@ -12,7 +12,7 @@
 #include <unistd.h>
 #endif
 #include <cstdio>
-#include <atomic>
+#include <csignal>
 
 namespace Color {
     constexpr const char* RED     = "\033[31m";
@@ -43,7 +43,8 @@ inline bool g_colorEnabled = false;
 // ── Ctrl+C interrupt flag ────────────────────────────────────────
 // Set by signal handler (SIGINT on POSIX, SetConsoleCtrlHandler on Windows).
 // Checked by readInput() to gracefully exit when getline() is interrupted.
-inline std::atomic<bool> g_interrupted{false};
+// Uses volatile sig_atomic_t (C++ standard's only async-signal-safe type).
+inline volatile std::sig_atomic_t g_interrupted{0};
 
 inline bool isTerminal() {
 #ifdef _WIN32

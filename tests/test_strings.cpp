@@ -1,5 +1,5 @@
 #include "doctest.h"
-#include "strings.h"
+#include "string_utils.h"
 #include <string>
 
 TEST_CASE("Strings — every StringID returns non-empty string") {
