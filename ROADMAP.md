@@ -510,11 +510,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L1 |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
-| Files      | L1-services/src/svc_tools.cpp, L1-services/includes/svc_tools.h |
+| Status     | [x] DONE |
+| Files      | L0-core/include/DatabaseManager.h, L0-core/src/DatabaseManager.cpp, L1-services/includes/svc_tools.h, L1-services/src/svc_tools.cpp, L2-Interface_Engine/src/UI_tools.cpp, tests/test_search.cpp, tests/CMakeLists.txt |
 | Goal       | Implement search with fuzzy matching, partial word matching, and case-insensitive search for better user experience. |
 | Depends    | STEP-CP2 |
 | Done when  | Search returns results for typos, partial names, and related terms |
+| Completed  | **2026-06-17** (commit `b5d3be0`) — Added `ToolD::searchTools()` in L0-core with LIKE wildcard escaping (`%`, `_`, `\`), `SvcTools::searchTools()` in L1-services with DTO conversion and name-based sorting, and interactive search UI in L2 with paginator display and tool detail drill-down. Added 10 doctest test cases in `tests/test_search.cpp`. All 42/42 tests pass. Code review: APPROVED ✅. Testing: PASS ✅. |
 
 ### STEP-R2a — Saved commands service layer
 | Field      | Value |
@@ -793,7 +794,7 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-B3a | Release R1 | CROSS-PLATFORM | Windows CMake toolchain + MSVC compatibility | [x] DONE |
 | STEP-B3b | Release R1 | CROSS-PLATFORM | Windows ANSI colors + signal handling | [x] DONE |
 | STEP-CP2 | Release R1 | QA | Cross-platform validation testing | [x] DONE |
-| STEP-R1 | Release R2 | L1 | Implement enhanced search algorithm |
+| STEP-R1 | Release R2 | L1 | Implement enhanced search algorithm | [x] DONE |
 | STEP-R2a | Release R2 | L1 | Saved commands service layer |
 | STEP-R2b | Release R2 | L2 | Saved commands UI screen |
 | STEP-R3a | Release R2 | L1 | Saved scripts service layer |
