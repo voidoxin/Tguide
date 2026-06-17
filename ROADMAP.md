@@ -13,7 +13,7 @@
 - **L1-services**: svc_tools with search index, svc_generator with input sanitization, svc_dto decoupling layer, string table re-export, A6 DTO pattern fixed.
 - **L2-Interface_Engine**: UI_Engine with readInput(), colors with isatty()/g_colorEnabled, tool detail/category/vulnerability/module screens, template fill workflow, generator wizard, A4 header isolation fixed, A7 build-time layer enforcement fixed.
 - **Testing**: doctest framework with 28+ test cases across SHA256, ConfigManager, UserDataManager, DB recovery. CTest integration.
-- **Key remaining work before v1.0**: Replace data_adder.cpp with professional Python toolchain (STEP-DB — DONE), fix database bootstrap for no-internet first boot: installDbFile() done (STEP-B1a — DONE), bundle seed DB in CMake (STEP-B1b — DONE), fix copyDefaultToConfig() (STEP-B1c), make manifest fetch non-fatal (STEP-B1d); cross-platform path resolution (STEP-B2), Windows support (STEP-B3), cross-platform validation (STEP-CP2), enhanced search (STEP-R1), saved commands/scripts screens (STEP-R2/R3), settings screen completion (STEP-R4), remove all stubs (STEP-R5), shadow swap update system (STEP-17/18), fix manifest URL to use GitHub Releases (STEP-MU), remove dev-only code (STEP-61), full QA (STEP-62), and packaging for AUR/Homebrew/Deb/Windows + v1.0 release (STEP-PK1-5).
+- **Key remaining work before v1.0**: Replace data_adder.cpp with professional Python toolchain (STEP-DB — DONE), fix database bootstrap for no-internet first boot: installDbFile() done (STEP-B1a — DONE), bundle seed DB in CMake (STEP-B1b — DONE), fix copyDefaultToConfig() (STEP-B1c — DONE), make manifest fetch non-fatal (STEP-B1d); cross-platform path resolution (STEP-B2), Windows support (STEP-B3), cross-platform validation (STEP-CP2), enhanced search (STEP-R1), saved commands/scripts screens (STEP-R2/R3), settings screen completion (STEP-R4), remove all stubs (STEP-R5), shadow swap update system (STEP-17/18), fix manifest URL to use GitHub Releases (STEP-MU), remove dev-only code (STEP-61), full QA (STEP-62), and packaging for AUR/Homebrew/Deb/Windows + v1.0 release (STEP-PK1-5).
 
 ## Architecture Reference
 ```
@@ -425,10 +425,11 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L0 |
 | Priority   | CRITICAL |
-| Status     | [ ] TODO |
-| Files      | L0-core/src/DBResolver.cpp, L0-core/include/DBResolver.h |
+| Status     | [x] DONE |
+| Files      | L0-core/src/DBResolver.cpp |
 | Goal       | Replace hardcoded dev-time relative path in DBResolver::copyDefaultToConfig() with PathResolver::installDbFile(). Detect fresh install when config DB doesn't exist, copy seed DB from install path to user config dir. |
-| Depends    | STEP-B1b |
+| Depends    | STEP-B1b (DONE) |
+| Completed  | **2026-06-17** — `copyDefaultToConfig()` and `resolveHashMismatch()` now use `PathResolver::installDbFile().string()` instead of hardcoded `"data/database/tguide.db"`. Both functions use `copy_file()` exclusively (never `rename()` or `remove()` on the system install path). Code review approved. Compilation verified, tests pass, no stale `DEFAULT_DB_PATH` references remain in C++ files. |
 | Done when  | copyDefaultToConfig() uses installDbFile() instead of hardcoded path; fresh install copies seed DB to ~/.config/tguide/tguide.db |
 
 ### STEP-B1d — Make manifest fetch non-fatal
@@ -779,7 +780,7 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-DB | Release R0 | TOOLING | Professional Python database builder (replaces data_adder.cpp) |
 | STEP-B1a | Release R1 | L0 | Add installDbFile() to path_resolver |
 | STEP-B1b | Release R1 | L0 | Bundle seed DB in CMakeLists.txt | [x] DONE |
-| STEP-B1c | Release R1 | L0 | Fix copyDefaultToConfig() to use installDbFile() |
+| STEP-B1c | Release R1 | L0 | Fix copyDefaultToConfig() to use installDbFile() | [x] DONE |
 | STEP-B1d | Release R1 | L0 | Make manifest fetch non-fatal |
 | STEP-B2a | Release R1 | L0 | Linux + macOS cross-platform path resolution |
 | STEP-B2b | Release R1 | L0 | Windows + Termux path resolution |

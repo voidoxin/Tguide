@@ -2,6 +2,7 @@
 #include "ErrorHandler.h"
 #include "db_cache_manager.h"
 #include "sha256.h"
+#include "path_resolver.h"
 #include "../../libs/json.hpp"
 #include <iostream>
 #include <filesystem>
@@ -49,8 +50,6 @@ static bool isSafeURL(const std::string& s) {
     }
     return true;
 }
-
-static const std::string DEFAULT_DB_PATH = "data/database/tguide.db";
 
 // ==================== VALIDATION ====================
 
@@ -405,28 +404,27 @@ bool DBResolver::openAndValidate(const std::string& path, bool& isSQLite,
 }
 
 std::string DBResolver::copyDefaultToConfig(const std::string& configPath) {
-    if (!std::filesystem::exists(DEFAULT_DB_PATH) ||
-        !isSQLiteFile(DEFAULT_DB_PATH))
+    std::string installPath = PathResolver::installDbFile().string();
+    if (!std::filesystem::exists(installPath) ||
+        !isSQLiteFile(installPath))
         return {};
 
     sqlite3* db = nullptr;
     bool defaultOk = false;
-    if (sqlite3_open(DEFAULT_DB_PATH.c_str(), &db) == SQLITE_OK) {
+    if (sqlite3_open(installPath.c_str(), &db) == SQLITE_OK) {
         defaultOk = validateSchema(db);
         sqlite3_close(db);
     }
     if (!defaultOk) return {};
 
     std::error_code ec;
-    std::filesystem::rename(DEFAULT_DB_PATH, configPath, ec);
-    if (ec) {
-        std::filesystem::copy_file(DEFAULT_DB_PATH, configPath,
-            std::filesystem::copy_options::overwrite_existing, ec);
-        if (!ec) std::filesystem::remove(DEFAULT_DB_PATH);
-    }
+    // Always copy (never rename) — the install path is system-wide
+    // and must not be moved or deleted.
+    std::filesystem::copy_file(installPath, configPath,
+        std::filesystem::copy_options::overwrite_existing, ec);
     if (ec) {
         if (g_errorHandler.error) g_errorHandler.error(
-            "Failed to move default database to configured path.");
+            "Failed to copy default database to configured path.");
         return {};
     }
     std::string movedHash = SHA256::hashFile(configPath);
@@ -435,20 +433,21 @@ std::string DBResolver::copyDefaultToConfig(const std::string& configPath) {
 
 std::string DBResolver::resolveHashMismatch(const std::string& configPath,
                                              const std::string& hash) {
-    if (!std::filesystem::exists(DEFAULT_DB_PATH) ||
-        !isSQLiteFile(DEFAULT_DB_PATH))
+    std::string installPath = PathResolver::installDbFile().string();
+    if (!std::filesystem::exists(installPath) ||
+        !isSQLiteFile(installPath))
         return {};
 
     sqlite3* db = nullptr;
     bool defaultOk = false;
-    if (sqlite3_open(DEFAULT_DB_PATH.c_str(), &db) == SQLITE_OK) {
+    if (sqlite3_open(installPath.c_str(), &db) == SQLITE_OK) {
         defaultOk = validateSchema(db);
         sqlite3_close(db);
     }
     if (!defaultOk) return {};
 
     std::error_code ec;
-    std::filesystem::copy_file(DEFAULT_DB_PATH, configPath,
+    std::filesystem::copy_file(installPath, configPath,
         std::filesystem::copy_options::overwrite_existing, ec);
     if (ec) {
         if (g_errorHandler.error) g_errorHandler.error(
