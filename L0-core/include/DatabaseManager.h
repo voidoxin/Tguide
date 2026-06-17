@@ -146,6 +146,9 @@ public:
 
     ToolResults getWhere(const std::vector<std::string>& columns,
                          const std::vector<std::string>& values);
+
+    // Full-text search on name, short_desc, and description using LIKE
+    ToolResults searchTools(const std::string& query);
 };
 
 class ToolFlagD {

@@ -312,38 +312,81 @@ static void showSearch() {
         cout << "\n"
              << "  enter search query (or 0 to go back):\n";
 
-        string input = readInput("  \u2192 ");
-        if (input.empty()) continue;
-        if (isQuit(input)) { handleQuit(); return; }
-        if (isBack(input)) return;
+        string query = readInput("  \u2192 ");
+        if (query.empty()) continue;
+        if (isQuit(query)) { handleQuit(); return; }
+        if (isBack(query)) return;
 
-        // results screen — algorithm is a future task
-        UI::clearScreen();
-        UI::printBanner();
-        UI::printBreadcrumb("tools \u203a search \u203a results");
-        UI::printDivider();
-        cout << "\n"
-             << "  searching...\n\n";
+        vector<SvcDTO::ToolDTO> results = SvcTools::searchTools(query);
 
-        string content = "  no results for: \"" + input + "\"";
-        size_t inner   = content.size() + 2; // 2 trailing spaces of padding
+        // Build display lines: "name  short_desc"
+        vector<string> lines;
+        lines.reserve(results.size());
+        for (const SvcDTO::ToolDTO& t : results) {
+            string line;
+            if (colorsEnabled()) {
+                line += string(Color::RESET) + Color::BOLD + Color::CYAN;
+                line += t.name;
+                line += string(Color::RESET) + "  " + Color::DIM;
+                line += t.short_desc;
+                line += Color::RESET;
+            } else {
+                line = t.name + "  " + t.short_desc;
+            }
+            lines.push_back(line);
+        }
 
-        string hline;
-        hline.reserve(inner * 3);
-        for (size_t i = 0; i < inner; ++i) hline += "\u2500";
+        if (results.empty()) {
+            UI::clearScreen();
+            UI::printBanner();
+            UI::printBreadcrumb("tools \u203a search \u203a results");
+            UI::printDivider();
+            cout << "\n"
+                 << "  no results for: \"" << query << "\"\n\n";
+            UI::printDivider();
+            cout << "\n";
+            waitForEnter();
+            continue;
+        }
 
-        cout << "  \u250c" << hline        << "\u2510\n"
-             << "  \u2502" << content << "  " << "\u2502\n"
-             << "  \u2514" << hline        << "\u2518\n\n"
-             << "  search engine not yet implemented.\n"
-             << (colorsEnabled() ? Color::DIM : "")
-             << "  press enter to search again or 0 to go back."
-             << (colorsEnabled() ? Color::RESET : "")
-             << "\n\n";
-        UI::printDivider();
-        cout << "\n";
-        waitForEnter();
-        // loop returns to search prompt
+        string crumb = "tools \u203a search \u203a results (" + to_string(results.size()) + ")";
+        Paginator pager(lines, true);
+
+        while (true) {
+            pager.render(crumb);
+
+            string input = readInput("  \u2192 ");
+            if (input.empty()) continue;
+            if (isQuit(input)) { handleQuit(); return; }
+            if (isBack(input)) break; // back to search prompt
+            if (isNext(input)) {
+                if (!pager.nextPage())
+                    cout << "  already on last page.\n";
+                continue;
+            }
+            if (isPrev(input)) {
+                if (!pager.prevPage())
+                    cout << "  already on first page.\n";
+                continue;
+            }
+
+            int idx = pager.select(input);
+            vector<string> clean;
+            if (idx == -1) {
+                clean.reserve(results.size());
+                for (const auto& t : results) clean.push_back(t.name);
+                idx = matchOption(input, clean);
+            }
+            if (idx == -1) {
+                if (isAmbiguous(input, clean))
+                    cout << "  " << Strings::get(StringID::TOOLS_AMBIGUOUS) << "\n";
+                else
+                    cout << "  " << Strings::get(StringID::TOOLS_INVALID_CHOICE) << "\n";
+                continue;
+            }
+
+            showToolDetail(results[static_cast<size_t>(idx)]);
+        }
     }
 }
 

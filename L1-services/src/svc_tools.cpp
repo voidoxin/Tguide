@@ -57,9 +57,19 @@ vector<SvcDTO::ToolDTO> getToolsByCategory(const string& category) {
 
 // ── SEARCH ──────────────────────────────────────────────────────────────────
 
-// TODO: implement search algorithm
 vector<SvcDTO::ToolDTO> searchTools(const string& query) {
-    (void)query; return {};
+    ToolD db(PathResolver::dbFile().string());
+    ToolResults res = db.searchTools(query);
+
+    vector<SvcDTO::ToolDTO> result = toDTOs(res.items);
+
+    // Sort by name for consistent ordering
+    sort(result.begin(), result.end(),
+         [](const SvcDTO::ToolDTO& a, const SvcDTO::ToolDTO& b) {
+             return a.name < b.name;
+         });
+
+    return result;
 }
 
 // ── CATEGORY LIST (from categories table) ─────────────────────────────────

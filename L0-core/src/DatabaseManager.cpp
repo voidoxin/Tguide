@@ -560,6 +560,50 @@ ToolResults ToolD::getWhere(const std::vector<std::string>& columns,
     return results;
 }
 
+// ── SEARCH ──────────────────────────────────────────────────────────────
+
+ToolResults ToolD::searchTools(const std::string& query) {
+    ToolResults results;
+    DBSession s(db_path);
+    if (!s.ok()) return results;
+
+    // Escape LIKE wildcards in the user query
+    // Backslash must be escaped first so later %/_ escapes don't
+    // accidentally turn a backslash into an escape prefix.
+    std::string escaped;
+    escaped.reserve(query.size() + 12);
+    for (char c : query) {
+        if (c == '%' || c == '_' || c == '\\')
+            escaped += '\\';
+        escaped += c;
+    }
+    std::string like = "%" + escaped + "%";
+
+    s.query(
+        "SELECT id, name, category, short_desc, description, flags_all"
+        " FROM tools"
+        " WHERE name      LIKE ? ESCAPE '\\'"
+        "    OR short_desc LIKE ? ESCAPE '\\'"
+        "    OR description LIKE ? ESCAPE '\\'",
+        // bind (3 copies of the same LIKE pattern)
+        [&](sqlite3_stmt* stmt) {
+            for (int i = 0; i < 3; i++)
+                sqlite3_bind_text(stmt, i + 1, like.c_str(), -1, SQLITE_TRANSIENT);
+        },
+        [&](sqlite3_stmt* stmt) {
+            Tool t;
+            t.id          = sqlite3_column_int(stmt, 0);
+            t.name        = col_text(stmt, 1);
+            t.category    = col_text(stmt, 2);
+            t.short_desc  = col_text(stmt, 3);
+            t.description = col_text(stmt, 4);
+            t.flags_all   = col_text(stmt, 5);
+            results.items.push_back(t);
+        }
+    );
+    return results;
+}
+
 // ==================== ToolFlagD ====================
 
 ToolFlagD::ToolFlagD(const std::string& path) : db_path(DBResolver::instance().resolve(path)) {}

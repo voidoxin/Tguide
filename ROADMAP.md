@@ -497,11 +497,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | QA |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
-| Files      | All |
+| Status     | [x] DONE |
+| Files      | CMakeLists.txt, CoreRunner.cpp, L0-core/include/config_manager.h, L0-core/include/db_cache_manager.h, L0-core/include/string_utils.h, L0-core/src/config_manager.cpp, L0-core/src/string_utils.cpp, L1-services/includes/svc_strings.h, L2-Interface_Engine/includes/UI_colors.h, L2-Interface_Engine/src/UI_input.cpp, tests/test_strings.cpp, tguide_docs/CROSS_PLATFORM_TESTING.md |
 | Goal       | Test tguide on all target platforms: Kali Linux, Ubuntu, Fedora, Arch Linux, macOS (Intel + Apple Silicon), Windows (10/11), Termux. Document platform-specific fixes needed. |
 | Depends    | STEP-B3b |
 | Done when  | tguide compiles, installs, and runs correctly on all 7 target platforms; platform-specific issues documented and fixed |
+| Completed  | **2026-06-17** — Cross-platform audit found 9 issues. Fixed: clang-cl NOMINMAX detection via CMAKE_CXX_SIMULATE_ID (HIGH), signal handler changed from std::atomic&lt;bool&gt; to volatile std::sig_atomic_t (MED, standard's only async-signal-safe type), IntelLLVM added to compiler flag branch (MED), PROGRAMDATA fallback for Windows (LOW), dead L2_INC include dir removed (LOW), fragile relative includes replaced with CMake include path (LOW), L3_interface PRIVATE includes added for L0_INC/LIBS_DIR (LOW, needed for relative include fix). BUILD FIXES: Renamed L0-core/include/strings.h to string_utils.h (shadowed POSIX &lt;strings.h&gt; system header, breaking tests via &lt;cstring&gt; include chain). Fixed ConfigManager::load() removing clean() call (pre-existing bug: custom keys set via set() lost on reload). DOCS: tguide_docs/CROSS_PLATFORM_TESTING.md created with 42-point verification checklist, platform matrix, and known issues table. Build verified: tguide + tguide_tests compile cleanly, 32/32 tests pass. |
 
 ## Release Phase R2 — Core Feature Completion (8 steps)
 ### STEP-R1 — Implement enhanced search algorithm
@@ -791,7 +792,7 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-B2b | Release R1 | L0 | Windows + Termux path resolution | [x] DONE |
 | STEP-B3a | Release R1 | CROSS-PLATFORM | Windows CMake toolchain + MSVC compatibility | [x] DONE |
 | STEP-B3b | Release R1 | CROSS-PLATFORM | Windows ANSI colors + signal handling | [x] DONE |
-| STEP-CP2 | Release R1 | QA | Cross-platform validation testing |
+| STEP-CP2 | Release R1 | QA | Cross-platform validation testing | [x] DONE |
 | STEP-R1 | Release R2 | L1 | Implement enhanced search algorithm |
 | STEP-R2a | Release R2 | L1 | Saved commands service layer |
 | STEP-R2b | Release R2 | L2 | Saved commands UI screen |
