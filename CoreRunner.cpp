@@ -21,12 +21,37 @@
 #include "L2-Interface_Engine/includes/UI_Engine.h"
 #include "L2-Interface_Engine/includes/UI_input.h"
 #include <curl/curl.h>
+#include <csignal>          // signal(), SIGINT (POSIX)
 using namespace std;
 namespace fs = std::filesystem;
+
+// ── Ctrl+C handler ──────────────────────────────────────────────────
+// Sets g_interrupted flag; readInput() returns "quit" when getline()
+// is interrupted, triggering normal shutdown through the quit path.
+#ifdef _WIN32
+static BOOL WINAPI ctrlHandler(DWORD dwCtrlType) {
+    if (dwCtrlType == CTRL_C_EVENT || dwCtrlType == CTRL_BREAK_EVENT) {
+        g_interrupted = true;
+        return TRUE;   // handled — don't pass to next handler
+    }
+    return FALSE;      // unhandled — pass to next handler
+}
+#else
+extern "C" void handleSIGINT(int /*sig*/) {
+    g_interrupted = true;
+}
+#endif
 
 int main(int argc, char* argv[]) {
     // ensure curl_global_cleanup() is called on all exit paths
     struct CurlGuard { ~CurlGuard() { curl_global_cleanup(); } } curlGuard;
+
+    // ── register Ctrl+C handler before any blocking I/O ────────────
+#ifdef _WIN32
+    SetConsoleCtrlHandler(ctrlHandler, TRUE);
+#else
+    signal(SIGINT, handleSIGINT);
+#endif
 
     // ── register error callbacks before any L0 calls ─────────────────────
     // L0-core (DatabaseManager, UserDataManager, ConfigManager, PathResolver)
@@ -160,6 +185,7 @@ int main(int argc, char* argv[]) {
 
                     string input = readInput("  \u2192 ");
                     if (input.empty()) continue;
+                    if (isQuit(input)) { handleQuit(); return 0; }
 
                     char c = std::tolower(static_cast<unsigned char>(input[0]));
 

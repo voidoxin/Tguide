@@ -67,6 +67,8 @@ int UIEngine::renderMenu(
              << Color::DIM << " ──────────────────────\n" << Color::RESET;
 
         string input = readInput("  → ");
+        if (isQuit(input)) { handleQuit(); return 0; }   // 0 = quit sentinel
+
         int choice = toNumber(input);
 
         if (choice < 1 || choice > static_cast<int>(items.size())) {
@@ -109,6 +111,11 @@ void UIEngine::start() {
         };
 
         int choice = renderMenu("main menu", mainMenu);
+
+        if (choice == 0) {
+            // 0 = Ctrl+C quit sentinel — handleQuit() already printed goodbye
+            break;
+        }
 
         if (choice == static_cast<int>(mainMenu.size())) {
             // last item always = exit

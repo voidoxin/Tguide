@@ -90,6 +90,7 @@ void UISettings::showDatabaseMenu() {
 
         string input = readInput("  \u2192 ");
         if (input.empty()) continue;
+        if (isQuit(input)) { handleQuit(); return; }
         if (isBack(input)) return;
 
         char c = std::tolower(static_cast<unsigned char>(input[0]));

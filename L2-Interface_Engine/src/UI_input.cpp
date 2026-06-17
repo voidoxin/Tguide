@@ -46,7 +46,17 @@ string readInput(const string& prompt) noexcept {
          << (colorsEnabled() ? Color::RESET : "");
 
     string line;
-    if (!getline(cin, line)) return "";
+    if (!getline(cin, line)) {
+        // If Ctrl+C was pressed (signal handler set the flag),
+        // return "quit" so callers exit gracefully.
+        // Otherwise (EOF/pipe close), return empty as before.
+        if (g_interrupted.exchange(false)) {
+            cin.clear();
+            return "quit";
+        }
+        cin.clear();
+        return "";
+    }
 
     size_t start = line.find_first_not_of(" \t\r\n");
     if (start == string::npos) return "";
