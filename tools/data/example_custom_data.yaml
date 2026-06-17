@@ -1,0 +1,124 @@
+# =============================================================================
+# Tguide — example user custom data
+# =============================================================================
+#
+# This file demonstrates how you can add custom tools, flags, templates, etc.
+# WITHOUT modifying the official seed database (data/database/tguide.db).
+#
+# Tguide reads these files at startup and merges their content with the DB
+# data in memory. By default, both sources are shown together with a
+# color + parenthetical source label (e.g. "nmap (user)" vs "nmap (db)").
+#
+# The merge/priority behaviour is configurable in Settings.
+#
+# FILE LOCATION
+# ─────────────
+# Place your .yaml (or .json) files in:
+#   ~/.config/tguide/custom_data/       (Linux)
+#   ~/Library/Application Support/tguide/custom_data/  (macOS)
+#   %APPDATA%\tguide\custom_data\       (Windows)
+#
+# Tguide scans this directory on boot and loads every *.yaml / *.json file.
+#
+# =============================================================================
+# FORMAT REFERENCE
+# =============================================================================
+#
+# All sections are optional — include only what you want to add or override.
+# Each section lists entries that will be merged with the corresponding DB table.
+#
+# ─── Tools ───────────────────────────────────────────────────────────────────
+# tools:
+#   - name:       (string)  Tool identifier — matched against DB for merging
+#     category:   (string)  Category name (must exist in categories.yaml/DB)
+#     short_desc: (string)  One-line summary
+#     description:(string)  Long description (Markdown supported)
+#     flags_all:  (string)  Space‑separated list of flag shorthand names
+#     screenshot: (string)  Optional: relative path or URL
+#
+# ─── Tool Flags ──────────────────────────────────────────────────────────────
+# tool_flags:
+#   - flag_name:  (string)  Shorthand name used in the tool's flags_all list
+#     full_flag:  (string)  The full CLI flag (e.g. "--verbose")
+#     description:(string)  What this flag does
+#     example:    (string)  Optional usage example
+#
+# ─── Categories ──────────────────────────────────────────────────────────────
+# categories:
+#   - name:        (string)  Category name
+#     icon:        (string)  Optional icon character / emoji
+#     description: (string)  Optional description
+#
+# ─── Templates ───────────────────────────────────────────────────────────────
+# templates:
+#   - name:        (string)  Template name
+#     tool:        (string)  Which tool this template belongs to
+#     description: (string)  Description of the template
+#     command:     (string)  The command template (supports {flags} {target} etc.)
+#
+# ─── Modules ─────────────────────────────────────────────────────────────────
+# modules:
+#   - name:        (string)  Module name (e.g. "reverse_tcp" for Metasploit)
+#     tool:        (string)  Which tool provides this module
+#     description: (string)  Module description
+#     options:     (string)  Space‑separated list of option names
+#
+# ─── Options ─────────────────────────────────────────────────────────────────
+# options:
+#   - name:        (string)  Option name (e.g. "LHOST")
+#     tool:        (string)  Which tool's option
+#     description: (string)  Description
+#     default:     (string)  Optional default value
+#     required:    (bool)    Whether this option is mandatory
+#
+# ─── Vulnerabilities ─────────────────────────────────────────────────────────
+# vulnerabilities:
+#   - name:        (string)  Vulnerability name / CVE
+#     description: (string)  Description
+#     severity:    (string)  Severity level (Low / Medium / High / Critical)
+#     tool:        (string)  Optional: which tool can detect/exploit this
+#
+# =============================================================================
+
+# ── Example: Add a custom tool not in the seed DB ────────────────────────────
+tools:
+  - name: "my-custom-scanner"
+    category: "Network Scanning"
+    short_desc: "Example custom scanner — replace with your own tool"
+    description: >
+      This is an example showing how you can add tools that are not present
+      in the official Tguide database. You can include full documentation,
+      usage notes, and references here.
+    flags_all: "--target --port --output --verbose"
+
+# ── Example: Override an existing tool's flags ──────────────────────────────
+tool_flags:
+  - flag_name: "--target"
+    full_flag: "--target"
+    description: "Specify the target host or network range"
+    example: "--target 10.0.0.0/24"
+  - flag_name: "--port"
+    full_flag: "--port"
+    description: "Port or port range to scan"
+    example: "--port 80,443,8080"
+  - flag_name: "--output"
+    full_flag: "--output"
+    description: "Output file path for results"
+    example: "--output results.json"
+  - flag_name: "--verbose"
+    full_flag: "--verbose"
+    description: "Enable verbose output"
+    example: "--verbose"
+
+# ── Example: A custom category ──────────────────────────────────────────────
+categories:
+  - name: "Custom Category"
+    icon: "⚙"
+    description: "Tools added by the user for personal workflows"
+
+# ── Example: A template for the custom tool ──────────────────────────────────
+templates:
+  - name: "Quick port scan"
+    tool: "my-custom-scanner"
+    description: "Scan common web ports on a target"
+    command: "my-custom-scanner --target {target} --port 80,443,8080 --verbose"

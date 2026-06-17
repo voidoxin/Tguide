@@ -104,8 +104,8 @@ elseif(IS_WINDOWS)
     set(TGUIDE_INSTALL_CONFIG "config")
 elseif(IS_MACOS)
     set(TGUIDE_INSTALL_BIN    "/usr/local/bin")
-    set(TGUIDE_INSTALL_DATA   "data")
-    set(TGUIDE_INSTALL_CONFIG "config")
+    set(TGUIDE_INSTALL_DATA   "/Library/Application Support/tguide")
+    set(TGUIDE_INSTALL_CONFIG "/Library/Application Support/tguide")
 endif()
 
 # ==============================================================
@@ -275,26 +275,25 @@ if(IS_LINUX OR IS_TERMUX OR IS_MACOS)
         RUNTIME DESTINATION ${TGUIDE_INSTALL_BIN}
     )
 
-    # database & config — only for Linux/Termux where system paths are expected
-    # macOS provisions these at runtime in ~/Library/Application Support/tguide/
-    if(IS_LINUX OR IS_TERMUX)
-        if(EXISTS ${CMAKE_SOURCE_DIR}/data/database/tguide.db)
-            install(FILES ${CMAKE_SOURCE_DIR}/data/database/tguide.db
-                DESTINATION ${TGUIDE_INSTALL_DATA}
-            )
-        else()
-            message(WARNING
-                "tguide.db not found in data/database/ — "
-                "it will not be included in the install. "
-                "The app will attempt to download it on first run."
-            )
-        endif()
+    # database & config — all Unix platforms
+    # Data files are committed alongside the source code, not generated at build time.
+    # The seed DB is a pre-built SQLite file created by the developer via data_adder.py.
+    if(EXISTS ${CMAKE_SOURCE_DIR}/data/database/tguide.db)
+        install(FILES ${CMAKE_SOURCE_DIR}/data/database/tguide.db
+            DESTINATION ${TGUIDE_INSTALL_DATA}
+        )
+    else()
+        message(WARNING
+            "tguide.db not found in data/database/ — "
+            "it will not be included in the install. "
+            "The app will attempt to download it on first run."
+        )
+    endif()
 
-        if(EXISTS ${CMAKE_SOURCE_DIR}/config/config.json)
-            install(FILES ${CMAKE_SOURCE_DIR}/config/config.json
-                DESTINATION ${TGUIDE_INSTALL_CONFIG}
-            )
-        endif()
+    if(EXISTS ${CMAKE_SOURCE_DIR}/config/config.json)
+        install(FILES ${CMAKE_SOURCE_DIR}/config/config.json
+            DESTINATION ${TGUIDE_INSTALL_CONFIG}
+        )
     endif()
 
 endif()

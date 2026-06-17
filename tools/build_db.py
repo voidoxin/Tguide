@@ -1,19 +1,24 @@
 #!/usr/bin/env python3
 """
-Tguide Database Builder CLI
+Tguide Database Tool — developer utilities
 
-Replaces the old data_adder.cpp with a Python-based database toolchain.
+Primary purpose: generate signed_manifest.json for the bundled seed database.
+Developer can also use init/validate/dump for interactive data entry via
+data_adder.py and quick DB inspections.
+
+The seed database (data/database/tguide.db) is a pre-built SQLite file
+created by the developer using data_adder.py, NOT generated from YAML
+during build. YAML/JSON files in tools/data/ are now user-customisation
+examples read at runtime by the C++ application.
 
 Commands:
   init       Create empty database with all tables
-  build      Build database from YAML/JSON data files
   validate   Validate existing DB against schema
   manifest   Generate signed_manifest.json for a DB
   dump       Dump database contents for inspection
 
 Examples:
   python3 tools/build_db.py init
-  python3 tools/build_db.py build
   python3 tools/build_db.py validate
   python3 tools/build_db.py manifest
   python3 tools/build_db.py dump
@@ -82,7 +87,6 @@ def _info(msg):
 # ──────────────────────────────────────────────
 
 DEFAULT_DB_PATH = "data/database/tguide.db"
-DEFAULT_DATA_DIR = "tools/data"
 DEFAULT_MANIFEST_PATH = "data/signed_manifest.json"
 DEFAULT_VERSION = "1.0.0"
 DEFAULT_DB_URL = (
@@ -128,44 +132,6 @@ def cmd_init(args):
             print(f"    {issue}")
     else:
         _ok("Database validation passed.")
-    return 0
-
-
-def cmd_build(args):
-    """Build database from YAML/JSON data files."""
-    from db_builder import build_database
-
-    db_path = args.db
-    data_dir = args.data_dir
-
-    _info(f"Building database: {db_path}")
-    _info(f"Data directory: {data_dir}")
-
-    try:
-        db_path, issues = build_database(db_path, data_dir)
-    except (FileNotFoundError, ImportError, ValueError, RuntimeError) as e:
-        _err(str(e))
-        return 1
-
-    if issues:
-        _warn("Validation issues during build:")
-        for issue in issues:
-            print(f"    {issue}")
-
-    _ok(f"Database built: {db_path}")
-
-    # Print row counts
-    import sqlite3
-    from schema import get_all_tables
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    _info("Row counts:")
-    for tdef in get_all_tables():
-        cursor.execute(f"SELECT COUNT(*) FROM {tdef['name']}")
-        count = cursor.fetchone()[0]
-        print(f"    {tdef['name']}: {count}")
-    conn.close()
-
     return 0
 
 
@@ -252,11 +218,9 @@ def build_parser():
         epilog=textwrap.dedent("""\
             Examples:
               %(prog)s init
-              %(prog)s build
               %(prog)s validate
               %(prog)s manifest
               %(prog)s dump
-              %(prog)s build --db /tmp/test.db --data-dir ./custom_data
         """),
     )
 
@@ -275,14 +239,6 @@ def build_parser():
 
     # init
     subparsers.add_parser("init", help="Create empty database with all tables")
-
-    # build
-    build_parser = subparsers.add_parser("build", help="Build database from YAML data files")
-    build_parser.add_argument(
-        "--data-dir",
-        default=DEFAULT_DATA_DIR,
-        help=f"Path to data directory with YAML/JSON files (default: {DEFAULT_DATA_DIR})",
-    )
 
     # validate
     subparsers.add_parser("validate", help="Validate existing DB against schema")
@@ -328,7 +284,6 @@ def main():
     # Route to command handler
     handlers = {
         "init": cmd_init,
-        "build": cmd_build,
         "validate": cmd_validate,
         "manifest": cmd_manifest,
         "dump": cmd_dump,

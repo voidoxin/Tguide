@@ -126,7 +126,8 @@ namespace PathResolver {
             return fs::path(".");   // consistent fallback
         }
         // Linux — system‑wide install path, distinct from user dbFile()
-        return fs::path("/usr/share/tguide/tguide.db");
+        // Matches CMake's TGUIDE_INSTALL_DATA = /usr/local/share/tguide
+        return fs::path("/usr/local/share/tguide/tguide.db");
 #endif
     }
 
