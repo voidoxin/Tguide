@@ -394,39 +394,94 @@ L0-core → L1-services → L2-Interface_Engine
 | Done when  | `python tools/data_adder.py` can add/list/delete records in an existing DB; `python tools/build_db.py` can produce a valid seed DB from YAML; data_adder.cpp is deleted; manifest is auto-generated; schema validates |
 | Completed  | **2026-06-09** — Two tools replace `data_adder.cpp`: `tools/data_adder.py` (interactive menu + CLI commands for add/list/delete/manifest on existing DB) and `tools/build_db.py` (YAML/JSON→DB batch builder with init/build/validate/manifest/dump). Seed data in `tools/data/` with 8 categories, 8 tools, 31 flags, 18 templates, 5 vulnerabilities, 13 options, 6 modules in both .yaml and .json. Code review: 8+7=15 issues found and fixed. `data_adder.cpp` deleted from repo and CMakeLists.txt build. **Post-completion enhancement** (commit 3fdf114): Added `reset` command — `cmd_reset()` archives current DB to `old_data/<dbname>_<timestamp>.db`, creates fresh empty DB with all 7 tables via safe temp-file-first approach (no data-loss window). Accessible via interactive menu option 22 (`interactive_reset()`) or CLI `python3 tools/data_adder.py reset [--force/-f]`. Module imports: `datetime`, `shutil`, `tempfile`, `schema`. **Post-completion enhancement** (commit a191a1f): Added `translations` table (8th table) with UNIQUE(table_name, row_id, column_name, lang) constraint and NOT NULL on all columns — schema.py `extra` field support enables inline UNIQUE clauses. `db_builder.py`: `_load_and_validate_translations()` with column-name whitelist via `TRANSLATABLE_COLUMNS` dict, translation insertion in build pipeline. `data_adder.py`: Full CRUD — `cmd_add_translation()` (UPSERT preserving existing ID), `cmd_list_translations()` (filterable by table/lang), `cmd_delete_translation()` — interactive menu options 23/24/25 for Add/View/Delete translations, CLI subcommand `translation {add,list,delete}`. Seed data: `tools/data/translations.yaml` and `.json` with 20 French translations covering all 8 category names+descriptions and 3 tool short_desc/descriptions (nmap, sqlmap, metasploit). |
 
-## Release Phase R1 — Bootstrap & Cross-Platform Foundation
-### STEP-B1 — Fix database bootstrap (no internet on first boot)
+## Release Phase R1 — Bootstrap & Cross-Platform Foundation (9 steps)
+### STEP-B1a — Add installDbFile() to path_resolver
 | Field      | Value |
 |------------|-------|
 | Layer      | L0 |
 | Priority   | CRITICAL |
 | Status     | [ ] TODO |
-| Files      | L0-core/src/DBResolver.cpp, L0-core/include/DBResolver.h, CoreRunner.cpp, CMakeLists.txt |
-| Goal       | Remove first-boot internet requirement: bundle a seed DB with the binary, detect fresh install, copy seed DB to user data dir, make manifest fetch non-fatal (graceful degradation if offline) |
+| Files      | L0-core/include/path_resolver.h |
+| Goal       | Add `installDbFile()` static method to PathResolver returning per-OS path to bundled seed DB: `/usr/share/tguide/tguide.db` (Linux), `~/Library/Application Support/tguide/tguide.db` (macOS), `%APPDATA%/tguide/tguide.db` (Windows), `~/../usr/share/tguide/tguide.db` (Termux) |
 | Depends    | none |
-| Done when  | First boot succeeds without network; seed DB is bundled at `/usr/share/tguide/tguide.db` (Linux), `~/Library/Application Support/tguide/tguide.db` (macOS), `%APPDATA%/tguide/tguide.db` (Windows); manifest failure shows warning but does not exit |
+| Done when  | PathResolver::installDbFile() returns correct path per platform; unit testable |
 
-### STEP-B2 — Cross-platform path resolution
+### STEP-B1b — Bundle seed DB in CMakeLists.txt
 | Field      | Value |
 |------------|-------|
 | Layer      | L0 |
 | Priority   | CRITICAL |
 | Status     | [ ] TODO |
-| Files      | L0-core/include/path_resolver.h, L0-core/src/DBResolver.cpp, CoreRunner.cpp |
-| Goal       | Unify path resolution across all target platforms: Linux (XDG), macOS (Application Support), Windows (APPDATA/LOCALAPPDATA), Termux (~/../usr/share). Add installDbFile() returning per-OS seed DB path. |
-| Depends    | STEP-B1 |
-| Done when  | path_resolver.h returns correct platform-specific paths for all target platforms; copyDefaultToConfig() uses installDbFile() instead of hardcoded dev-time path |
+| Files      | CMakeLists.txt, tools/build_db.py |
+| Goal       | Add CMake install targets to bundle seed database: `install(FILES .../tguide.db DESTINATION ...)` for Linux (share/tguide), macOS (Application Support), Windows (APPDATA). Add `tools/build_db.py build` command to generate seed DB during build. |
+| Depends    | STEP-B1a, STEP-DB (DONE) |
+| Done when  | `cmake --install build` copies tguide.db to system install prefix; `cmake --build build` auto-generates seed DB |
 
-### STEP-B3 — Windows support
+### STEP-B1c — Fix copyDefaultToConfig() to use installDbFile()
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 |
+| Priority   | CRITICAL |
+| Status     | [ ] TODO |
+| Files      | L0-core/src/DBResolver.cpp, L0-core/include/DBResolver.h |
+| Goal       | Replace hardcoded dev-time relative path in DBResolver::copyDefaultToConfig() with PathResolver::installDbFile(). Detect fresh install when config DB doesn't exist, copy seed DB from install path to user config dir. |
+| Depends    | STEP-B1b |
+| Done when  | copyDefaultToConfig() uses installDbFile() instead of hardcoded path; fresh install copies seed DB to ~/.config/tguide/tguide.db |
+
+### STEP-B1d — Make manifest fetch non-fatal
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 |
+| Priority   | CRITICAL |
+| Status     | [ ] TODO |
+| Files      | L0-core/src/DBResolver.cpp, CoreRunner.cpp |
+| Goal       | Change DBResolver so manifest fetch failure (network down, GitHub unreachable) shows a warning instead of calling fatal(). Boot sequence continues with existing DB. Add g_errorHandler alert for offline mode. |
+| Depends    | STEP-B1c (seed DB must exist locally first) |
+| Done when  | First boot works with no internet; manifest failure shows warning but does not exit; existing DB is used when offline |
+
+### STEP-B2a — Linux + macOS cross-platform path resolution
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 |
+| Priority   | CRITICAL |
+| Status     | [ ] TODO |
+| Files      | L0-core/include/path_resolver.h |
+| Goal       | Implement configDir() and dataDir() for Linux ($XDG_CONFIG_HOME/XDG_DATA_HOME fallback) and macOS (~/Library/Application Support). hasWriteAccess() always returns true (user-space only). |
+| Depends    | STEP-B1d |
+| Done when  | path_resolver.h returns correct paths for both Linux ($HOME/.config/tguide, $HOME/.local/share/tguide) and macOS (~/Library/Application Support/tguide) |
+
+### STEP-B2b — Windows + Termux path resolution
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L0-core/include/path_resolver.h |
+| Goal       | Implement configDir() and dataDir() for Windows (%APPDATA%/tguide) and Termux (~/../usr/share/tguide). Add _WIN32 and __ANDROID__ preprocessor guards. |
+| Depends    | STEP-B2a |
+| Done when  | path_resolver.h returns correct paths for Windows (%APPDATA%/tguide) and Termux (~/../usr/share/tguide) |
+
+### STEP-B3a — Windows CMake toolchain + MSVC compatibility
 | Field      | Value |
 |------------|-------|
 | Layer      | CROSS-PLATFORM |
 | Priority   | HIGH |
 | Status     | [ ] TODO |
-| Files      | CMakeLists.txt, L2-Interface_Engine/includes/UI_colors.h, CoreRunner.cpp |
-| Goal       | Add Windows build support: enable ANSI colors via Windows API, handle SIGINT via SetConsoleCtrlHandler, add MSVC/clang-cl CMake configuration, fix POSIX-specific code paths |
-| Depends    | STEP-B2 |
-| Done when  | tguide compiles and runs on Windows without errors; colors work in Windows Terminal; Ctrl+C is handled gracefully |
+| Files      | CMakeLists.txt |
+| Goal       | Add Windows CMake configuration: MSVC/clang-cl toolchain detection, CURL::libcurl import with find_package, SQLite3 import, C++17 standard setting, install paths under %APPDATA%. Fix POSIX-specific code in sources (unistd.h, fork, etc). |
+| Depends    | STEP-B2b |
+| Done when  | `cmake -B build` configures on Windows without errors; tguide.exe compiles with MSVC or clang-cl |
+
+### STEP-B3b — Windows ANSI colors + signal handling
+| Field      | Value |
+|------------|-------|
+| Layer      | CROSS-PLATFORM |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L2-Interface_Engine/includes/UI_colors.h, CoreRunner.cpp, L0-core/src/DBResolver.cpp |
+| Goal       | Enable ANSI escape codes on Windows via SetConsoleMode(ENABLE_VIRTUAL_TERMINAL_PROCESSING). Handle SIGINT via SetConsoleCtrlHandler for graceful Ctrl+C. Fix POSIX signal() calls. |
+| Depends    | STEP-B3a |
+| Done when  | Colors work in Windows Terminal; Ctrl+C handled gracefully (no abrupt exit) |
 
 ### STEP-CP2 — Cross-platform validation testing
 | Field      | Value |
@@ -435,11 +490,11 @@ L0-core → L1-services → L2-Interface_Engine
 | Priority   | HIGH |
 | Status     | [ ] TODO |
 | Files      | All |
-| Goal       | Test tguide on all target platforms: Kali Linux, Ubuntu, Fedora, Arch Linux, macOS, Windows, Termux. Fix all platform-specific issues found. |
-| Depends    | STEP-B3 |
-| Done when  | tguide compiles, installs, and runs correctly on all 7 target platforms |
+| Goal       | Test tguide on all target platforms: Kali Linux, Ubuntu, Fedora, Arch Linux, macOS (Intel + Apple Silicon), Windows (10/11), Termux. Document platform-specific fixes needed. |
+| Depends    | STEP-B3b |
+| Done when  | tguide compiles, installs, and runs correctly on all 7 target platforms; platform-specific issues documented and fixed |
 
-## Release Phase R2 — Core Feature Completion
+## Release Phase R2 — Core Feature Completion (8 steps)
 ### STEP-R1 — Implement enhanced search algorithm
 | Field      | Value |
 |------------|-------|
@@ -447,42 +502,75 @@ L0-core → L1-services → L2-Interface_Engine
 | Priority   | HIGH |
 | Status     | [ ] TODO |
 | Files      | L1-services/src/svc_tools.cpp, L1-services/includes/svc_tools.h |
-| Goal       | Implement search with fuzzy matching, partial word matching, and case-insensitive search for better user experience (was STEP-22) |
+| Goal       | Implement search with fuzzy matching, partial word matching, and case-insensitive search for better user experience. |
 | Depends    | STEP-CP2 |
 | Done when  | Search returns results for typos, partial names, and related terms |
 
-### STEP-R2 — Implement saved commands screen (was STEP-23 + STEP-24 merged)
+### STEP-R2a — Saved commands service layer
 | Field      | Value |
 |------------|-------|
-| Layer      | L1+L2 |
+| Layer      | L1 |
 | Priority   | HIGH |
 | Status     | [ ] TODO |
-| Files      | L1-services/src/svc_savedCommands.cpp (NEW), L1-services/includes/svc_savedCommands.h (NEW), L2-Interface_Engine/src/UI_savedCommands.cpp, L2-Interface_Engine/includes/UI_savedCommands.h |
-| Goal       | Implement one complete saved commands feature: service layer (CRUD via UserDataManager) + UI screen (list, select, fill placeholders, delete, execute) |
+| Files      | L1-services/src/svc_savedCommands.cpp (NEW), L1-services/includes/svc_savedCommands.h (NEW) |
+| Goal       | Create saved commands service layer with CRUD operations via UserDataManager: list(), getById(), save(), update(), delete(). Return DTOs to decouple from L0. |
 | Depends    | STEP-R1 |
-| Done when  | User can browse saved commands, select one to fill placeholders, delete, and see command preview |
+| Done when  | svc_savedCommands provides complete CRUD API; all operations work through UserDataManager singleton |
 
-### STEP-R3 — Implement saved scripts screen (was STEP-25 + STEP-26 merged)
+### STEP-R2b — Saved commands UI screen
 | Field      | Value |
 |------------|-------|
-| Layer      | L1+L2 |
+| Layer      | L2 |
 | Priority   | HIGH |
 | Status     | [ ] TODO |
-| Files      | L1-services/src/svc_savedScripts.cpp (NEW), L1-services/includes/svc_savedScripts.h (NEW), L2-Interface_Engine/src/UI_savedScripts.cpp, L2-Interface_Engine/includes/UI_savedScripts.h |
-| Goal       | Implement one complete saved scripts feature: service layer (CRUD via UserDataManager) + UI screen (list, view, delete, execute) |
-| Depends    | STEP-R2 |
-| Done when  | User can browse saved scripts, select one to view details, delete scripts, and see script preview |
+| Files      | L2-Interface_Engine/src/UI_savedCommands.cpp (NEW), L2-Interface_Engine/includes/UI_savedCommands.h (NEW), L2-Interface_Engine/src/UI_Engine.cpp (modified) |
+| Goal       | Implement saved commands UI screen: list, select, fill placeholders, delete, and command preview. Reuse template fill flow from STEP-14. |
+| Depends    | STEP-R2a |
+| Done when  | User can browse saved commands, fill placeholders, delete, and see command preview |
 
-### STEP-R4 — Complete settings screen (color toggle + DB management)
+### STEP-R3a — Saved scripts service layer
+| Field      | Value |
+|------------|-------|
+| Layer      | L1 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L1-services/src/svc_savedScripts.cpp (NEW), L1-services/includes/svc_savedScripts.h (NEW) |
+| Goal       | Create saved scripts service layer with CRUD operations via UserDataManager: list(), getById(), save(), update(), delete(). Mirror saved commands pattern from STEP-R2a. |
+| Depends    | STEP-R2b |
+| Done when  | svc_savedScripts provides complete CRUD API; all operations work through UserDataManager singleton |
+
+### STEP-R3b — Saved scripts UI screen
+| Field      | Value |
+|------------|-------|
+| Layer      | L2 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L2-Interface_Engine/src/UI_savedScripts.cpp (NEW), L2-Interface_Engine/includes/UI_savedScripts.h (NEW), L2-Interface_Engine/src/UI_Engine.cpp (modified) |
+| Goal       | Implement saved scripts UI screen: list, view details, delete, and script preview. Mirror saved commands UI pattern from STEP-R2b. |
+| Depends    | STEP-R3a |
+| Done when  | User can browse saved scripts, view details, delete scripts, and see script preview |
+
+### STEP-R4a — Settings: color enable/disable toggle
+| Field      | Value |
+|------------|-------|
+| Layer      | L2 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L2-Interface_Engine/src/UI_settings.cpp, L2-Interface_Engine/includes/UI_settings.h, L0-core/src/config_manager.cpp |
+| Goal       | Add color enable/disable toggle to settings screen. Persist to ConfigManager. Toggle takes effect immediately (no restart required). |
+| Depends    | STEP-R3b |
+| Done when  | Settings shows color toggle; toggle persists across restarts; colors update immediately |
+
+### STEP-R4b — Settings: database management
 | Field      | Value |
 |------------|-------|
 | Layer      | L2 |
 | Priority   | HIGH |
 | Status     | [ ] TODO |
 | Files      | L2-Interface_Engine/src/UI_settings.cpp, L2-Interface_Engine/includes/UI_settings.h |
-| Goal       | Complete the settings screen with: color enable/disable toggle (persisted to config), database version display, manual DB update trigger, backup restore option (from STEP-P4), and DB info display |
-| Depends    | STEP-R3 |
-| Done when  | Settings screen has all 5 features working; color toggle persists and takes effect immediately |
+| Goal       | Complete settings DB management section: database version display (from DBCacheManager), manual update trigger (calls DBResolver download), backup restore (from STEP-P4), database info display (size, table count, row count). |
+| Depends    | STEP-R4a |
+| Done when  | Settings shows version, can trigger update, restore from backup, and display DB info |
 
 ### STEP-R5 — Remove all "coming soon" stubs from codebase
 | Field      | Value |
@@ -492,65 +580,87 @@ L0-core → L1-services → L2-Interface_Engine
 | Status     | [ ] TODO |
 | Files      | L2-Interface_Engine/src/UI_tools.cpp, L2-Interface_Engine/src/UI_Engine.cpp, L2-Interface_Engine/includes/UI_tools.h, L1-services/src/svc_tools.cpp |
 | Goal       | Remove or implement all "coming soon" / placeholder menu entries. If a feature isn't ready for v1.0, its menu entry must be hidden behind a compile-time flag or removed entirely. Audit for 183 stub/TODO references found in codebase. |
-| Depends    | STEP-R4 |
+| Depends    | STEP-R4b |
 | Done when  | No "coming soon", "TODO", "stub", or placeholder text remains in user-visible UI; dead code paths are removed |
 
-## Release Phase R3 — Database Lifecycle
-### STEP-17 — Shadow Swap update system (was Phase 3 STEP-17)
+## Release Phase R3 — Database Lifecycle (3 steps)
+### STEP-17a — Shadow Swap: download to .tmp + fix manifest URL
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L0-core/src/DBResolver.cpp, L0-core/include/DBResolver.h |
+| Goal       | Implement background download to tguide.db.tmp. Change manifest URL from raw.githubusercontent.com/main to GitHub Releases URL (`https://github.com/voidoxin/Tguide/releases/latest/download/signed_manifest.json`). Update .ai/security.md. |
+| Depends    | STEP-R5 |
+| Done when  | DB updates download to tguide.db.tmp; integrity verified after download; manifest URL points to GitHub Releases; main branch URL no longer in codebase |
+
+### STEP-17b — Shadow Swap: atomic swap + update notification
 | Field      | Value |
 |------------|-------|
 | Layer      | L0 |
 | Priority   | HIGH |
 | Status     | [ ] TODO |
 | Files      | L0-core/src/DBResolver.cpp, L0-core/include/DBResolver.h, L0-core/include/db_cache_manager.h, L0-core/src/db_cache_manager.cpp |
-| Goal       | Implement background download to tguide.db.tmp, atomic file swap on restart/exit, and update notification |
-| Depends    | STEP-R5 |
-| Done when  | Database updates download to .tmp file, binary swap occurs on next restart, update notification is stored in DBCacheManager |
+| Goal       | On restart/exit, perform atomic rename(tguide.db.tmp → tguide.db) if .tmp exists. Store pending update notification in DBCacheManager (has_pending_update flag). Clear cache on swap. |
+| Depends    | STEP-17a |
+| Done when  | .tmp file is atomically swapped on restart; DBCacheManager stores pending update flag; search index is cleared on swap |
 
-### STEP-18 — Shadow Swap update UI (was Phase 3 STEP-18)
+### STEP-18 — Shadow Swap update UI
 | Field      | Value |
 |------------|-------|
 | Layer      | L2 |
 | Priority   | HIGH |
 | Status     | [ ] TODO |
 | Files      | L2-Interface_Engine/src/UI_settings.cpp, L2-Interface_Engine/src/UI_Engine.cpp |
-| Goal       | Show "[ Update Ready — Restart to Apply ]" notification in main menu when shadow swap is pending; add update trigger in Settings |
-| Depends    | STEP-17 |
-| Done when  | UI shows update notification when swap is pending; Settings has "Check for Updates" and "Apply Update" options |
+| Goal       | Show "[ Update Ready — Restart to Apply ]" notification in main menu when shadow swap is pending. Add "Check for Updates" (triggers 17a download) and "Apply Update" (triggers restart+swap) options in Settings → Database. |
+| Depends    | STEP-17b |
+| Done when  | UI shows update notification when swap is pending; Settings has "Check for Updates" and "Apply Update" options; notification disappears after swap |
 
-### STEP-MU — Fix manifest URL to use GitHub Releases (NEW)
+## Release Phase R4 — Pre-Release & Packaging (9 steps)
+### STEP-61a — CMake release build configuration
 | Field      | Value |
 |------------|-------|
-| Layer      | L0 |
+| Layer      | BUILD |
 | Priority   | CRITICAL |
 | Status     | [ ] TODO |
-| Files      | L0-core/src/DBResolver.cpp, .ai/security.md |
-| Goal       | Change manifest URL from raw.githubusercontent.com/main branch to a permanent GitHub Releases URL so the released binary forever points to a stable manifest location independent of repo changes |
+| Files      | CMakeLists.txt |
+| Goal       | Remove data_adder.cpp from build targets. Add `CMAKE_BUILD_TYPE=Release` configuration with -O2 -DNDEBUG. Set install RPATH. Verify no dev-only targets leak into Release build. |
 | Depends    | STEP-18 |
-| Done when  | Manifest URL points to `https://github.com/voidoxin/Tguide/releases/latest/download/signed_manifest.json`; `main` branch URL is no longer in codebase |
+| Done when  | `cmake --build build --config Release` produces clean build with no dev code; data_adder.cpp removed from CMakeLists.txt |
 
-## Release Phase R4 — Pre-Release & Packaging
-### STEP-61 — Remove dev-only code before release (was Phase 9 STEP-61)
+### STEP-61b — Clean dev-only bootstrap code from CoreRunner
 | Field      | Value |
 |------------|-------|
-| Layer      | CLEANUP |
+| Layer      | BOOTSTRAP |
 | Priority   | CRITICAL |
 | Status     | [ ] TODO |
-| Files      | data_adder.cpp, CMakeLists.txt, CoreRunner.cpp, L0-core/src/DatabaseManager.cpp |
-| Goal       | Remove data_adder.cpp from build system, remove any remaining dev-only bootstrap code from CoreRunner, add release build type configuration |
-| Depends    | STEP-MU |
-| Done when  | data_adder.cpp is removed from CMakeLists.txt; `cmake --build build --config Release` produces a clean build with no dev code |
+| Files      | CoreRunner.cpp |
+| Goal       | Remove any remaining dev-only code paths from CoreRunner: debug prints, test initialization code, temporary workarounds. Verify bootstrap path is production-ready. |
+| Depends    | STEP-61a |
+| Done when  | CoreRunner.cpp contains no debug/development-only code; bootstrap path is clean for production |
 
-### STEP-62 — Full QA testing (was Phase 10 STEP-62)
+### STEP-62a — Regression testing
+| Field      | Value |
+|------------|-------|
+| Layer      | QA |
+| Priority   | CRITICAL |
+| Status     | [ ] TODO |
+| Files      | tests/ |
+| Goal       | Run full doctest regression suite. All 28+ existing tests must pass. Fix any regressions introduced by previous steps. Update test fixtures if needed. |
+| Depends    | STEP-61b |
+| Done when  | `ctest --test-dir build` reports all tests passing; no regressions |
+
+### STEP-62b — Platform smoke tests
 | Field      | Value |
 |------------|-------|
 | Layer      | QA |
 | Priority   | CRITICAL |
 | Status     | [ ] TODO |
 | Files      | All |
-| Goal       | Full regression test suite: all existing doctest tests pass, manual smoke test on all supported platforms, bootstrap/update/rollback scenarios verified, edge cases documented |
-| Depends    | STEP-61 |
-| Done when  | All tests pass on all platforms; QA report generated; no known P0/P1 bugs remain |
+| Goal       | Manual smoke test on all supported platforms: install from package, first boot (no internet), database bootstrap, UI navigation, search, saved commands/scripts, settings, update check, rollback. Document edge cases. |
+| Depends    | STEP-62a |
+| Done when  | All smoke tests pass on all platforms; QA report generated; no known P0/P1 bugs remain |
 
 ### STEP-PK1 — AUR package for Arch Linux
 | Field      | Value |
@@ -558,9 +668,9 @@ L0-core → L1-services → L2-Interface_Engine
 | Layer      | PACKAGING |
 | Priority   | HIGH |
 | Status     | [ ] TODO |
-| Files      | PKGBUILD (NEW), .SRCINFO (NEW) |
-| Goal       | Create AUR PKGBUILD with proper dependencies (libcurl, sqlite), install paths (/usr/share/tguide/tguide.db), and release build |
-| Depends    | STEP-62 |
+| Files      | dist/arch/PKGBUILD (NEW), dist/arch/.SRCINFO (NEW) |
+| Goal       | Create AUR PKGBUILD with proper dependencies (libcurl, sqlite), seed DB bundling at /usr/share/tguide/tguide.db, release build from GitHub tag. |
+| Depends    | STEP-62b |
 | Done when  | `yay -S tguide` installs and runs correctly on Arch Linux |
 
 ### STEP-PK2 — Homebrew formula for macOS
@@ -569,9 +679,9 @@ L0-core → L1-services → L2-Interface_Engine
 | Layer      | PACKAGING |
 | Priority   | HIGH |
 | Status     | [ ] TODO |
-| Files      | Formula/tguide.rb (NEW) |
-| Goal       | Create Homebrew formula with proper dependencies, macOS path support, and install targets |
-| Depends    | STEP-62 |
+| Files      | dist/macos/tguide.rb (NEW) |
+| Goal       | Create Homebrew formula with proper dependencies, macOS Application Support paths, install targets, and bottle support. |
+| Depends    | STEP-62b |
 | Done when  | `brew install tguide` installs and runs correctly on macOS |
 
 ### STEP-PK3 — .deb package for Debian/Kali/Ubuntu
@@ -580,9 +690,9 @@ L0-core → L1-services → L2-Interface_Engine
 | Layer      | PACKAGING |
 | Priority   | HIGH |
 | Status     | [ ] TODO |
-| Files      | debian/ (NEW directory: control, rules, changelog, compat, install) |
-| Goal       | Create .deb packaging with proper dependencies, seed DB bundling, and system-wide install paths |
-| Depends    | STEP-62 |
+| Files      | dist/debian/ (NEW directory: control, rules, changelog, compat, install) |
+| Goal       | Create .deb packaging with proper dependencies, seed DB bundling at /usr/share/tguide/tguide.db, and system-wide install paths. |
+| Depends    | STEP-62b |
 | Done when  | `dpkg-buildpackage` produces a working .deb; `apt install ./tguide.deb` works on Debian/Kali/Ubuntu |
 
 ### STEP-PK4 — Windows installer (ZIP/NSIS)
@@ -591,9 +701,9 @@ L0-core → L1-services → L2-Interface_Engine
 | Layer      | PACKAGING |
 | Priority   | HIGH |
 | Status     | [ ] TODO |
-| Files      | build/windows/installer.nsi (NEW), CMakeLists.txt |
-| Goal       | Create Windows ZIP archive and NSIS installer with bundled DLLs and seed DB |
-| Depends    | STEP-62 |
+| Files      | dist/windows/installer.nsi (NEW), CMakeLists.txt |
+| Goal       | Create Windows ZIP archive and NSIS installer with bundled DLLs (libcurl, sqlite3) and seed DB. |
+| Depends    | STEP-62b |
 | Done when  | Windows installer produces working tguide.exe with colors, paths, and seed DB |
 
 ### STEP-PK5 — Release v1.0.0
@@ -603,7 +713,7 @@ L0-core → L1-services → L2-Interface_Engine
 | Priority   | CRITICAL |
 | Status     | [ ] TODO |
 | Files      | GitHub Releases, CHANGELOG.md (NEW) |
-| Goal       | Tag v1.0.0, create GitHub Release with all artifacts (Linux binary, .deb, macOS Homebrew, Windows ZIP, AUR commit), write changelog, announce |
+| Goal       | Tag v1.0.0, create GitHub Release with all artifacts (Linux binary, .deb, macOS Homebrew, Windows ZIP, AUR commit), write changelog, announce. |
 | Depends    | STEP-PK1, STEP-PK2, STEP-PK3, STEP-PK4 |
 | Done when  | GitHub Release v1.0.0 is published with all platform artifacts; CHANGELOG.md documents all v1.0 features and changes |
 
@@ -664,20 +774,30 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-15 | Phase 2 | L1+L2 | Implement metasploit vulnerabilities sub-menu |
 | STEP-16 | Phase 2 | L1+L2 | Implement recon-ng modules sub-menu |
 | STEP-DB | Release R0 | TOOLING | Professional Python database builder (replaces data_adder.cpp) |
-| STEP-B1 | Release R1 | L0 | Fix database bootstrap (no internet on first boot) |
-| STEP-B2 | Release R1 | L0 | Cross-platform path resolution |
-| STEP-B3 | Release R1 | CROSS-PLATFORM | Windows support |
+| STEP-B1a | Release R1 | L0 | Add installDbFile() to path_resolver |
+| STEP-B1b | Release R1 | L0 | Bundle seed DB in CMakeLists.txt |
+| STEP-B1c | Release R1 | L0 | Fix copyDefaultToConfig() to use installDbFile() |
+| STEP-B1d | Release R1 | L0 | Make manifest fetch non-fatal |
+| STEP-B2a | Release R1 | L0 | Linux + macOS cross-platform path resolution |
+| STEP-B2b | Release R1 | L0 | Windows + Termux path resolution |
+| STEP-B3a | Release R1 | CROSS-PLATFORM | Windows CMake toolchain + MSVC compatibility |
+| STEP-B3b | Release R1 | CROSS-PLATFORM | Windows ANSI colors + signal handling |
 | STEP-CP2 | Release R1 | QA | Cross-platform validation testing |
 | STEP-R1 | Release R2 | L1 | Implement enhanced search algorithm |
-| STEP-R2 | Release R2 | L1+L2 | Implement saved commands screen (was STEP-23+24) |
-| STEP-R3 | Release R2 | L1+L2 | Implement saved scripts screen (was STEP-25+26) |
-| STEP-R4 | Release R2 | L2 | Complete settings screen (color toggle + DB management) |
+| STEP-R2a | Release R2 | L1 | Saved commands service layer |
+| STEP-R2b | Release R2 | L2 | Saved commands UI screen |
+| STEP-R3a | Release R2 | L1 | Saved scripts service layer |
+| STEP-R3b | Release R2 | L2 | Saved scripts UI screen |
+| STEP-R4a | Release R2 | L2 | Settings: color enable/disable toggle |
+| STEP-R4b | Release R2 | L2 | Settings: database management |
 | STEP-R5 | Release R2 | CLEANUP | Remove all "coming soon" stubs from codebase |
-| STEP-17 | Release R3 | L0 | Shadow Swap update system (was Phase 3 STEP-17) |
-| STEP-18 | Release R3 | L2 | Shadow Swap update UI (was Phase 3 STEP-18) |
-| STEP-MU | Release R3 | L0 | Fix manifest URL to use GitHub Releases |
-| STEP-61 | Release R4 | CLEANUP | Remove dev-only code before release (was Phase 9 STEP-61) |
-| STEP-62 | Release R4 | QA | Full QA testing (was Phase 10 STEP-62) |
+| STEP-17a | Release R3 | L0 | Shadow Swap: download to .tmp + fix manifest URL |
+| STEP-17b | Release R3 | L0 | Shadow Swap: atomic swap + update notification |
+| STEP-18 | Release R3 | L2 | Shadow Swap update UI |
+| STEP-61a | Release R4 | BUILD | CMake release build configuration |
+| STEP-61b | Release R4 | BOOTSTRAP | Clean dev-only bootstrap code from CoreRunner |
+| STEP-62a | Release R4 | QA | Regression testing |
+| STEP-62b | Release R4 | QA | Platform smoke tests |
 | STEP-PK1 | Release R4 | PACKAGING | AUR package for Arch Linux |
 | STEP-PK2 | Release R4 | PACKAGING | Homebrew formula for macOS |
 | STEP-PK3 | Release R4 | PACKAGING | .deb package for Debian/Kali/Ubuntu |
