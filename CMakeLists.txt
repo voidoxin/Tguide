@@ -53,6 +53,16 @@ else()
 endif()
 
 # ==============================================================
+# MSVC-specific definitions — prevent Windows header conflicts
+# NOMINMAX avoids min/max macro collision with std::min/std::max
+# _CRT_SECURE_NO_WARNINGS suppresses deprecation warnings for
+# standard C functions (used by sqlite3.c)
+# ==============================================================
+if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+    add_compile_definitions(NOMINMAX _CRT_SECURE_NO_WARNINGS)
+endif()
+
+# ==============================================================
 # Platform / Environment Detection
 # Termux sets $PREFIX containing "com.termux" — detected at
 # cmake time via environment variable
@@ -88,7 +98,9 @@ add_compile_definitions(TGUIDE_PLATFORM="${TGUIDE_PLATFORM}")
 #             data   → $PREFIX/share/tguide/
 #             config → $PREFIX/etc/tguide/
 #
-#   Windows : everything → %APPDATA%\tguide\  (handled at runtime)
+#   Windows : binary → %PROGRAMDATA%\tguide\bin\
+#             data   → %PROGRAMDATA%\tguide\    (matches PathResolver::installDbFile())
+#             config → %PROGRAMDATA%\tguide\
 # ==============================================================
 if(IS_TERMUX)
     set(TGUIDE_INSTALL_BIN    "$ENV{PREFIX}/bin")
@@ -99,9 +111,11 @@ elseif(IS_LINUX)
     set(TGUIDE_INSTALL_DATA   "/usr/local/share/tguide")
     set(TGUIDE_INSTALL_CONFIG "/usr/local/etc/tguide")
 elseif(IS_WINDOWS)
-    set(TGUIDE_INSTALL_BIN    "bin")
-    set(TGUIDE_INSTALL_DATA   "data")
-    set(TGUIDE_INSTALL_CONFIG "config")
+    # Windows: system-wide install under %PROGRAMDATA% matches
+    # PathResolver::installDbFile() which returns %PROGRAMDATA%/tguide/tguide.db
+    set(TGUIDE_INSTALL_BIN    "$ENV{PROGRAMDATA}/tguide/bin")
+    set(TGUIDE_INSTALL_DATA   "$ENV{PROGRAMDATA}/tguide")
+    set(TGUIDE_INSTALL_CONFIG "$ENV{PROGRAMDATA}/tguide")
 elseif(IS_MACOS)
     set(TGUIDE_INSTALL_BIN    "/usr/local/bin")
     set(TGUIDE_INSTALL_DATA   "/Library/Application Support/tguide")
@@ -130,7 +144,10 @@ set_target_properties(sqlite3_obj PROPERTIES
     C_STANDARD 11
 )
 target_include_directories(sqlite3_obj PRIVATE ${LIBS_DIR})
-target_compile_options(sqlite3_obj PRIVATE -O0)
+target_compile_options(sqlite3_obj PRIVATE
+    $<$<C_COMPILER_ID:GNU,Clang,AppleClang>:-O0>
+    $<$<C_COMPILER_ID:MSVC>:/Od>
+)
 
 # ==============================================================
 # json.hpp — header-only (nlohmann/json)
@@ -264,13 +281,12 @@ target_link_libraries(tguide
 
 # ==============================================================
 # Install Targets
-# Linux/Termux only — Windows resolves paths at runtime
 # run: sudo cmake --install . (Linux)
-#           cmake --install . (Termux)
+#           cmake --install . (Termux / Windows / macOS)
 # ==============================================================
-if(IS_LINUX OR IS_TERMUX OR IS_MACOS)
+if(IS_LINUX OR IS_TERMUX OR IS_MACOS OR IS_WINDOWS)
 
-    # binary — install on all Unix-like platforms
+    # binary — install on all platforms
     install(TARGETS tguide
         RUNTIME DESTINATION ${TGUIDE_INSTALL_BIN}
     )
