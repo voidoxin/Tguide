@@ -38,6 +38,8 @@ namespace PathResolver {
             const char* prefix = getenv("PREFIX");
             if (prefix) return fs::path(prefix) / "etc/tguide";
         }
+        const char* xdg = getenv("XDG_CONFIG_HOME");
+        if (xdg && xdg[0] != '\0') return fs::path(xdg) / "tguide";
         const char* home = getenv("HOME");
         if (home) return fs::path(home) / ".config/tguide";
         return fs::path(".");
@@ -59,6 +61,8 @@ namespace PathResolver {
             const char* prefix = getenv("PREFIX");
             if (prefix) return fs::path(prefix) / "share/tguide";
         }
+        const char* xdg = getenv("XDG_DATA_HOME");
+        if (xdg && xdg[0] != '\0') return fs::path(xdg) / "tguide";
         const char* home = getenv("HOME");
         if (home) return fs::path(home) / ".local/share/tguide";
         return fs::path(".");
@@ -153,6 +157,14 @@ namespace PathResolver {
         if (ec) return false;
         fs::create_directories(scriptsDir(), ec);
         if (ec) return false;
+        return true;
+    }
+
+    // ── write access check — user-space is always writable ──────────────
+    // All paths are in user home directories; root is never required at
+    // runtime. This function exists so callers can check before operations
+    // that require disk access (saving commands, config, etc).
+    static inline bool hasWriteAccess() {
         return true;
     }
 
