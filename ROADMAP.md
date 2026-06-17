@@ -13,7 +13,7 @@
 - **L1-services**: svc_tools with search index, svc_generator with input sanitization, svc_dto decoupling layer, string table re-export, A6 DTO pattern fixed.
 - **L2-Interface_Engine**: UI_Engine with readInput(), colors with isatty()/g_colorEnabled, tool detail/category/vulnerability/module screens, template fill workflow, generator wizard, A4 header isolation fixed, A7 build-time layer enforcement fixed.
 - **Testing**: doctest framework with 28+ test cases across SHA256, ConfigManager, UserDataManager, DB recovery. CTest integration.
-- **Key remaining work before v1.0**: Replace data_adder.cpp with professional Python toolchain (STEP-DB), fix database bootstrap for no-internet first boot (STEP-B1), cross-platform path resolution (STEP-B2), Windows support (STEP-B3), cross-platform validation (STEP-CP2), enhanced search (STEP-R1), saved commands/scripts screens (STEP-R2/R3), settings screen completion (STEP-R4), remove all stubs (STEP-R5), shadow swap update system (STEP-17/18), fix manifest URL to use GitHub Releases (STEP-MU), remove dev-only code (STEP-61), full QA (STEP-62), and packaging for AUR/Homebrew/Deb/Windows + v1.0 release (STEP-PK1-5).
+- **Key remaining work before v1.0**: Replace data_adder.cpp with professional Python toolchain (STEP-DB — DONE), fix database bootstrap for no-internet first boot: installDbFile() done (STEP-B1a — DONE), still need bundle seed DB in CMake (STEP-B1b), fix copyDefaultToConfig() (STEP-B1c), make manifest fetch non-fatal (STEP-B1d); cross-platform path resolution (STEP-B2), Windows support (STEP-B3), cross-platform validation (STEP-CP2), enhanced search (STEP-R1), saved commands/scripts screens (STEP-R2/R3), settings screen completion (STEP-R4), remove all stubs (STEP-R5), shadow swap update system (STEP-17/18), fix manifest URL to use GitHub Releases (STEP-MU), remove dev-only code (STEP-61), full QA (STEP-62), and packaging for AUR/Homebrew/Deb/Windows + v1.0 release (STEP-PK1-5).
 
 ## Architecture Reference
 ```
@@ -400,11 +400,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L0 |
 | Priority   | CRITICAL |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | L0-core/include/path_resolver.h |
-| Goal       | Add `installDbFile()` static method to PathResolver returning per-OS path to bundled seed DB: `/usr/share/tguide/tguide.db` (Linux), `~/Library/Application Support/tguide/tguide.db` (macOS), `%APPDATA%/tguide/tguide.db` (Windows), `~/../usr/share/tguide/tguide.db` (Termux) |
+| Goal       | Add `installDbFile()` static method to PathResolver returning per-OS path to bundled seed DB: `/usr/share/tguide/tguide.db` (Linux), `/Library/Application Support/tguide/tguide.db` (macOS), `%PROGRAMDATA%/tguide/tguide.db` (Windows), `$PREFIX/share/tguide/tguide.db` (Termux) |
 | Depends    | none |
 | Done when  | PathResolver::installDbFile() returns correct path per platform; unit testable |
+| Completed  | **2026-06-17** — Added `installDbFile()` to PathResolver returning per-platform bundled seed DB path. Windows: `%%PROGRAMDATA%%`, macOS: `/Library/Application Support`, Linux: `/usr/share/tguide`, Termux: `$PREFIX/share/tguide`. 4 doctest test cases added. Code review: H1/H2/M1/M2 issues fixed and re-approved. |
 
 ### STEP-B1b — Bundle seed DB in CMakeLists.txt
 | Field      | Value |

@@ -103,6 +103,33 @@ namespace PathResolver {
     static inline fs::path savedScriptsFile()  { return userDataDir() / "saved_scripts.json";   }
     static inline fs::path scriptsDir()        { return userDataDir() / "scripts";              }
 
+    // ── bundled seed DB install path per platform ──────────────────────────
+    // Returns the path where CMake / the package manager installs the bundled
+    // seed database.  This is *system‑wide* (or OS‑managed) and is *distinct*
+    // from dbFile() on every desktop platform so that copyDefaultToConfig() has a real
+    // source → destination copy to perform on first boot.
+    // Used by DBResolver::copyDefaultToConfig() at first-boot time.
+    static inline fs::path installDbFile() {
+#ifdef _WIN32
+        // Windows: %PROGRAMDATA% = "C:\ProgramData" — system‑wide, all users
+        const char* progdata = getenv("PROGRAMDATA");
+        if (progdata) return fs::path(progdata) / "tguide/tguide.db";
+        return fs::path(".");
+#elif defined(__APPLE__)
+        // macOS: /Library/Application Support — system Library, NOT ~/Library
+        return fs::path("/Library/Application Support/tguide/tguide.db");
+#else
+        if (isTermux()) {
+            // Termux: inside $PREFIX (always set in Termux)
+            const char* prefix = getenv("PREFIX");
+            if (prefix) return fs::path(prefix) / "share/tguide/tguide.db";
+            return fs::path(".");   // consistent fallback
+        }
+        // Linux — system‑wide install path, distinct from user dbFile()
+        return fs::path("/usr/share/tguide/tguide.db");
+#endif
+    }
+
     // ── create system directories — fatal if these fail ───────────────────
     // configDir + dataDir + backupDir: root dirs on Linux, always need to exist
     static inline bool createSystemDirs() {

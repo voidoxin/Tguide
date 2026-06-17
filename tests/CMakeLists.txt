@@ -7,6 +7,7 @@ set(TEST_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test_strings.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test_config_manager.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test_db_recovery.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_path_resolver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test_user_data_manager.cpp
 )
 
