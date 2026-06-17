@@ -33,7 +33,13 @@ namespace PathResolver {
         const char* home = getenv("HOME");
         if (home) return fs::path(home) / "Library/Application Support/tguide";
         return fs::path(".");
+#elif defined(__ANDROID__)
+        // Termux (compile-time): HOME/../usr/etc/tguide
+        const char* home = getenv("HOME");
+        if (home) return fs::path(home).parent_path() / "usr/etc/tguide";
+        return fs::path(".");
 #else
+        // Linux
         if (isTermux()) {
             const char* prefix = getenv("PREFIX");
             if (prefix) return fs::path(prefix) / "etc/tguide";
@@ -56,7 +62,13 @@ namespace PathResolver {
         const char* home = getenv("HOME");
         if (home) return fs::path(home) / "Library/Application Support/tguide";
         return fs::path(".");
+#elif defined(__ANDROID__)
+        // Termux: HOME/../usr/share/tguide
+        const char* home = getenv("HOME");
+        if (home) return fs::path(home).parent_path() / "usr/share/tguide";
+        return fs::path(".");
 #else
+        // Linux
         if (isTermux()) {
             const char* prefix = getenv("PREFIX");
             if (prefix) return fs::path(prefix) / "share/tguide";
@@ -80,7 +92,13 @@ namespace PathResolver {
         const char* home = getenv("HOME");
         if (home) return fs::path(home) / "Library/Application Support/tguide";
         return fs::path(".");
+#elif defined(__ANDROID__)
+        // Termux: HOME/../usr/share/tguide
+        const char* home = getenv("HOME");
+        if (home) return fs::path(home).parent_path() / "usr/share/tguide";
+        return fs::path(".");
 #else
+        // Linux
         if (isTermux()) {
             const char* prefix = getenv("PREFIX");
             if (prefix) return fs::path(prefix) / "share/tguide";
@@ -122,6 +140,11 @@ namespace PathResolver {
 #elif defined(__APPLE__)
         // macOS: /Library/Application Support — system Library, NOT ~/Library
         return fs::path("/Library/Application Support/tguide/tguide.db");
+#elif defined(__ANDROID__)
+        // Termux: HOME/../usr/share/tguide/tguide.db
+        const char* home = getenv("HOME");
+        if (home) return fs::path(home).parent_path() / "usr/share/tguide/tguide.db";
+        return fs::path(".");
 #else
         if (isTermux()) {
             // Termux: inside $PREFIX (always set in Termux)
