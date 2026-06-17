@@ -522,11 +522,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L1 |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
-| Files      | L1-services/src/svc_savedCommands.cpp (NEW), L1-services/includes/svc_savedCommands.h (NEW) |
+| Status     | [x] DONE |
+| Files      | L1-services/includes/svc_savedCommands.h, L1-services/src/svc_savedCommands.cpp, L1-services/includes/svc_dto.h, L0-core/include/UserDataManager.h, L0-core/src/UserDataManager.cpp |
 | Goal       | Create saved commands service layer with CRUD operations via UserDataManager: list(), getById(), save(), update(), delete(). Return DTOs to decouple from L0. |
 | Depends    | STEP-R1 |
 | Done when  | svc_savedCommands provides complete CRUD API; all operations work through UserDataManager singleton |
+| Completed  | **2026-06-17** (commit fe2809a) — Added SavedCommandDTO to svc_dto.h with service-resolved tool_name. Added updateCommand() and getCommandById() to UserDataManager (L0). Implemented SvcSavedCommands namespace with full CRUD API: getAllCommands() sorts by note and resolves tool names; getCommandById(), saveCommand(), updateCommand(), deleteCommand() delegate to UserDataManager. Added 9 test cases in tests/test_saved_commands.cpp. All 51/51 tests pass. Code review: APPROVED ✅. Testing: PASS ✅. |
 
 ### STEP-R2b — Saved commands UI screen
 | Field      | Value |
@@ -795,7 +796,7 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-B3b | Release R1 | CROSS-PLATFORM | Windows ANSI colors + signal handling | [x] DONE |
 | STEP-CP2 | Release R1 | QA | Cross-platform validation testing | [x] DONE |
 | STEP-R1 | Release R2 | L1 | Implement enhanced search algorithm | [x] DONE |
-| STEP-R2a | Release R2 | L1 | Saved commands service layer |
+| STEP-R2a | Release R2 | L1 | Saved commands service layer | [x] DONE |
 | STEP-R2b | Release R2 | L2 | Saved commands UI screen |
 | STEP-R3a | Release R2 | L1 | Saved scripts service layer |
 | STEP-R3b | Release R2 | L2 | Saved scripts UI screen |
