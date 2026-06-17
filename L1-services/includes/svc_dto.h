@@ -84,4 +84,12 @@ namespace SvcDTO {
         std::string value;
     };
 
+    struct SavedCommandDTO {
+        int         id;
+        int         tool_id;
+        std::string command;
+        std::string note;
+        std::string tool_name;       // resolved by L1 service from tool_id
+    };
+
 } // namespace SvcDTO

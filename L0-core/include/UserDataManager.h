@@ -48,8 +48,11 @@ public:
     // returns new id on success, -1 on failure
     int  saveCommand(int tool_id, const std::string& command,
                      const std::string& note);
+    bool updateCommand(int id, int tool_id, const std::string& command,
+                       const std::string& note);
     bool deleteCommand(int id);
     std::vector<SavedCommand> getCommands();
+    SavedCommand getCommandById(int id);
 
     // returns new id on success, -1 on failure
     int  saveScript(const std::string& name, const std::string& path,

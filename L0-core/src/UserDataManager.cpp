@@ -184,6 +184,33 @@ int UserDataManager::saveCommand(int tool_id, const std::string& command,
     return c.id;
 }
 
+bool UserDataManager::updateCommand(int id, int tool_id,
+                                     const std::string& command,
+                                     const std::string& note) {
+    if (!m_initialized) return false;
+    auto it = std::find_if(m_commands.begin(), m_commands.end(),
+        [id](const SavedCommand& c) { return c.id == id; });
+    if (it == m_commands.end()) return false;
+
+    SavedCommand backup = *it;
+    it->tool_id = tool_id;
+    it->command = command;
+    it->note    = note;
+
+    if (!save()) {
+        *it = backup;
+        return false;
+    }
+    return true;
+}
+
+SavedCommand UserDataManager::getCommandById(int id) {
+    auto it = std::find_if(m_commands.begin(), m_commands.end(),
+        [id](const SavedCommand& c) { return c.id == id; });
+    if (it != m_commands.end()) return *it;
+    return SavedCommand{};
+}
+
 bool UserDataManager::deleteCommand(int id) {
     if (!m_initialized) return false;
     auto it = std::find_if(m_commands.begin(), m_commands.end(),
