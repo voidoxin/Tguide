@@ -607,22 +607,22 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L0 |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | L0-core/src/DBResolver.cpp, L0-core/include/DBResolver.h |
 | Goal       | Implement background download to tguide.db.tmp. Change manifest URL from raw.githubusercontent.com/main to GitHub Releases URL (`https://github.com/voidoxin/Tguide/releases/latest/download/signed_manifest.json`). Update .ai/security.md. |
 | Depends    | STEP-R5 |
-| Done when  | DB updates download to tguide.db.tmp; integrity verified after download; manifest URL points to GitHub Releases; main branch URL no longer in codebase |
+| Completed  | **2026-06-18** (commit 060d2d2) — Two changes: (1) MANIFEST_URL changed from `raw.githubusercontent.com/voidoxin/Tguide/main` to `https://github.com/voidoxin/Tguide/releases/latest/download/signed_manifest.json`. (2) Both `resolve()` and `manualUpdate()` now download to `.tmp` staging file, validate schema+SHA256 hash, then atomically `rename()` into place. Fallback `copy_file` on cross-device rename failure. `.tmp` cleaned up on all error paths. Backup restored on validation/rename failure. `ec` reuse bug found and fixed in code review. .ai/security.md URL references updated. All 60/60 tests pass. Build: zero new warnings. |
 
 ### STEP-17b — Shadow Swap: atomic swap + update notification
 | Field      | Value |
 |------------|-------|
 | Layer      | L0 |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | L0-core/src/DBResolver.cpp, L0-core/include/DBResolver.h, L0-core/include/db_cache_manager.h, L0-core/src/db_cache_manager.cpp |
 | Goal       | On restart/exit, perform atomic rename(tguide.db.tmp → tguide.db) if .tmp exists. Store pending update notification in DBCacheManager (has_pending_update flag). Clear cache on swap. |
 | Depends    | STEP-17a |
-| Done when  | .tmp file is atomically swapped on restart; DBCacheManager stores pending update flag; search index is cleared on swap |
+| Completed  | **2026-06-18** (commit 4407fb8) — Added `applyPendingSwap()` to DBResolver: validates .tmp schema, atomically renames to live path (with copy_file fallback), clears pending flag, updates current_hash, invalidates resolvedCache. Called at top of `resolve()` to handle deferred swap on every startup. Changed `manualUpdate()` success path to set `pending_update=true` and leave .tmp on disk instead of immediate rename. Added `setPendingUpdate()`/`hasPendingUpdate()` to DBCacheManager with `"pending_update": false` in JSON schema. Search index clearing is a no-op (SearchIndex singleton removed in STEP-A3; all searches create fresh ToolD instances). All 60/60 tests pass. Build: zero new warnings. Code review: APPROVED ✅. |
 
 ### STEP-18 — Shadow Swap update UI
 | Field      | Value |
@@ -809,8 +809,8 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-R4a | Release R2 | L2 | Settings: color enable/disable toggle | [x] DONE |
 | STEP-R4b | Release R2 | L2 | Settings: database management | [x] DONE |
 | STEP-R5 | Release R2 | CLEANUP | Remove all "coming soon" stubs from codebase | [x] DONE |
-| STEP-17a | Release R3 | L0 | Shadow Swap: download to .tmp + fix manifest URL |
-| STEP-17b | Release R3 | L0 | Shadow Swap: atomic swap + update notification |
+| STEP-17a | Release R3 | L0 | Shadow Swap: download to .tmp + fix manifest URL | [x] DONE |
+| STEP-17b | Release R3 | L0 | Shadow Swap: atomic swap + update notification | [x] DONE |
 | STEP-18 | Release R3 | L2 | Shadow Swap update UI |
 | STEP-61a | Release R4 | BUILD | CMake release build configuration |
 | STEP-61b | Release R4 | BOOTSTRAP | Clean dev-only bootstrap code from CoreRunner |
