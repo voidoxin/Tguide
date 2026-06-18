@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 
@@ -21,6 +22,21 @@ public:
 
     // Returns true if a fatal error occurred during the last resolve.
     bool fatal() const { return fatal_; }
+
+    struct DbInfo {
+        uintmax_t fileSize;    // filesystem file size in bytes
+        int       tableCount;  // number of user tables in sqlite_master
+        int       rowCount;    // total rows across all user tables
+    };
+
+    // Gather database metadata (size, tables, rows).
+    // Opens the DB at dbPath, queries sqlite_master, and counts rows.
+    DbInfo getDatabaseInfo(const std::string& dbPath);
+
+    // Manual update: fetch latest manifest, download new DB if available,
+    // validate schema + hash, replace dbPath. Returns true on success.
+    // Handles backup before download and rollback on failure.
+    bool manualUpdate(const std::string& dbPath);
 
     // Fetch and parse the version manifest from GitHub.
     // Returns empty Manifest on failure (caller handles fallback).

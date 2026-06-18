@@ -10,12 +10,28 @@
  */
 
 #pragma once
+#include <cstdint>
+#include <string>
 
 class ConfigManager;
 
 namespace SvcSettings {
 
+    // Color (existing)
     bool getColorEnabled(const ConfigManager& cfg);
     bool setColorEnabled(ConfigManager& cfg, bool enabled);
+
+    // Database info struct
+    struct DbInfo {
+        std::string version;      // from DBCacheManager
+        uintmax_t   fileSize;     // in bytes
+        int         tableCount;
+        int         rowCount;
+        bool        hasBackup;
+    };
+
+    // Database management
+    DbInfo  getDbInfo();
+    bool    triggerDbUpdate();
 
 }

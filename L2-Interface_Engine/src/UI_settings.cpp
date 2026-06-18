@@ -19,6 +19,8 @@
 #include "../../L1-services/includes/svc_settings.h"
 #include <filesystem>
 #include <iostream>
+#include <sstream>
+#include <iomanip>
 
 using namespace std;
 
@@ -116,22 +118,54 @@ void UISettings::showDatabaseMenu() {
         UI::printBreadcrumb("settings \u203a database");
         UI::printDivider();
 
-        string activeVersion = DBCacheManager::instance().getLastSeenVersion();
-        bool hasBackup = DBCacheManager::instance().hasBackup();
+        // Fetch fresh DB info each loop
+        SvcSettings::DbInfo info = SvcSettings::getDbInfo();
+
+        // Format file size
+        std::string fileSizeStr;
+        if (info.fileSize >= 1048576) {
+            double mb = static_cast<double>(info.fileSize) / 1048576.0;
+            std::ostringstream oss;
+            oss << std::fixed << std::setprecision(1) << mb << " MB";
+            fileSizeStr = oss.str();
+        } else if (info.fileSize >= 1024) {
+            double kb = static_cast<double>(info.fileSize) / 1024.0;
+            std::ostringstream oss;
+            oss << std::fixed << std::setprecision(1) << kb << " KB";
+            fileSizeStr = oss.str();
+        } else {
+            fileSizeStr = std::to_string(info.fileSize) + " bytes";
+        }
 
         cout << "\n"
              << (colorsEnabled() ? Color::BOLD : "")
              << "  Database Management\n"
              << (colorsEnabled() ? Color::RESET : "")
-             << "\n"
-             << (colorsEnabled() ? Color::DIM : "") << "  Active version"
-             << (colorsEnabled() ? Color::RESET : "")
-             << "  " << (activeVersion.empty() ? "unknown" : activeVersion) << "\n"
-             << (colorsEnabled() ? Color::DIM : "") << "  Backup"
-             << (colorsEnabled() ? Color::RESET : "")
-             << "          " << (hasBackup ? "available" : "none") << "\n";
+             << "\n";
 
-        if (hasBackup) {
+        // ── DB Info section ──
+        cout << (colorsEnabled() ? Color::DIM : "") << "  Active version"
+             << (colorsEnabled() ? Color::RESET : "")
+             << "  " << (info.version.empty() ? "unknown" : info.version) << "\n";
+
+        cout << (colorsEnabled() ? Color::DIM : "") << "  File size"
+             << (colorsEnabled() ? Color::RESET : "")
+             << "        " << fileSizeStr << "\n";
+
+        cout << (colorsEnabled() ? Color::DIM : "") << "  Tables"
+             << (colorsEnabled() ? Color::RESET : "")
+             << "            " << info.tableCount << "\n";
+
+        cout << (colorsEnabled() ? Color::DIM : "") << "  Total rows"
+             << (colorsEnabled() ? Color::RESET : "")
+             << "        " << info.rowCount << "\n";
+
+        // ── Backup section ──
+        cout << (colorsEnabled() ? Color::DIM : "") << "  Backup"
+             << (colorsEnabled() ? Color::RESET : "")
+             << "          " << (info.hasBackup ? "available" : "none") << "\n";
+
+        if (info.hasBackup) {
             string backupHash = DBCacheManager::instance().getBackupHash();
             if (!backupHash.empty()) {
                 cout << (colorsEnabled() ? Color::DIM : "") << "  Backup hash"
@@ -142,17 +176,20 @@ void UISettings::showDatabaseMenu() {
 
         cout << "\n";
 
-        if (hasBackup) {
+        // ── Actions ──
+        cout << "  [U] Update Database \u2014 check GitHub for latest version\n";
+
+        if (info.hasBackup) {
             cout << "  [R] Rollback Database \u2014 replace current DB with backup\n"
-                 << "  [D] Delete Backup\n"
-                 << "\n";
+                 << "  [D] Delete Backup\n";
         } else {
             cout << (colorsEnabled() ? Color::DIM : "")
                  << "  No backup available. Backups are created automatically\n"
                  << "  before database updates.\n"
-                 << (colorsEnabled() ? Color::RESET : "")
-                 << "\n";
+                 << (colorsEnabled() ? Color::RESET : "");
         }
+
+        cout << "\n";
 
         UI::printDivider();
         cout << "\n";
@@ -164,7 +201,26 @@ void UISettings::showDatabaseMenu() {
 
         char c = std::tolower(static_cast<unsigned char>(input[0]));
 
-        if (c == 'r' && hasBackup) {
+        if (c == 'u') {
+            bool success = SvcSettings::triggerDbUpdate();
+            if (success) {
+                SvcSettings::DbInfo updatedInfo = SvcSettings::getDbInfo();
+                cout << "\n  "
+                     << (colorsEnabled() ? Color::GREEN : "")
+                     << "\u2713  Database updated to version "
+                     << (updatedInfo.version.empty() ? "unknown" : updatedInfo.version)
+                     << (colorsEnabled() ? Color::RESET : "")
+                     << "\n\n";
+            } else {
+                cout << "\n  "
+                     << (colorsEnabled() ? Color::YELLOW : "")
+                     << "!  Update failed \u2014 check internet connection"
+                     << (colorsEnabled() ? Color::RESET : "")
+                     << "\n\n";
+            }
+            waitForEnter();
+
+        } else if (c == 'r' && info.hasBackup) {
             string bakPath = PathResolver::dbFile().string() + ".bak";
             std::error_code ec;
 
@@ -186,7 +242,7 @@ void UISettings::showDatabaseMenu() {
             }
             waitForEnter();
 
-        } else if (c == 'd' && hasBackup) {
+        } else if (c == 'd' && info.hasBackup) {
             string bakPath = PathResolver::dbFile().string() + ".bak";
             std::error_code ec;
             std::filesystem::remove(bakPath, ec);

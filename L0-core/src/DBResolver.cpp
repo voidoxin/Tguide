@@ -360,6 +360,148 @@ bool DBResolver::tryRestoreFromBackup(const std::string& bakPath,
     return !ec;
 }
 
+// ==================== DATABASE INFO ====================
+
+DBResolver::DbInfo DBResolver::getDatabaseInfo(const std::string& dbPath) {
+    DbInfo info{0, 0, 0};
+
+    // File size
+    std::error_code ec;
+    info.fileSize = std::filesystem::file_size(dbPath, ec);
+    if (ec) return info;
+
+    // Open DB and query metadata
+    sqlite3* db = nullptr;
+    if (sqlite3_open(dbPath.c_str(), &db) != SQLITE_OK) return info;
+
+    // Count user tables (exclude sqlite_* internal tables)
+    {
+        const char* sql = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'";
+        sqlite3_stmt* stmt = nullptr;
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+            if (sqlite3_step(stmt) == SQLITE_ROW)
+                info.tableCount = sqlite3_column_int(stmt, 0);
+            sqlite3_finalize(stmt);
+        }
+    }
+
+    // Count total rows across all user tables
+    {
+        // Get table names first
+        const char* sql = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'";
+        sqlite3_stmt* stmt = nullptr;
+        std::vector<std::string> tables;
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+            while (sqlite3_step(stmt) == SQLITE_ROW) {
+                const char* name = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+                if (name) tables.push_back(name);
+            }
+            sqlite3_finalize(stmt);
+        }
+
+        for (const auto& t : tables) {
+            char* escaped = sqlite3_mprintf("%w", t.c_str());
+            if (!escaped) continue;
+            std::string countSql = "SELECT COUNT(*) FROM " + std::string(escaped);
+            sqlite3_free(escaped);
+            sqlite3_stmt* cs = nullptr;
+            if (sqlite3_prepare_v2(db, countSql.c_str(), -1, &cs, nullptr) == SQLITE_OK) {
+                if (sqlite3_step(cs) == SQLITE_ROW)
+                    info.rowCount += sqlite3_column_int(cs, 0);
+                sqlite3_finalize(cs);
+            }
+        }
+    }
+
+    sqlite3_close(db);
+    return info;
+}
+
+// ==================== MANUAL UPDATE ====================
+
+bool DBResolver::manualUpdate(const std::string& dbPath) {
+    // Backup current database before attempting download
+    std::string bakPath = dbPath + ".bak";
+    if (std::filesystem::exists(dbPath)) {
+        std::error_code ec;
+        std::filesystem::remove(bakPath, ec);
+        std::filesystem::copy_file(dbPath, bakPath, ec);
+        if (!ec) {
+            DBCacheManager::instance().setBackupHash(
+                SHA256::hashFile(dbPath));
+            DBCacheManager::instance().save();
+        }
+    }
+
+    // Force fresh manifest fetch
+    manifestFetched_ = false;
+
+    Manifest m = fetchManifest();
+    if (m.db_url.empty()) {
+        // Attempt to restore backup on manifest failure
+        if (tryRestoreFromBackup(bakPath, dbPath)) {
+            DBCacheManager::instance().clearBackup();
+            DBCacheManager::instance().save();
+        }
+        return false;
+    }
+
+    if (!downloadDB(m.db_url, dbPath)) {
+        // Download failed — attempt restore from backup
+        if (tryRestoreFromBackup(bakPath, dbPath)) {
+            DBCacheManager::instance().clearBackup();
+            DBCacheManager::instance().save();
+        }
+        return false;
+    }
+
+    // Validate the downloaded file
+    sqlite3* db = nullptr;
+    bool dlOk = false;
+    if (sqlite3_open(dbPath.c_str(), &db) == SQLITE_OK) {
+        dlOk = validateSchema(db);
+        sqlite3_close(db);
+    }
+
+    if (!dlOk) {
+        std::error_code ec;
+        std::filesystem::remove(dbPath, ec);
+        if (tryRestoreFromBackup(bakPath, dbPath)) {
+            DBCacheManager::instance().clearBackup();
+            DBCacheManager::instance().save();
+        }
+        return false;
+    }
+
+    std::string dlHash = SHA256::hashFile(dbPath);
+    if (dlHash != m.db_hash) {
+        std::error_code ec;
+        std::filesystem::remove(dbPath, ec);
+        if (tryRestoreFromBackup(bakPath, dbPath)) {
+            DBCacheManager::instance().clearBackup();
+            DBCacheManager::instance().save();
+        }
+        return false;
+    }
+
+    // Success — update cache and clear backup hash
+    DBCacheManager::instance().setLastSeenVersion(m.version);
+    DBCacheManager::instance().setCurrentHash(dlHash);
+    DBCacheManager::instance().recordAccess(dbPath, dlHash);
+    DBCacheManager::instance().clearBackup();
+    DBCacheManager::instance().save();
+
+    // Invalidate all cached entries pointing to the old database file
+    for (auto it = resolvedCache_.begin(); it != resolvedCache_.end(); ) {
+        if (it->second == dbPath)
+            it = resolvedCache_.erase(it);
+        else
+            ++it;
+    }
+
+    return true;
+}
+
 // ==================== RESOLVER ====================
 
 void DBResolver::invalidateCacheIfMissing() {
