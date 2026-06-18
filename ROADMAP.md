@@ -582,11 +582,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L2 |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
-| Files      | L2-Interface_Engine/src/UI_settings.cpp, L2-Interface_Engine/includes/UI_settings.h |
+| Status     | [x] DONE |
+| Files      | L2-Interface_Engine/src/UI_settings.cpp, L2-Interface_Engine/includes/UI_settings.h, L0-core/include/DBResolver.h, L0-core/src/DBResolver.cpp, L0-core/include/db_cache_manager.h, L0-core/src/db_cache_manager.cpp, L1-services/includes/svc_settings.h, L1-services/src/svc_settings.cpp |
 | Goal       | Complete settings DB management section: database version display (from DBCacheManager), manual update trigger (calls DBResolver download), backup restore (from STEP-P4), database info display (size, table count, row count). |
 | Depends    | STEP-R4a |
 | Done when  | Settings shows version, can trigger update, restore from backup, and display DB info |
+| Completed  | **2026-06-18** (commit e64f792) — Enhanced showDatabaseMenu() with DB info display (version, file size, table count, row count, backup status) and [U] manual update trigger. Added DbInfo struct + getDatabaseInfo() to DBResolver (L0). Added manualUpdate() to DBResolver with fresh manifest fetch, download, schema+hash validation, backup/rollback. Added SvcSettings::getDbInfo() + triggerDbUpdate() bridge (L1). Code review: APPROVED ✅. Testing: PASS ✅ (60/60 tests). |
 
 ### STEP-R5 — Remove all "coming soon" stubs from codebase
 | Field      | Value |
@@ -805,7 +806,7 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-R3a | Release R2 | L1 | Saved scripts service layer | [x] DONE |
 | STEP-R3b | Release R2 | L2 | Saved scripts UI screen | [x] DONE |
 | STEP-R4a | Release R2 | L2 | Settings: color enable/disable toggle | [x] DONE |
-| STEP-R4b | Release R2 | L2 | Settings: database management |
+| STEP-R4b | Release R2 | L2 | Settings: database management | [x] DONE |
 | STEP-R5 | Release R2 | CLEANUP | Remove all "coming soon" stubs from codebase |
 | STEP-17a | Release R3 | L0 | Shadow Swap: download to .tmp + fix manifest URL |
 | STEP-17b | Release R3 | L0 | Shadow Swap: atomic swap + update notification |
