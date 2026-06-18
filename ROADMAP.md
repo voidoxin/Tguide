@@ -629,11 +629,11 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L2 |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | L2-Interface_Engine/src/UI_settings.cpp, L2-Interface_Engine/src/UI_Engine.cpp |
 | Goal       | Show "[ Update Ready — Restart to Apply ]" notification in main menu when shadow swap is pending. Add "Check for Updates" (triggers 17a download) and "Apply Update" (triggers restart+swap) options in Settings → Database. |
 | Depends    | STEP-17b |
-| Done when  | UI shows update notification when swap is pending; Settings has "Check for Updates" and "Apply Update" options; notification disappears after swap |
+| Completed  | **2026-06-18** (commit 92d2be2) — Added pending-update notification banner in main menu: yellow bold `[!] Update Ready — Restart to Apply` shown when `DBCacheManager::hasPendingUpdate()` is true. Renamed `[U] Update Database` → `[C] Check for Updates` in Database Management screen with updated success message ("Apply from this menu or restart"). Added conditional `[A] Apply Update Now` option that calls `DBResolver::applyPendingSwap()` in-session, clears pending flag, and saves cache. All 60/60 tests pass. Build: zero warnings. Code review: APPROVED ✅. |
 
 ## Release Phase R4 — Pre-Release & Packaging (9 steps)
 ### STEP-61a — CMake release build configuration
@@ -811,7 +811,7 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-R5 | Release R2 | CLEANUP | Remove all "coming soon" stubs from codebase | [x] DONE |
 | STEP-17a | Release R3 | L0 | Shadow Swap: download to .tmp + fix manifest URL | [x] DONE |
 | STEP-17b | Release R3 | L0 | Shadow Swap: atomic swap + update notification | [x] DONE |
-| STEP-18 | Release R3 | L2 | Shadow Swap update UI |
+| STEP-18 | Release R3 | L2 | Shadow Swap update UI | [x] DONE |
 | STEP-61a | Release R4 | BUILD | CMake release build configuration |
 | STEP-61b | Release R4 | BOOTSTRAP | Clean dev-only bootstrap code from CoreRunner |
 | STEP-62a | Release R4 | QA | Regression testing |
