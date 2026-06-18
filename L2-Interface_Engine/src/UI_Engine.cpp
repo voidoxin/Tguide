@@ -19,6 +19,7 @@
 #include "../includes/UI_tools.h"
 #include "../includes/UI_utils.h"
 #include "../../L0-core/include/config_manager.h"
+#include "../../L0-core/include/db_cache_manager.h"
 
 using namespace std;
 
@@ -103,6 +104,16 @@ int UIEngine::renderMenu(
 void UIEngine::start(ConfigManager& cfg) {
 
     while (true) {
+
+        // ── pending update notification ────────────────────────────────
+        if (DBCacheManager::instance().hasPendingUpdate()) {
+            cout << "\n"
+                 << (colorsEnabled() ? Color::YELLOW : "")
+                 << (colorsEnabled() ? Color::BOLD : "")
+                 << "  [!] Update Ready \u2014 Restart to Apply"
+                 << (colorsEnabled() ? Color::RESET : "")
+                 << "\n\n";
+        }
 
         vector<MenuItem> mainMenu = {
             { "⊞", "Tools",            "flags, templates, usage",       []() { UITools::show();           } },

@@ -14,6 +14,7 @@
 #include "../includes/UI_errorHandling.h"
 #include "../includes/UI_input.h"
 #include "../../L0-core/include/db_cache_manager.h"
+#include "../../L0-core/include/DBResolver.h"
 #include "../../L0-core/include/path_resolver.h"
 #include "../../L0-core/include/string_utils.h"
 #include "../../L1-services/includes/svc_settings.h"
@@ -177,7 +178,11 @@ void UISettings::showDatabaseMenu() {
         cout << "\n";
 
         // ── Actions ──
-        cout << "  [U] Update Database \u2014 check GitHub for latest version\n";
+        cout << "  [C] Check for Updates \u2014 download latest version from GitHub\n";
+
+        if (DBCacheManager::instance().hasPendingUpdate()) {
+            cout << "  [A] Apply Update Now \u2014 switch to downloaded version immediately\n";
+        }
 
         if (info.hasBackup) {
             cout << "  [R] Rollback Database \u2014 replace current DB with backup\n"
@@ -201,20 +206,44 @@ void UISettings::showDatabaseMenu() {
 
         char c = std::tolower(static_cast<unsigned char>(input[0]));
 
-        if (c == 'u') {
+        if (c == 'c') {
             bool success = SvcSettings::triggerDbUpdate();
             if (success) {
                 SvcSettings::DbInfo updatedInfo = SvcSettings::getDbInfo();
                 cout << "\n  "
                      << (colorsEnabled() ? Color::GREEN : "")
-                     << "\u2713  Database updated to version "
+                     << "\u2713  Update downloaded to version "
                      << (updatedInfo.version.empty() ? "unknown" : updatedInfo.version)
+                     << ". "
+                     << (DBCacheManager::instance().hasPendingUpdate()
+                         ? "Apply from this menu or restart to use it."
+                         : "Database is up to date.")
                      << (colorsEnabled() ? Color::RESET : "")
                      << "\n\n";
             } else {
                 cout << "\n  "
                      << (colorsEnabled() ? Color::YELLOW : "")
                      << "!  Update failed \u2014 check internet connection"
+                     << (colorsEnabled() ? Color::RESET : "")
+                     << "\n\n";
+            }
+            waitForEnter();
+
+        } else if (c == 'a' && DBCacheManager::instance().hasPendingUpdate()) {
+            std::string dbPath = PathResolver::dbFile().string();
+            bool applied = DBResolver::instance().applyPendingSwap(dbPath);
+            if (applied) {
+                DBCacheManager::instance().setPendingUpdate(false);
+                DBCacheManager::instance().save();
+                cout << "\n  "
+                     << (colorsEnabled() ? Color::GREEN : "")
+                     << "\u2713  Update applied. Restart tguide for full effect."
+                     << (colorsEnabled() ? Color::RESET : "")
+                     << "\n\n";
+            } else {
+                cout << "\n  "
+                     << (colorsEnabled() ? Color::YELLOW : "")
+                     << "!  Failed to apply update."
                      << (colorsEnabled() ? Color::RESET : "")
                      << "\n\n";
             }
