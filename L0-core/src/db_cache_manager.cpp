@@ -19,7 +19,8 @@ json DBCacheManager::buildDefault() {
             "meta", {
                 { "current_hash", "" },
                 { "last_version", "" },
-                { "backup_hash", "" }
+                { "backup_hash", "" },
+                { "pending_update", false }
             }
         },
         { "history", json::array() }
@@ -149,4 +150,12 @@ bool DBCacheManager::hasBackup() {
 
 void DBCacheManager::clearBackup() {
     cache_["meta"]["backup_hash"] = "";
+}
+
+void DBCacheManager::setPendingUpdate(bool pending) {
+    cache_["meta"]["pending_update"] = pending;
+}
+
+bool DBCacheManager::hasPendingUpdate() {
+    return cache_["meta"].value("pending_update", false);
 }

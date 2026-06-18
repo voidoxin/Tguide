@@ -45,6 +45,11 @@ public:
     // Returns the last successfully fetched manifest.
     Manifest getManifest() const { return manifest_; }
 
+    // Check for a staged .tmp file and atomically swap it into place.
+    // Designed to be called at startup inside resolve().
+    // Returns true if a swap was performed.
+    bool applyPendingSwap(const std::string& configPath);
+
 #ifndef NDEBUG
     // Reset all internal state — for test isolation.
     void resetForTesting();

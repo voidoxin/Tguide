@@ -486,30 +486,10 @@ bool DBResolver::manualUpdate(const std::string& dbPath) {
         return false;
     }
 
-    // All checks passed — atomically swap .tmp into place
-    std::filesystem::rename(tmpPath, dbPath, ec);
-    if (ec) {
-        // Rename failed — fall back to copy
-        ec.clear();
-        std::filesystem::copy_file(tmpPath, dbPath,
-            std::filesystem::copy_options::overwrite_existing, ec);
-        if (ec) {
-            // copy failed — attempt cleanup + restore
-            std::error_code ignore;
-            std::filesystem::remove(tmpPath, ignore);
-            if (tryRestoreFromBackup(bakPath, dbPath)) {
-                DBCacheManager::instance().clearBackup();
-                DBCacheManager::instance().save();
-            }
-            return false;
-        }
-        // copy succeeded — clean up .tmp (best-effort)
-        std::error_code ignore;
-        std::filesystem::remove(tmpPath, ignore);
-    }
-
-    // Success — update cache and clear backup hash
-    dlHash = SHA256::hashFile(dbPath);
+    // All checks passed — stage as pending update (deferred swap)
+    // The .tmp file will be atomically renamed into place on next startup
+    // via DBResolver::applyPendingSwap() inside resolve().
+    DBCacheManager::instance().setPendingUpdate(true);
     DBCacheManager::instance().setLastSeenVersion(m.version);
     DBCacheManager::instance().setCurrentHash(dlHash);
     DBCacheManager::instance().recordAccess(dbPath, dlHash);
@@ -625,8 +605,63 @@ std::string DBResolver::resolveHashMismatch(const std::string& configPath,
     return cacheResult(configPath, configPath, newHash);
 }
 
+bool DBResolver::applyPendingSwap(const std::string& configPath) {
+    std::string tmpPath = configPath + ".tmp";
+    if (!std::filesystem::exists(tmpPath))
+        return false;
+
+    // Validate the .tmp file schema
+    sqlite3* db = nullptr;
+    bool schemaOk = false;
+    if (sqlite3_open(tmpPath.c_str(), &db) == SQLITE_OK) {
+        schemaOk = validateSchema(db);
+        sqlite3_close(db);
+    }
+
+    if (!schemaOk) {
+        // Invalid .tmp — discard it and clear pending flag
+        std::error_code ec;
+        std::filesystem::remove(tmpPath, ec);
+        DBCacheManager::instance().setPendingUpdate(false);
+        DBCacheManager::instance().save();
+        return false;
+    }
+
+    // Schema OK — atomically swap .tmp into place
+    std::error_code ec;
+    std::filesystem::rename(tmpPath, configPath, ec);
+    if (ec) {
+        // Rename failed (cross-device edge case) — fall back to copy
+        ec.clear();
+        std::filesystem::copy_file(tmpPath, configPath,
+            std::filesystem::copy_options::overwrite_existing, ec);
+        std::error_code ignore;
+        std::filesystem::remove(tmpPath, ignore);
+        if (ec) {
+            // copy also failed — mark pending as failed and bail
+            DBCacheManager::instance().setPendingUpdate(false);
+            DBCacheManager::instance().save();
+            return false;
+        }
+    }
+
+    // Swap succeeded — update cache state
+    DBCacheManager::instance().setPendingUpdate(false);
+    DBCacheManager::instance().setCurrentHash(SHA256::hashFile(configPath));
+    DBCacheManager::instance().save();
+
+    // Invalidate resolver cache for this path so next resolve() re-validates
+    resolvedCache_.erase(configPath);
+
+    return true;
+}
+
 std::string DBResolver::resolve(const std::string& configPath) {
     if (fatal_) return "";
+
+    // Check for a staged .tmp file from a previous manualUpdate() and swap it in.
+    // Must happen before cache validation so the newly-swapped DB is picked up.
+    applyPendingSwap(configPath);
 
     invalidateCacheIfMissing();
 

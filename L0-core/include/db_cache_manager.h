@@ -140,6 +140,17 @@ public:
      */
     void clearBackup();
 
+    /*
+     * Sets or clears the pending update flag (shadow swap staged).
+     * When true, a .tmp file exists and will be swapped on restart.
+     */
+    void setPendingUpdate(bool pending);
+
+    /*
+     * Returns true if a shadow swap is staged (pending_update flag).
+     */
+    bool hasPendingUpdate();
+
 private:
     DBCacheManager() = default;
 
