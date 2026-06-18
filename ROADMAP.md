@@ -594,11 +594,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | CLEANUP |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
-| Files      | L2-Interface_Engine/src/UI_tools.cpp, L2-Interface_Engine/src/UI_Engine.cpp, L2-Interface_Engine/includes/UI_tools.h, L1-services/src/svc_tools.cpp |
+| Status     | [x] DONE |
+| Files      | L2-Interface_Engine/src/UI_Engine.cpp, L2-Interface_Engine/src/UI_tools.cpp, L2-Interface_Engine/src/UI_generator.cpp, L0-core/include/string_utils.h, L0-core/src/string_utils.cpp, L1-services/includes/svc_dto.h, L1-services/includes/svc_generator.h, L1-services/src/svc_generator.cpp, tests/test_strings.cpp |
 | Goal       | Remove or implement all "coming soon" / placeholder menu entries. If a feature isn't ready for v1.0, its menu entry must be hidden behind a compile-time flag or removed entirely. Audit for 183 stub/TODO references found in codebase. |
 | Depends    | STEP-R4b |
 | Done when  | No "coming soon", "TODO", "stub", or placeholder text remains in user-visible UI; dead code paths are removed |
+| Completed  | **2026-06-18** (commit faeb38a) — Removed Filter 'coming soon' stub from tools menu; wrapped Script Generator menu entry behind `#ifdef TGUIDE_ENABLE_GENERATOR`; removed `TOOLS_FILTER`/`TOOLS_COMING_SOON` StringIDs; removed unused `OptionDTO` struct; cleaned up svc_generator placeholder comments; updated generator stub text. Code review: APPROVED ✅. Testing: PASS ✅ (60/60 tests). |
 
 ## Release Phase R3 — Database Lifecycle (3 steps)
 ### STEP-17a — Shadow Swap: download to .tmp + fix manifest URL
@@ -807,7 +808,7 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-R3b | Release R2 | L2 | Saved scripts UI screen | [x] DONE |
 | STEP-R4a | Release R2 | L2 | Settings: color enable/disable toggle | [x] DONE |
 | STEP-R4b | Release R2 | L2 | Settings: database management | [x] DONE |
-| STEP-R5 | Release R2 | CLEANUP | Remove all "coming soon" stubs from codebase |
+| STEP-R5 | Release R2 | CLEANUP | Remove all "coming soon" stubs from codebase | [x] DONE |
 | STEP-17a | Release R3 | L0 | Shadow Swap: download to .tmp + fix manifest URL |
 | STEP-17b | Release R3 | L0 | Shadow Swap: atomic swap + update notification |
 | STEP-18 | Release R3 | L2 | Shadow Swap update UI |
