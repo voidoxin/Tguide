@@ -570,11 +570,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L2 |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | L2-Interface_Engine/src/UI_settings.cpp, L2-Interface_Engine/includes/UI_settings.h, L0-core/src/config_manager.cpp |
 | Goal       | Add color enable/disable toggle to settings screen. Persist to ConfigManager. Toggle takes effect immediately (no restart required). |
 | Depends    | STEP-R3b |
 | Done when  | Settings shows color toggle; toggle persists across restarts; colors update immediately |
+| Completed  | **2026-06-18** (commit f92f832) — Implemented settings color toggle via svc_settings service layer (L1). UI_settings::show() rewritten with interactive menu: color toggle [1] reads/writes ConfigManager via svc_settings, calls initColors() for immediate effect; Database Management [2] unchanged; Back [0]. Fixed pre-existing color-guard bugs in showDatabaseMenu(). Code review: APPROVED ✅. Testing: PASS ✅ (60/60 tests). |
 
 ### STEP-R4b — Settings: database management
 | Field      | Value |
@@ -803,7 +804,7 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-R2b | Release R2 | L2 | Saved commands UI screen | [x] DONE |
 | STEP-R3a | Release R2 | L1 | Saved scripts service layer | [x] DONE |
 | STEP-R3b | Release R2 | L2 | Saved scripts UI screen | [x] DONE |
-| STEP-R4a | Release R2 | L2 | Settings: color enable/disable toggle |
+| STEP-R4a | Release R2 | L2 | Settings: color enable/disable toggle | [x] DONE |
 | STEP-R4b | Release R2 | L2 | Settings: database management |
 | STEP-R5 | Release R2 | CLEANUP | Remove all "coming soon" stubs from codebase |
 | STEP-17a | Release R3 | L0 | Shadow Swap: download to .tmp + fix manifest URL |
