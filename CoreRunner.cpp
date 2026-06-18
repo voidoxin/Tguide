@@ -210,7 +210,7 @@ int main(int argc, char* argv[]) {
     }
 
     // ── hand off to UI ─────────────────────────────────────────────────────
-    UIEngine::start();
+    UIEngine::start(cfg);
 
     return 0;
 }

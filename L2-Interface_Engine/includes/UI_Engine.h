@@ -8,6 +8,8 @@
 #include <vector>
 #include <functional>
 
+class ConfigManager;
+
 namespace UIEngine {
 
     struct MenuItem {
@@ -25,6 +27,6 @@ namespace UIEngine {
     );
 
     // main entry point — starts the UI loop
-    void start();
+    void start(ConfigManager& cfg);
 
 }

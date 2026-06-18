@@ -7,13 +7,15 @@
  *    - read current config values from ConfigManager
  *    - validate and write updated config values
  *    - handle config file reload after changes
- *  Implementation pending.
  */
 
 #pragma once
 
+class ConfigManager;
+
 namespace SvcSettings {
 
-    // placeholder — implementation pending
+    bool getColorEnabled(const ConfigManager& cfg);
+    bool setColorEnabled(ConfigManager& cfg, bool enabled);
 
 }

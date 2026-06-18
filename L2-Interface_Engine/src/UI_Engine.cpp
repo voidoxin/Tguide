@@ -16,6 +16,7 @@
 #include "../includes/UI_settings.h"
 #include "../includes/UI_tools.h"
 #include "../includes/UI_utils.h"
+#include "../../L0-core/include/config_manager.h"
 
 using namespace std;
 
@@ -97,17 +98,17 @@ int UIEngine::renderMenu(
 }
 
 // ── start — main UI loop ───────────────────────────────────────────────────
-void UIEngine::start() {
+void UIEngine::start(ConfigManager& cfg) {
 
     while (true) {
 
         vector<MenuItem> mainMenu = {
-            { "⊞", "Tools",            "flags, templates, usage",       []() { UITools::show();         } },
-            { "◎", "Script Generator", "build commands interactively",   []() { UIGenerator::show();     } },
-            { "◈", "Saved Commands",   "your personal command library",  []() { UISavedCommands::show(); } },
-            { "▦", "Saved Scripts",    "your generated scripts",         []() { UISavedScripts::show();  } },
-            { "⊙", "Settings",         "configure tguide behavior",      []() { UISettings::show();      } },
-            { "✕", "Exit",             "",                               nullptr                          },
+            { "⊞", "Tools",            "flags, templates, usage",       []() { UITools::show();           } },
+            { "◎", "Script Generator", "build commands interactively",   []() { UIGenerator::show();       } },
+            { "◈", "Saved Commands",   "your personal command library",  []() { UISavedCommands::show();   } },
+            { "▦", "Saved Scripts",    "your generated scripts",         []() { UISavedScripts::show();    } },
+            { "⊙", "Settings",         "configure tguide behavior",      [&cfg]() { UISettings::show(cfg); } },
+            { "✕", "Exit",             "",                               nullptr                            },
         };
 
         int choice = renderMenu("main menu", mainMenu);
