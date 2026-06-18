@@ -22,7 +22,12 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 # Dev Mode — enable dev-only features (BackupManager)
 # remove before release build
 # ==============================================================
-option(TGUIDE_DEV_MODE "Enable dev-only features" ON)
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(TGUIDE_DEV_MODE_DEFAULT OFF)
+else()
+    set(TGUIDE_DEV_MODE_DEFAULT ON)
+endif()
+option(TGUIDE_DEV_MODE "Enable dev-only features" ${TGUIDE_DEV_MODE_DEFAULT})
 if(TGUIDE_DEV_MODE)
     add_compile_definitions(TGUIDE_DEV_MODE)
     message(STATUS "Dev mode: ON — BackupManager active")
@@ -38,12 +43,14 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     add_compile_options(-Wall -Wextra -Wpedantic)
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
         add_compile_options(-O2)
+        add_compile_definitions(NDEBUG)
     endif()
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang|IntelLLVM")
     message(STATUS "Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
     add_compile_options(-Wall -Wextra -Wpedantic)
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
         add_compile_options(-O2)
+        add_compile_definitions(NDEBUG)
     endif()
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     message(STATUS "Compiler: MSVC ${CMAKE_CXX_COMPILER_VERSION}")
@@ -128,6 +135,17 @@ elseif(IS_MACOS)
     set(TGUIDE_INSTALL_DATA   "/Library/Application Support/tguide")
     set(TGUIDE_INSTALL_CONFIG "/Library/Application Support/tguide")
 endif()
+
+# ==============================================================
+# Install RPATH — ensures the installed binary can find linked
+# shared libraries (e.g. libcurl) at runtime
+# ==============================================================
+if(CMAKE_INSTALL_RPATH)
+    # Respect any RPATH already set by the build environment
+else()
+    set(CMAKE_INSTALL_RPATH "${TGUIDE_INSTALL_BIN}/../lib")
+endif()
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 # ==============================================================
 # Source Paths
@@ -303,7 +321,7 @@ if(IS_LINUX OR IS_TERMUX OR IS_MACOS OR IS_WINDOWS)
 
     # database & config — all Unix platforms
     # Data files are committed alongside the source code, not generated at build time.
-    # The seed DB is a pre-built SQLite file created by the developer via data_adder.py.
+    # The seed DB is a pre-built SQLite file (tguide.db) committed to the repo.
     if(EXISTS ${CMAKE_SOURCE_DIR}/data/database/tguide.db)
         install(FILES ${CMAKE_SOURCE_DIR}/data/database/tguide.db
             DESTINATION ${TGUIDE_INSTALL_DATA}
