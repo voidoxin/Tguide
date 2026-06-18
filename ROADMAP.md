@@ -558,11 +558,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L2 |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
-| Files      | L2-Interface_Engine/src/UI_savedScripts.cpp (NEW), L2-Interface_Engine/includes/UI_savedScripts.h (NEW), L2-Interface_Engine/src/UI_Engine.cpp (modified) |
+| Status     | [x] DONE |
+| Files      | L2-Interface_Engine/src/UI_savedScripts.cpp, L2-Interface_Engine/includes/UI_savedScripts.h, L2-Interface_Engine/src/UI_Engine.cpp |
 | Goal       | Implement saved scripts UI screen: list, view details, delete, and script preview. Mirror saved commands UI pattern from STEP-R2b. |
 | Depends    | STEP-R3a |
 | Done when  | User can browse saved scripts, view details, delete scripts, and see script preview |
+| Completed  | **2026-06-18** (commit 0c50909) — Replaced 41-line stub with 312-line interactive UI: entry menu with paginated list; detail screen with name/path/note display; edit note inline form; delete with y/n confirmation. All inputs guarded with isQuit/isBack. Reuses existing StringIDs + 4 new ones for script-specific strings. All 60/60 tests pass. Code review: APPROVED ✅. Testing: PASS ✅. |
 
 ### STEP-R4a — Settings: color enable/disable toggle
 | Field      | Value |
@@ -801,7 +802,7 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-R2a | Release R2 | L1 | Saved commands service layer | [x] DONE |
 | STEP-R2b | Release R2 | L2 | Saved commands UI screen | [x] DONE |
 | STEP-R3a | Release R2 | L1 | Saved scripts service layer | [x] DONE |
-| STEP-R3b | Release R2 | L2 | Saved scripts UI screen |
+| STEP-R3b | Release R2 | L2 | Saved scripts UI screen | [x] DONE |
 | STEP-R4a | Release R2 | L2 | Settings: color enable/disable toggle |
 | STEP-R4b | Release R2 | L2 | Settings: database management |
 | STEP-R5 | Release R2 | CLEANUP | Remove all "coming soon" stubs from codebase |
