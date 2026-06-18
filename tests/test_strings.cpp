@@ -11,7 +11,6 @@ TEST_CASE("Strings — every StringID returns non-empty string") {
 TEST_CASE("Strings — returned values match expected text") {
     CHECK(Strings::get(StringID::TOOLS_BROWSE_CATEGORY) == "Browse by Category");
     CHECK(Strings::get(StringID::TOOLS_SEARCH) == "Search");
-    CHECK(Strings::get(StringID::TOOLS_FILTER) == "Filter");
     CHECK(Strings::get(StringID::TOOLS_BACK) == "Back");
     CHECK(Strings::get(StringID::TOOLS_PROMPT) == "\u2192");
 }

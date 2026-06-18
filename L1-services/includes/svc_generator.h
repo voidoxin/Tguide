@@ -7,8 +7,7 @@
  *    - load available tools and their flags for the builder
  *    - resolve flag dependencies and mutual exclusions
  *    - assemble the final command string from user selections
- *    - save generated commands/scripts to user storage
- *  Implementation pending.
+ *  - save generated commands/scripts to user storage
  */
 
 #pragma once
@@ -19,7 +18,6 @@
 std::string sanitizeInput(const std::string& input);
 
 namespace SvcGenerator {
-
-    // placeholder — implementation pending
-
+    // Reserved for Script Generator service layer.
+    // Enable with -DTGUIDE_ENABLE_GENERATOR at compile time.
 }

@@ -900,8 +900,7 @@ static void showVulnerabilities() {
 void UITools::show() {
     const vector<string> opts = {
         Strings::get(StringID::TOOLS_BROWSE_CATEGORY),
-        Strings::get(StringID::TOOLS_SEARCH),
-        Strings::get(StringID::TOOLS_FILTER)
+        Strings::get(StringID::TOOLS_SEARCH)
     };
 
     while (true) {
@@ -913,7 +912,6 @@ void UITools::show() {
         cout << "\n"
              << "  \u251C\u2500 \u25C9  " << Strings::get(StringID::TOOLS_BROWSE_CATEGORY) << "   [1]\n"
              << "  \u251C\u2500 \u2315  " << Strings::get(StringID::TOOLS_SEARCH) << "               [2]\n"
-             << "  \u251C\u2500 \u22DF  " << Strings::get(StringID::TOOLS_FILTER) << "               [3]\n"
              << (colorsEnabled() ? Color::DIM : "")
              << "  \u2514\u2500 \u2190  " << Strings::get(StringID::TOOLS_BACK) << "                 [0]"
              << (colorsEnabled() ? Color::RESET : "")
@@ -933,19 +931,6 @@ void UITools::show() {
             showCategories();
         } else if (idx == 1) {
             showSearch();
-        } else if (idx == 2) {
-            UI::clearScreen();
-            UI::printBanner();
-            UI::printBreadcrumb("tools \u203a filter");
-            UI::printDivider();
-            cout << "\n"
-                 << (colorsEnabled() ? Color::DIM : "")
-                 << Strings::get(StringID::TOOLS_COMING_SOON)
-                 << (colorsEnabled() ? Color::RESET : "")
-                 << "\n\n";
-            UI::printDivider();
-            cout << "\n";
-            waitForEnter();
         } else {
             if (isAmbiguous(input, opts))
                 cout << "  " << Strings::get(StringID::TOOLS_AMBIGUOUS) << "\n";

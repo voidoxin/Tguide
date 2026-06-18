@@ -5,9 +5,7 @@
 static const std::array<std::string, static_cast<size_t>(StringID::_COUNT)> s_strings = {{
     /* TOOLS_BROWSE_CATEGORY */ "Browse by Category",
     /* TOOLS_SEARCH          */ "Search",
-    /* TOOLS_FILTER          */ "Filter",
     /* TOOLS_BACK            */ "Back",
-    /* TOOLS_COMING_SOON     */ "coming soon \u2014 not yet implemented",
     /* TOOLS_INVALID_CHOICE  */ "invalid choice \u2014 try again.",
     /* TOOLS_AMBIGUOUS       */ "ambiguous \u2014 be more specific.",
     /* TOOLS_PROMPT          */ "\u2192",

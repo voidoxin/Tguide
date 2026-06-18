@@ -77,13 +77,6 @@ namespace SvcDTO {
         bool        flag;
     };
 
-    struct OptionDTO {
-        int         id;
-        int         vuln_id;
-        std::string name;
-        std::string value;
-    };
-
     struct SavedCommandDTO {
         int         id;
         int         tool_id;

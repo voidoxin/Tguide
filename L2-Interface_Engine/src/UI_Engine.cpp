@@ -9,7 +9,9 @@
 
 #include "../includes/UI_colors.h"
 #include "../includes/UI_Engine.h"
+#ifdef TGUIDE_ENABLE_GENERATOR
 #include "../includes/UI_generator.h"
+#endif
 #include "../includes/UI_input.h"
 #include "../includes/UI_savedCommands.h"
 #include "../includes/UI_savedScripts.h"
@@ -104,7 +106,9 @@ void UIEngine::start(ConfigManager& cfg) {
 
         vector<MenuItem> mainMenu = {
             { "⊞", "Tools",            "flags, templates, usage",       []() { UITools::show();           } },
+#ifdef TGUIDE_ENABLE_GENERATOR
             { "◎", "Script Generator", "build commands interactively",   []() { UIGenerator::show();       } },
+#endif
             { "◈", "Saved Commands",   "your personal command library",  []() { UISavedCommands::show();   } },
             { "▦", "Saved Scripts",    "your generated scripts",         []() { UISavedScripts::show();    } },
             { "⊙", "Settings",         "configure tguide behavior",      [&cfg]() { UISettings::show(cfg); } },
