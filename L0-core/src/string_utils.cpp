@@ -23,6 +23,11 @@ static const std::array<std::string, static_cast<size_t>(StringID::_COUNT)> s_st
     /* SAVED_TOOL_PROMPT     */ "tool name",
     /* SAVED_PREVIEW         */ "command preview",
     /* SAVED_EDIT_NOTE       */ "edit note",
+
+    /* SAVED_SCRIPTS_LIST    */ "List Saved Scripts",
+    /* SAVED_SCRIPTS_EMPTY   */ "no saved scripts.",
+    /* SAVED_SCRIPT_NAME_PROMPT*/ "script name",
+    /* SAVED_SCRIPT_PATH_PROMPT*/ "path",
 }};
 
 static_assert(s_strings.size() == static_cast<size_t>(StringID::_COUNT), "string table size must match StringID enum count");

@@ -25,6 +25,12 @@ enum class StringID : int {
     SAVED_PREVIEW,            // "command preview"
     SAVED_EDIT_NOTE,          // "edit note"
 
+    // Saved Scripts screen
+    SAVED_SCRIPTS_LIST,       // "List Saved Scripts"
+    SAVED_SCRIPTS_EMPTY,      // "no saved scripts."
+    SAVED_SCRIPT_NAME_PROMPT, // "script name"
+    SAVED_SCRIPT_PATH_PROMPT, // "path"
+
     _COUNT  // must be last
 };
 
