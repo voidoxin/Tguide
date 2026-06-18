@@ -133,7 +133,7 @@ static bool dbHasData(sqlite3* db) {
 // ==================== MANIFEST ====================
 
 static constexpr const char* MANIFEST_URL =
-    "https://raw.githubusercontent.com/voidoxin/Tguide/main/data/signed_manifest.json";
+    "https://github.com/voidoxin/Tguide/releases/latest/download/signed_manifest.json";
 
 static size_t curlStringCallback(void* ptr, size_t size,
                                   size_t nmemb, void* str) {
@@ -438,7 +438,6 @@ bool DBResolver::manualUpdate(const std::string& dbPath) {
 
     Manifest m = fetchManifest();
     if (m.db_url.empty()) {
-        // Attempt to restore backup on manifest failure
         if (tryRestoreFromBackup(bakPath, dbPath)) {
             DBCacheManager::instance().clearBackup();
             DBCacheManager::instance().save();
@@ -446,7 +445,12 @@ bool DBResolver::manualUpdate(const std::string& dbPath) {
         return false;
     }
 
-    if (!downloadDB(m.db_url, dbPath)) {
+    // Download to .tmp file for safe staging
+    std::string tmpPath = dbPath + ".tmp";
+    std::error_code ec;
+    std::filesystem::remove(tmpPath, ec);
+
+    if (!downloadDB(m.db_url, tmpPath)) {
         // Download failed — attempt restore from backup
         if (tryRestoreFromBackup(bakPath, dbPath)) {
             DBCacheManager::instance().clearBackup();
@@ -455,17 +459,16 @@ bool DBResolver::manualUpdate(const std::string& dbPath) {
         return false;
     }
 
-    // Validate the downloaded file
+    // Validate the downloaded .tmp file
     sqlite3* db = nullptr;
     bool dlOk = false;
-    if (sqlite3_open(dbPath.c_str(), &db) == SQLITE_OK) {
+    if (sqlite3_open(tmpPath.c_str(), &db) == SQLITE_OK) {
         dlOk = validateSchema(db);
         sqlite3_close(db);
     }
 
     if (!dlOk) {
-        std::error_code ec;
-        std::filesystem::remove(dbPath, ec);
+        std::filesystem::remove(tmpPath, ec);
         if (tryRestoreFromBackup(bakPath, dbPath)) {
             DBCacheManager::instance().clearBackup();
             DBCacheManager::instance().save();
@@ -473,18 +476,40 @@ bool DBResolver::manualUpdate(const std::string& dbPath) {
         return false;
     }
 
-    std::string dlHash = SHA256::hashFile(dbPath);
+    std::string dlHash = SHA256::hashFile(tmpPath);
     if (dlHash != m.db_hash) {
-        std::error_code ec;
-        std::filesystem::remove(dbPath, ec);
+        std::filesystem::remove(tmpPath, ec);
         if (tryRestoreFromBackup(bakPath, dbPath)) {
             DBCacheManager::instance().clearBackup();
             DBCacheManager::instance().save();
         }
         return false;
+    }
+
+    // All checks passed — atomically swap .tmp into place
+    std::filesystem::rename(tmpPath, dbPath, ec);
+    if (ec) {
+        // Rename failed — fall back to copy
+        ec.clear();
+        std::filesystem::copy_file(tmpPath, dbPath,
+            std::filesystem::copy_options::overwrite_existing, ec);
+        if (ec) {
+            // copy failed — attempt cleanup + restore
+            std::error_code ignore;
+            std::filesystem::remove(tmpPath, ignore);
+            if (tryRestoreFromBackup(bakPath, dbPath)) {
+                DBCacheManager::instance().clearBackup();
+                DBCacheManager::instance().save();
+            }
+            return false;
+        }
+        // copy succeeded — clean up .tmp (best-effort)
+        std::error_code ignore;
+        std::filesystem::remove(tmpPath, ignore);
     }
 
     // Success — update cache and clear backup hash
+    dlHash = SHA256::hashFile(dbPath);
     DBCacheManager::instance().setLastSeenVersion(m.version);
     DBCacheManager::instance().setCurrentHash(dlHash);
     DBCacheManager::instance().recordAccess(dbPath, dlHash);
@@ -665,7 +690,14 @@ std::string DBResolver::resolve(const std::string& configPath) {
         std::cout << "  attempting download from GitHub...\n"
                   << std::flush;
 
-        if (!downloadDB(m.db_url, configPath)) {
+        // Download to .tmp file for safe staging
+        std::string tmpPath = configPath + ".tmp";
+        std::error_code ec;
+
+        // Clean up any stale .tmp from a previous interrupted download
+        std::filesystem::remove(tmpPath, ec);
+
+        if (!downloadDB(m.db_url, tmpPath)) {
             // Attempt to restore from backup before giving up
             if (tryRestoreFromBackup(bakPath, configPath)) {
                 DBCacheManager::instance().clearBackup();
@@ -679,17 +711,16 @@ std::string DBResolver::resolve(const std::string& configPath) {
             return "";
         }
 
-        // Validate the downloaded file
+        // Validate the downloaded .tmp file
         sqlite3* db   = nullptr;
         bool     dlOk = false;
-        if (sqlite3_open(configPath.c_str(), &db) == SQLITE_OK) {
+        if (sqlite3_open(tmpPath.c_str(), &db) == SQLITE_OK) {
             dlOk = validateSchema(db);
             sqlite3_close(db);
         }
 
         if (!dlOk) {
-            std::error_code ec;
-            std::filesystem::remove(configPath, ec);
+            std::filesystem::remove(tmpPath, ec);
             // Attempt to restore from backup before giving up
             if (tryRestoreFromBackup(bakPath, configPath)) {
                 DBCacheManager::instance().clearBackup();
@@ -702,10 +733,9 @@ std::string DBResolver::resolve(const std::string& configPath) {
             return "";
         }
 
-        std::string dlHash = SHA256::hashFile(configPath);
+        std::string dlHash = SHA256::hashFile(tmpPath);
         if (dlHash != m.db_hash) {
-            std::error_code ec;
-            std::filesystem::remove(configPath, ec);
+            std::filesystem::remove(tmpPath, ec);
             // Attempt to restore from backup before giving up
             if (tryRestoreFromBackup(bakPath, configPath)) {
                 DBCacheManager::instance().clearBackup();
@@ -719,6 +749,31 @@ std::string DBResolver::resolve(const std::string& configPath) {
             return "";
         }
 
+        // All checks passed — atomically swap .tmp into place
+        std::filesystem::rename(tmpPath, configPath, ec);
+        if (ec) {
+            // Rename failed (rare — cross-device edge case) — fall back to copy
+            ec.clear();
+            std::filesystem::copy_file(tmpPath, configPath,
+                std::filesystem::copy_options::overwrite_existing, ec);
+            if (ec) {
+                // copy failed — attempt cleanup + restore
+                std::error_code ignore;
+                std::filesystem::remove(tmpPath, ignore);
+                if (tryRestoreFromBackup(bakPath, configPath)) {
+                    DBCacheManager::instance().clearBackup();
+                    DBCacheManager::instance().save();
+                    std::string restoredHash = SHA256::hashFile(configPath);
+                    return cacheResult(configPath, configPath, restoredHash);
+                }
+                return "";
+            }
+            // copy succeeded — clean up .tmp (best-effort)
+            std::error_code ignore;
+            std::filesystem::remove(tmpPath, ignore);
+        }
+
+        dlHash = SHA256::hashFile(configPath);
         return cacheResult(configPath, configPath, dlHash);
     }
 
