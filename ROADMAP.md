@@ -13,7 +13,7 @@
 - **L1-services**: svc_tools with search index, svc_generator with input sanitization, svc_dto decoupling layer, string table re-export, A6 DTO pattern fixed.
 - **L2-Interface_Engine**: UI_Engine with readInput(), colors with isatty()/g_colorEnabled, tool detail/category/vulnerability/module screens, template fill workflow, generator wizard, A4 header isolation fixed, A7 build-time layer enforcement fixed.
 - **Testing**: doctest framework with 28+ test cases across SHA256, ConfigManager, UserDataManager, DB recovery. CTest integration.
-- **Key remaining work before v1.0**: Replace data_adder.cpp with professional Python toolchain (STEP-DB — DONE), fix database bootstrap for no-internet first boot: installDbFile() done (STEP-B1a — DONE), bundle seed DB in CMake (STEP-B1b — DONE), fix copyDefaultToConfig() (STEP-B1c — DONE), make manifest fetch non-fatal (STEP-B1d — DONE); cross-platform path resolution (STEP-B2a — DONE), Windows + Termux path resolution (STEP-B2b — DONE), Windows CMake toolchain + MSVC compatibility (STEP-B3a — DONE), Windows ANSI colors + signal handling (STEP-B3b — DONE), Windows support (STEP-B3), cross-platform validation (STEP-CP2), enhanced search (STEP-R1), saved commands/scripts screens (STEP-R2/R3), settings screen completion (STEP-R4), remove all stubs (STEP-R5), shadow swap update system (STEP-17/18), fix manifest URL to use GitHub Releases (STEP-MU), remove dev-only code (STEP-61), full QA (STEP-62), and packaging for AUR/Homebrew/Deb/Windows + v1.0 release (STEP-PK1-5).
+- **Key remaining work before v1.0**: Replace data_adder.cpp with professional Python toolchain (STEP-DB — DONE), fix database bootstrap for no-internet first boot: installDbFile() done (STEP-B1a — DONE), bundle seed DB in CMake (STEP-B1b — DONE), fix copyDefaultToConfig() (STEP-B1c — DONE), make manifest fetch non-fatal (STEP-B1d — DONE); cross-platform path resolution (STEP-B2a — DONE), Windows + Termux path resolution (STEP-B2b — DONE), Windows CMake toolchain + MSVC compatibility (STEP-B3a — DONE), Windows ANSI colors + signal handling (STEP-B3b — DONE), Windows support (STEP-B3), cross-platform validation (STEP-CP2), enhanced search (STEP-R1), saved commands/scripts screens (STEP-R2/R3), settings screen completion (STEP-R4), remove all stubs (STEP-R5), shadow swap update system (STEP-17/18), fix manifest URL to use GitHub Releases (STEP-MU), CLI argument parser framework (STEP-19 — DONE); output & configuration flags (STEP-20 — DONE); tool & vulnerability display (STEP-21 — DONE); remaining CLI flags (STEP-22 through STEP-26); missing config parameters & Settings UI completion (STEP-27 through STEP-29); extension data system (STEP-30 through STEP-33); remove dev-only code (STEP-61), full QA (STEP-62), and packaging for AUR/Homebrew/Deb/Windows + v1.0 release (STEP-PK1-5).
 
 ## Architecture Reference
 ```
@@ -635,13 +635,183 @@ L0-core → L1-services → L2-Interface_Engine
 | Depends    | STEP-17b |
 | Completed  | **2026-06-18** (commit 92d2be2) — Added pending-update notification banner in main menu: yellow bold `[!] Update Ready — Restart to Apply` shown when `DBCacheManager::hasPendingUpdate()` is true. Renamed `[U] Update Database` → `[C] Check for Updates` in Database Management screen with updated success message ("Apply from this menu or restart"). Added conditional `[A] Apply Update Now` option that calls `DBResolver::applyPendingSwap()` in-session, clears pending flag, and saves cache. All 60/60 tests pass. Build: zero warnings. Code review: APPROVED ✅. |
 
-## Release Phase R4 — Pre-Release & Packaging (9 steps)
+## Release Phase R3b — CLI Arguments & Non-Interactive Mode (8 steps)
+### STEP-19 — CLI argument parser framework
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 / BOOTSTRAP |
+| Priority   | HIGH |
+| Status     | [x] DONE |
+| Files      | CoreRunner.cpp, L0-core/include/cli_parser.h (NEW), L0-core/src/cli_parser.cpp (NEW), CMakeLists.txt |
+| Goal       | Implement the core CLI argument parser infrastructure supporting long (`--flag`) and short (`-f`) forms for all flags defined in `flags_tguide.md`. Handle unknown flags gracefully with error message. Implement the general/meta flags: `--help` / `-h` (print complete usage listing and exit), `--version` / `-v` (print program version only from compile-time TGUIDE_VERSION define and exit; database version deferred — requires manifest cache persistence which does not exist yet, will be added when manifest-caching is improved in a later step), and `--yes` / `-y` (parsed and stored, ready for future steps). All 30+ flags are defined in the known_flags table for usage display. Unknown flags produce error with usage. printUsage() accepts std::ostream& for correct stderr vs stdout routing. |
+| Depends    | STEP-18 |
+| Done when  | `tguide --help` prints complete usage listing; `tguide --version` prints program version; `tguide -h` and `tguide -v` produce identical output to their long forms; `tguide --yes` is parsed (wired in STEP-23); parser correctly rejects unknown flags with error message; all 60+ existing tests still pass |
+| Completed  | **2026-06-19** (commit pending review) — Implemented CLI argument parser framework in `cli_parser.h/.cpp` with a known_flags table defining 30+ flags (sections 1–9 of flags_tguide.md). `--help`/`-h` prints complete usage via `printUsage(std::ostream&)`. `--version`/`-v` prints program version from compile-time `TGUIDE_VERSION` define only; database version deferred intentionally. `--yes`/`-y` is parsed and stored in the `ParsedArgs` struct. Unknown flags are rejected with error + usage. `printUsage()` accepts `std::ostream&` for correct stderr vs stdout routing. All 60+ existing tests pass. Code review: APPROVED ✅. |
+
+### STEP-20 — Output & configuration flags
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 / BOOTSTRAP |
+| Priority   | HIGH |
+| Status     | [x] DONE |
+| Files      | CoreRunner.cpp, L0-core/include/cli_parser.h, L0-core/include/session_flags.h (NEW), L0-core/src/cli_parser.cpp, L0-core/src/session_flags.cpp (NEW), L0-core/src/config_manager.cpp, tests/test_cli_parser.cpp, CMakeLists.txt |
+| Goal       | Implement all output control and configuration flags defined in `flags_tguide.md` sections 2 and 3: `--quiet` / `-q`, `--verbose` / `-V`, `--no-color`, `--no-banner`, `--offline`, `--set <key>=<value>`, `--reset <key>|all`, `--ignore-config`, and `--cache-clear`, plus `--stream` / `-S` (parsed but fully wired in STEP-26). All 9 flags implemented and functional. `--quiet`/`-q`, `--verbose`/`-V`, `--no-color`, `--no-banner`, `--offline` set session globals; `--set <key>=<value>` parses and persists config changes; `--reset all` deletes config and reloads defaults; `--reset <specific>` returns "not yet implemented" error; `--ignore-config` bypasses config file load; `--cache-clear` clears cached data and exits. 4 new session_flags: `g_quietMode`, `g_verboseMode`, `g_offlineMode`, `g_noBanner`. |
+| Depends    | STEP-19 |
+| Done when  | All 9 flags implemented and functional; `--quiet`/`-q`, `--verbose`/`-V`, `--no-color`, `--no-banner`, `--offline` set session globals; `--set <key>=<value>` parses and persists config changes; `--reset all` deletes config and reloads defaults; `--reset <specific>` returns "not yet implemented" error; `--ignore-config` bypasses config file load; `--cache-clear` clears cached data and exits; `--stream`/`-S` parsed but fully wired in STEP-26; 4 new session_flags: `g_quietMode`, `g_verboseMode`, `g_offlineMode`, `g_noBanner`; 27 new CLI parser tests; 87 total test cases all passing |
+| Completed  | **2026-06-19** (`99d4761`) — Implemented all output control and configuration flags: `--quiet`/`-q`, `--verbose`/`-V`, `--no-color`, `--no-banner`, `--offline`, `--set`, `--reset`/`--reset all`, `--ignore-config`, `--cache-clear`, plus `--stream`/`-S` (wired fully in STEP-26). Four new session globals (`g_quietMode`, `g_verboseMode`, `g_offlineMode`, `g_noBanner`) set from parsed args. `--set <key>=<value>` parses and persists config changes. `--reset all` deletes config file and reloads factory defaults. `--reset <specific>` returns "not yet implemented" error. `--ignore-config` bypasses config file load. `--cache-clear` clears cached data and exits. 27 new CLI parser test cases added; 87 total test cases all passing. Code review: APPROVED ✅. |
+
+### STEP-21 — Tool & vulnerability display
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 / BOOTSTRAP |
+| Priority   | HIGH |
+| Status     | [x] DONE |
+| Files      | CoreRunner.cpp, L0-core/src/cli_parser.cpp, L0-core/database/DatabaseManager.cpp |
+| Goal       | Implement the tool and vulnerability display system defined in `flags_tguide.md` sections 4, 5, and 6: `--tool` / `-t <names>` (base command with fuzzy-search fallback for unknown tools), `--flags` / `-f` (filter), `--description` / `-d` (filter), `--templates` / `-temp` (filter), `--filter` / `-F <field>=<value,...>` (filter criteria with chaining and comma-separated OR values), `--vuln` / `-vl` (base command), and `--category` / `-c <name>` (base command). All flags exit after producing output. |
+| Depends    | STEP-20 |
+| Done when  | `--tool "nmap"` prints all info; fuzzy search suggests close match on typo; `--tool "nmap,msf"` supports comma-separated names; `--flags`/`--description`/`--templates` filter tool output; `--flags --templates` prints both sections; `--filter severity=high` narrows results; `--vuln` displays vulnerabilities; `--vuln --filter os=windows,iphone` filters with OR; `--category "recon"` lists tools; all 60+ existing tests still pass |
+| Completed  | **2026-06-19** (`2c0b02b`) — Implemented tool & vulnerability display with 7 flags (`--tool`/`-t`, `--flags`/`-f`, `--description`/`-d`, `--templates`/`-temp`, `--filter`/`-F`, `--vuln`/`-vl`, `--category`/`-c`), Levenshtein fuzzy search, filter parsing, and display routing. 17 new test cases (104 total). Build: 0 warnings, 0 errors. Code review: APPROVED ✅. |
+
+### STEP-22 — Saved data & export flags
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 / BOOTSTRAP |
+| Priority   | MEDIUM |
+| Status     | [ ] TODO |
+| Files      | L0-core/src/cli_parser.cpp, L1-services/src/svc_savedScripts.cpp |
+| Goal       | Implement saved data and export flags defined in `flags_tguide.md` sections 7 and 8: `--saved-scripts` / `-sc` (display saved scripts and exit), `--export-text <path>`, `--export-json <path>`, `--export-yaml <path>`, and `--export-csv <path>` (export command output to a file in the specified format). Export captures result data only (not errors). |
+| Depends    | STEP-21 |
+| Done when  | `--saved-scripts` displays all saved scripts; each export flag writes output to specified path in correct format; `--export-json` reports error if data cannot be represented as JSON; export works when paired with any base command; all 60+ existing tests still pass |
+
+### STEP-23 — Update flags
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 / BOOTSTRAP |
+| Priority   | MEDIUM |
+| Status     | [ ] TODO |
+| Files      | CoreRunner.cpp, L0-core/src/cli_parser.cpp, L0-core/src/DBResolver.cpp |
+| Goal       | Implement update flags defined in `flags_tguide.md` section 9: `--update` (check for update, prompt to download, auto-download with `--yes`), `--check-update` (check without downloading, print new version and database size). Both exit after completing their action. |
+| Depends    | STEP-22 |
+| Done when  | `--update` checks manifest and prompts to download; `--update --yes` downloads automatically without prompt; `--check-update` prints new version and database size without downloading; both exit cleanly; all 60+ existing tests still pass |
+
+### STEP-24 — Log system core
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L0-core/include/logger.h (NEW), L0-core/src/logger.cpp (NEW) |
+| Goal       | Implement the internal logging system: write timestamped log entries with severity levels (info, warning, error, debug), track program boot sessions with auto-incrementing boot IDs, manage log file rotation with retention policy (delete entries >6 months, size-based progressive pruning down to 3 months), and expose a query API for the log viewer flags. |
+| Depends    | STEP-23 |
+| Done when  | Logger writes entries with timestamps to file in correct platform path; boot sessions are tracked; entries older than 6 months are pruned automatically; size-based pruning works progressively (5mo then 3mo); log rotation does not corrupt data; all 60+ existing tests still pass |
+
+### STEP-25 — Log query flags
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 / BOOTSTRAP |
+| Priority   | MEDIUM |
+| Status     | [ ] TODO |
+| Files      | L0-core/src/cli_parser.cpp, L0-core/src/logger.cpp |
+| Goal       | Implement log query flags defined in `flags_tguide.md` section 10: `--log` (open interactive viewer showing full log), `--log-b` (last boot's errors), `--log-b-1`, `--log-b-2`, ... (N boots ago), and `--log-date <date>` (entries for a specific day). All open an interactive viewer with scroll/paging and wait for user input to exit. |
+| Depends    | STEP-24 |
+| Done when  | `--log` opens interactive viewer showing full log; `--log-b` shows last boot's errors; `--log-b-N` works for any N; `--log-date "2026-06-19"` shows entries for that day; viewer supports scroll, page-up/page-down, and exit key; all 60+ existing tests still pass |
+
+### STEP-26 — Pagination system
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 / L3 |
+| Priority   | MEDIUM |
+| Status     | [ ] TODO |
+| Files      | L0-core/include/paginator.h (NEW), L0-core/src/paginator.cpp (NEW), L0-core/src/config_manager.cpp |
+| Goal       | Implement a pagination engine for large output sets: page size configurable via `--set page-size=N` (default appropriate for terminal, e.g. 10-20 items), pagination enabled by default, config option to disable permanently, and `--stream` / `-S` flag to disable pagination for one session only. Each page shows N items then pauses for key press (Enter/Space = next page, q = quit). Integrate with all CLI output paths. |
+| Depends    | STEP-25 |
+| Done when  | Pagination engine works with all display commands; page size is configurable and respected; `--stream` disables pagination for one session only; pagination can be permanently disabled via `--set pagination=off`; key controls work (Enter advances, q quits); all 60+ existing tests still pass |
+
+## Release Phase R3c — Settings Completion & Extension Data System (7 steps)
+### STEP-27 — Add missing config parameters (lang, db_update_behavior, extension_priority)
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L0-core/src/config_manager.cpp |
+| Goal       | Add three new configuration keys to ConfigManager defaults: `lang` (default `"en"`, only English for now), `db_update_behavior` (values `"never"`, `"ask_me"`, `"auto"`, default `"ask_me"`), `extension_priority` (values `"db_only"`, `"color"`, `"ext_only"`, default `"color"`). Ensure get/set works for both int and string template types so Settings UI can read/write them. |
+| Depends    | STEP-26 |
+| Done when  | ConfigManager defaults include all three keys with correct defaults; get/set works for string-type keys (`"lang"`, `"extension_priority"`) and string-type values (`"db_update_behavior"`); new keys survive load/merge/save cycle; all existing tests pass |
+
+### STEP-28 — Settings UI: language, DB update behavior, extension priority
+| Field      | Value |
+|------------|-------|
+| Layer      | L2 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L2-Interface_Engine/src/UI_settings.cpp, L2-Interface_Engine/include/UI_settings.h |
+| Goal       | Extend Settings screen with three new options: "Language" (dropdown with only "English" for now), "Database Update Behavior" (dropdown: "Never" / "Ask Me" / "Auto", default "Ask Me"), "Extension Data Priority" (dropdown: "Database Data Only" / "Color + Label" / "Extension Data Only", default "Color + Label"). Each persists to ConfigManager on selection. |
+| Depends    | STEP-27 |
+| Done when  | Settings menu shows all three new options; each dropdown reads current value from ConfigManager and correctly writes new value on selection; changes persist across restarts; all existing tests pass |
+
+### STEP-29 — Wire DB update behavior into update workflow
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 / BOOTSTRAP |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L0-core/src/DBResolver.cpp, L0-core/src/DBCacheManager.cpp, CoreRunner.cpp |
+| Goal       | Read `db_update_behavior` config at startup (in CoreRunner/bootstrap) before any manifest fetch or DB resolve. Three modes: `"never"` = skip all update checks (no manifest fetch at boot, no background check), `"ask_me"` = check for update and prompt user when update is found (current manual behavior but driven by config, also used by STEP-23's `--update` and `--check-update` CLI flags), `"auto"` = silently fetch manifest in background and auto-download + stage updates without user interaction (notifications still shown). |
+| Depends    | STEP-28 |
+| Done when  | `"never"` skips all manifest fetches; `"ask_me"` notifies user when update found and waits for approval; `"auto"` downloads silently in background and leaves staged `.tmp` for next-startup swap; all three modes also honored by `--update` / `--check-update` CLI flags; all existing tests pass |
+
+### STEP-30 — YAML extension data parser
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L0-core/include/yaml_parser.h (NEW), L0-core/src/yaml_parser.cpp (NEW), CMakeLists.txt |
+| Goal       | Add yaml-cpp library as external dependency in CMake. Implement YamlParser class that reads .yaml/.yml files matching the format defined in `tools/data/example_custom_data.yaml`. Parse all sections: `tools`, `tool_flags`, `categories`, `templates`, `modules`, `options`, `vulnerabilities`. Return structured C++ data (structs matching database schema). Skip malformed entries with logged warning. |
+| Depends    | STEP-29 |
+| Done when  | yaml-cpp builds as external dependency; parser correctly reads example_custom_data.yaml and produces valid structured output; malformed entries (missing required fields, wrong types) are skipped with warnings; parser handles empty files and missing sections gracefully; all existing tests pass |
+
+### STEP-31 — Extension data loader
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 / BOOTSTRAP |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L0-core/include/extension_loader.h (NEW), L0-core/src/extension_loader.cpp (NEW), L0-core/src/path_resolver.cpp |
+| Goal       | Implement ExtensionLoader that scans `~/.config/tguide/custom_data/` (platform-aware: Linux `~/.config`, macOS `~/Library/Application Support`, Windows `%APPDATA%`) for all `.yaml` / `.yml` files. Calls YamlParser on each file and aggregates results into a single `ExtensionData` struct. Logs summary (files found, entries per section, errors) at boot via the logger (STEP-24). |
+| Depends    | STEP-30 |
+| Done when  | Loader scans and parses all .yaml/.yml files in custom_data directory; results aggregated into ExtensionData struct with per-section containers; files with parse errors are skipped with warning logs; empty directory produces empty ExtensionData (no crash); summary logged at boot; all existing tests pass |
+
+### STEP-32 — Extension data merge/priority engine and display integration
+| Field      | Value |
+|------------|-------|
+| Layer      | L1 / L2 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L1-services/include/svc_extension.h (NEW), L1-services/src/svc_extension.cpp (NEW), L2-Interface_Engine/src/UI_tools.cpp, L2-Interface_Engine/src/UI_vulnerabilities.cpp, L0-core/src/cli_parser.cpp |
+| Goal       | Implement SvcExtension merge engine that reads `extension_priority` config key and combines DB data with extension data per the chosen mode. Three modes: `db_only` = return DB data only, ignore extension data entirely; `color` = return both DB and extension entries, with different colors ("(user)" label suffix) for extension entries, show "(db)" or "(user)" in small text next to name (DEFAULT); `ext_only` = extension data replaces DB entries where names collide (same tool name, same vuln name, etc.), unknown entries from DB are kept. Integrate into --tool (STEP-21), --vuln (STEP-21), tool detail UI, vulnerability UI, flag display, and category listing. Wire --export-yaml CLI flag to export combined data as YAML. |
+| Depends    | STEP-31 |
+| Done when  | All three extension priority modes work correctly; tool/vuln/flag/category display shows extension data per priority setting; "color" mode uses different colors with "(user)" label; "ext_only" mode replaces DB colliding entries with extension data; "--export-yaml" exports combined data as valid YAML; all existing tests pass |
+
+### STEP-33 — Tests for extension data system
+| Field      | Value |
+|------------|-------|
+| Layer      | QA |
+| Priority   | MEDIUM |
+| Status     | [ ] TODO |
+| Files      | L0-core/tests/yaml_parser_tests.cpp (NEW), L0-core/tests/extension_loader_tests.cpp (NEW), L1-services/tests/svc_extension_tests.cpp (NEW) |
+| Goal       | Write comprehensive tests for all three new subsystems: YamlParser (valid file, invalid file, missing fields, all sections, empty file), ExtensionLoader (empty directory, single file, multiple files, parse errors), SvcExtension merge engine (all three priority modes, name collisions, no extension data loaded, display output format). Also test ConfigManager get/set for the three new keys. |
+| Depends    | STEP-32 |
+| Done when  | Tests cover YamlParser (all sections, malformed entries, empty file); ExtensionLoader (all directory states, error aggregation); SvcExtension (all three priority modes with collision scenarios, display strings); ConfigManager keys (get/set/merge with new defaults); all 80+ existing tests still pass |
+
+## Release Phase R4 — Pre-Release, Packaging & Install Intelligence (16 steps)
 ### STEP-61a — CMake release build configuration
 | Field      | Value |
 |------------|-------|
 | Layer      | BUILD |
 | Priority   | CRITICAL |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | CMakeLists.txt |
 | Goal       | Remove data_adder.cpp from build targets. Add `CMAKE_BUILD_TYPE=Release` configuration with -O2 -DNDEBUG. Set install RPATH. Verify no dev-only targets leak into Release build. |
 | Depends    | STEP-18 |
@@ -686,8 +856,9 @@ L0-core → L1-services → L2-Interface_Engine
 | Layer      | PACKAGING |
 | Priority   | HIGH |
 | Status     | [ ] TODO |
-| Files      | dist/arch/PKGBUILD (NEW), dist/arch/.SRCINFO (NEW) |
-| Goal       | Create AUR PKGBUILD with proper dependencies (libcurl, sqlite), seed DB bundling at /usr/share/tguide/tguide.db, release build from GitHub tag. |
+| Files      | dist/arch/PKGBUILD (NEW) |
+| Goal       | Create Arch Linux PKGBUILD with proper dependencies, install paths, and post-install setup. Write `install_info.json` with method="aur" in the `package()` function. |
+| Ref        | `.ai/installation_design.md` — section 3.2 (AUR specifics, install_info.json writing) |
 | Depends    | STEP-62b |
 | Done when  | `yay -S tguide` installs and runs correctly on Arch Linux |
 
@@ -698,7 +869,8 @@ L0-core → L1-services → L2-Interface_Engine
 | Priority   | HIGH |
 | Status     | [ ] TODO |
 | Files      | dist/macos/tguide.rb (NEW) |
-| Goal       | Create Homebrew formula with proper dependencies, macOS Application Support paths, install targets, and bottle support. |
+| Goal       | Create Homebrew formula with proper dependencies, macOS Application Support paths, install targets, bottle support, and `post_install` block to write `install_info.json` with method="brew". Handle Intel vs Apple Silicon prefix. |
+| Ref        | `.ai/installation_design.md` — section 3.3 (Homebrew specifics, prefix handling) |
 | Depends    | STEP-62b |
 | Done when  | `brew install tguide` installs and runs correctly on macOS |
 
@@ -708,8 +880,9 @@ L0-core → L1-services → L2-Interface_Engine
 | Layer      | PACKAGING |
 | Priority   | HIGH |
 | Status     | [ ] TODO |
-| Files      | dist/debian/ (NEW directory: control, rules, changelog, compat, install) |
-| Goal       | Create .deb packaging with proper dependencies, seed DB bundling at /usr/share/tguide/tguide.db, and system-wide install paths. |
+| Files      | dist/debian/ (NEW directory: control, rules, changelog, compat, install, postinst) |
+| Goal       | Create .deb packaging with proper dependencies, seed DB bundling at /usr/share/tguide/tguide.db, and system-wide install paths. Write `install_info.json` with method="deb" in the `postinst` script. |
+| Ref        | `.ai/installation_design.md` — section 3.1 (.deb specifics, postinst script) |
 | Depends    | STEP-62b |
 | Done when  | `dpkg-buildpackage` produces a working .deb; `apt install ./tguide.deb` works on Debian/Kali/Ubuntu |
 
@@ -720,9 +893,10 @@ L0-core → L1-services → L2-Interface_Engine
 | Priority   | HIGH |
 | Status     | [ ] TODO |
 | Files      | dist/windows/installer.nsi (NEW), CMakeLists.txt |
-| Goal       | Create Windows ZIP archive and NSIS installer with bundled DLLs (libcurl, sqlite3) and seed DB. |
+| Goal       | Create Windows ZIP archive and NSIS installer with bundled DLLs (libcurl, sqlite3), seed DB, PATH modification via `EnvVarUpdate`, and `install_info.json` with method="windows-installer". Offer per-user install option. |
+| Ref        | `.ai/installation_design.md` — section 5 (NSIS specifics, PATH, install_info.json) |
 | Depends    | STEP-62b |
-| Done when  | Windows installer produces working tguide.exe with colors, paths, and seed DB |
+| Done when  | Windows installer produces working tguide.exe with colors, paths, seed DB, and correct PATH entry |
 
 ### STEP-PK5 — Release v1.0.0
 | Field      | Value |
@@ -731,11 +905,216 @@ L0-core → L1-services → L2-Interface_Engine
 | Priority   | CRITICAL |
 | Status     | [ ] TODO |
 | Files      | GitHub Releases, CHANGELOG.md (NEW) |
-| Goal       | Tag v1.0.0, create GitHub Release with all artifacts (Linux binary, .deb, macOS Homebrew, Windows ZIP, AUR commit), write changelog, announce. |
-| Depends    | STEP-PK1, STEP-PK2, STEP-PK3, STEP-PK4 |
-| Done when  | GitHub Release v1.0.0 is published with all platform artifacts; CHANGELOG.md documents all v1.0 features and changes |
+| Goal       | Tag v1.0.0, create GitHub Release with all artifacts (Linux binary, .deb, macOS Homebrew, Windows ZIP, AUR commit), write changelog, announce. Verify that every platform's install path writes the correct `install_info.json`. |
+| Ref        | `.ai/installation_design.md` — sections 9 (platform matrix verification) and 6 (install_info.json contract check) |
+| Depends    | STEP-PK1, STEP-PK2, STEP-PK3, STEP-PK4, STEP-CI1, STEP-CI2, STEP-CI3, STEP-CI4, STEP-CI5 |
+| Done when  | GitHub Release v1.0.0 is published with all platform artifacts; CHANGELOG.md documents all v1.0 features and changes; install_info.json is correctly written on every platform |
 
-## Future — v2.0 (Post-Release)
+### STEP-CI1 — GitHub Actions CI matrix for release builds
+| Field      | Value |
+|------------|-------|
+| Layer      | BUILD |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | .github/workflows/release.yml (NEW) |
+| Goal       | Add GitHub Actions CI workflow with matrix build for linux-amd64, linux-arm64, macos-amd64, macos-arm64, windows-amd64. Each build produces compressed platform archive (tguide-{platform}.tar.gz or .zip) with binary and required data files. |
+| Depends    | STEP-62b |
+| Done when  | Pushing a tag triggers matrix build; all 5 platform archives are produced successfully |
+
+### STEP-CI2 — Release workflow: archive & upload to GitHub Releases
+| Field      | Value |
+|------------|-------|
+| Layer      | BUILD |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | .github/workflows/release.yml |
+| Goal       | Extend the CI workflow to upload all platform archives, SHA256SUMS.txt, and signed_manifest.json to GitHub Releases on tag push. Archives are named tguide-{platform}-{version}.tar.gz. |
+| Depends    | STEP-CI1 |
+| Done when  | Tagged build automatically creates a GitHub Release with all artifacts attached |
+
+### STEP-CI3 — Release artifact manifest & checksum generation
+| Field      | Value |
+|------------|-------|
+| Layer      | BUILD |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | .github/workflows/release.yml, scripts/generate-manifest.py (NEW) |
+| Goal       | Generate SHA256SUMS.txt for all release artifacts and produce signed_manifest.json containing platform entries with version, URL, SHA256, size, and signature slots for every platform archive. Manifest schema v2. |
+| Depends    | STEP-CI2 |
+| Done when  | Each GitHub Release includes SHA256SUMS.txt and signed_manifest.json with correct hashes and platform entries |
+
+### STEP-CI4 — Pre-compiled binary install documentation
+| Field      | Value |
+|------------|-------|
+| Layer      | DOCS |
+| Priority   | MEDIUM |
+| Status     | [ ] TODO |
+| Files      | docs/install.md (NEW), README.md |
+| Goal       | Write install instructions for each platform's pre-compiled binary: curl/wget commands, tar extraction, sudo cp to /usr/local/bin, PATH verification. Document supported platforms and fallback to source build for unsupported ones. |
+| Ref        | `.ai/installation_design.md` — sections 2 (binary install), 7 (PATH), 9 (platform matrix) |
+| Depends    | STEP-CI2 |
+| Done when  | Users can follow documented steps to download and run tguide in under 30 seconds on any supported platform |
+
+### STEP-CI5 — install.sh script for one-command binary install
+| Field      | Value |
+|------------|-------|
+| Layer      | TOOLING |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | scripts/install.sh (NEW) |
+| Goal       | Create `install.sh` script for one-command binary installation: detect platform (os+arch from uname), fetch latest release from GitHub API, download matching archive, verify SHA-256 checksum, extract binary to `/usr/local/bin/`, write `/usr/local/share/tguide/install_info.json` with method="binary". Support `--prefix`, `--version`, `--yes`, `--dry-run` flags. |
+| Ref        | `.ai/installation_design.md` — section 2 (full install.sh spec) |
+| Depends    | STEP-CI2, STEP-CI3 |
+| Done when  | `curl -fsSL https://github.com/voidoxin/Tguide/releases/latest/download/install.sh | sudo bash` installs tguide correctly on Linux and macOS; `--prefix=$HOME/.local` works for per-user install; SHA-256 verification prevents corrupted downloads; `install_info.json` is written correctly |
+
+### STEP-IR1 — Installation method detection (install_info.json)
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 / BOOTSTRAP |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L0-core/src/install_detector.cpp (NEW), L0-core/include/install_detector.h (NEW) |
+| Goal       | Implement detection of installation method: read `/usr/local/share/tguide/install_info.json` (written by install scripts), with heuristic fallback (check dpkg, brew, binary path, etc.). Expose `detectInstallMethod()` returning method enum and update command string. Extend PathResolver to include install_info.json path. |
+| Ref        | `.ai/installation_design.md` — section 6 (install_info.json schema, path, reading logic) |
+| Depends    | STEP-61b |
+| Done when  | `detectInstallMethod()` correctly identifies binary-install, deb-package, AUR, Homebrew, source-build, and windows-installer methods; heuristic fallback covers all edge cases; unknown method returns null and generic fallback URL; all 60+ existing tests still pass |
+
+### STEP-IR2 — Update notification with install-method-aware commands
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 / BOOTSTRAP |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L0-core/src/cli_parser.cpp, CoreRunner.cpp, L0-core/src/install_detector.cpp |
+| Goal       | Integrate install method detection into `--check-update` and `--update` flags. When a newer version is detected (via manifest), print the exact update command for the user's installation method. Include `--yes` hint when applicable. If up-to-date, print confirmation. |
+| Ref        | `.ai/installation_design.md` — sections 2.2 (install.sh update), 3.x (package manager update commands), 6 (install_info.json reading) |
+| Depends    | STEP-23, STEP-IR1, STEP-CI3 |
+| Done when  | `--check-update` shows version info + platform-specific update command; `--update` shows same but prompts to proceed; methods with no auto-update (binary, source) print manual download URL; all 60+ existing tests still pass |
+
+## Release Phase V2 — Binary Auto-Update & Code Signing (11 steps)
+
+### STEP-V2-01 — Ed25519 signing infrastructure
+| Field      | Value |
+|------------|-------|
+| Layer      | BUILD |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | scripts/tguide-keygen (NEW), .github/workflows/signing.yml (NEW), L0-core/src/sign_verify.h (NEW) |
+| Goal       | Set up code signing with Ed25519 (libsodium): key generation tool, hardware token integration (YubiKey), public key embedding helper (XOR-split obfuscation), CI air-gapped signing workflow. Generate and document key management procedures. |
+| Depends    | STEP-PK5 |
+| Done when  | Key pair is generated; private key stored on hardware token; public key embedded in test verification binary; signing workflow documented |
+
+### STEP-V2-02 — tguide-updater binary: download, hash & signature verification
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | updater/src/main.c (NEW), updater/CMakeLists.txt (NEW), CMakeLists.txt |
+| Goal       | Implement minimal `tguide-updater` static C binary: HTTPS download (libcurl), SHA-256 verification (from L0-core), Ed25519 signature verification (libsodium/tweetnacl), atomic file rename. Target binary size <500KB statically linked. |
+| Depends    | STEP-V2-01 |
+| Done when  | Updater can download a file, verify hash AND signature, and rename it; all verification passes; invalid signature is rejected with SECURITY ALERT message; binary size target met |
+
+### STEP-V2-03 — File replacement, backup & rollback
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | updater/src/main.c |
+| Goal       | Add backup-before-replace logic: rename old binary to .bak, write new binary, verify new binary runs (basic integrity check), delete backup on success. Implement rollback function: restore .bak, update install_info.json with old version, print error. Handle partial-write and power-loss scenarios. |
+| Depends    | STEP-V2-02 |
+| Done when  | Binary is backed up before replacement; backup is restored if new binary fails verification; stale backups older than 7 days are cleaned up; rollback restores install_info.json version |
+
+### STEP-V2-04 — IPC protocol: update request/result JSON + process spawning
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 / BOOTSTRAP |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L0-core/src/updater_ipc.h (NEW), L0-core/src/updater_ipc.cpp (NEW), updater/src/main.c |
+| Goal       | Implement IPC protocol between tguide and tguide-updater: write update request JSON (version, URL, SHA256, signature, rollback info, behavior flags), spawn updater process (platform-agnostic), capture exit code, read result JSON on relaunch. Both binaries share the JSON schema. |
+| Depends    | STEP-V2-03 |
+| Done when  | tguide writes correct update request JSON; tguide-updater reads and processes it; result JSON is written; tguide reads result on `--update-done` launch; exit codes are handled correctly |
+
+### STEP-V2-05 — Platform elevation (pkexec, UAC, macOS auth)
+| Field      | Value |
+|------------|-------|
+| Layer      | BOOTSTRAP |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L0-core/src/elevation.cpp (NEW), L0-core/include/elevation.h (NEW) |
+| Goal       | Implement platform-specific privilege elevation: Linux `pkexec` (Polkit) with `sudo` fallback, Windows `ShellExecute` with `runas` verb (UAC), macOS `SMJobBless` or `sudo`. Post-elevation privilege drop before relaunching tguide as original user. Graceful fallback to manual command. |
+| Depends    | STEP-V2-04 |
+| Done when  | Each platform elevates correctly; password prompt shows when needed; privilege drop works after replacement; manual fallback command is printed when elevation fails |
+
+### STEP-V2-06 — Crash-loop detection & automatic rollback
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | updater/src/main.c, CoreRunner.cpp, L0-core/src/crash_detector.cpp (NEW) |
+| Goal       | Implement crash counter: increment on `--update-done` launch, reset after 60s uptime. If crash_count > 3, restore backup from .bak. Stale crash counter files older than 1 hour are ignored. |
+| Depends    | STEP-V2-03 |
+| Done when  | Crash counter increments on each launch; counter resets after 60s; backup is restored after 3 crashes; stale counter files don't trigger false rollback |
+
+### STEP-V2-07 — Integrate updater into main binary: --update-binary flag
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 / BOOTSTRAP |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L0-core/src/cli_parser.cpp, CoreRunner.cpp, flags_tguide.md |
+| Goal       | Add `--update-binary` flag (alongside existing `--update` scoped to DB). Implement the full update lifecycle: check manifest, compare version, write IPC request, spawn updater, exit cleanly. Handle `--update-done` flag for post-update confirmation message. Add `--check-update-binary` flag. Update manifest schema v2 with binary_version. |
+| Depends    | STEP-V2-05, STEP-V2-06 |
+| Done when  | `--update-binary` performs full update flow; `--update-binary --yes` is silent; `--check-update-binary` checks version only; `--update-done` shows confirmation; manifest v2 with binary_version is parsed correctly |
+
+### STEP-V2-08 — Windows-specific: process wait & EXE replacement
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | updater/src/main.c |
+| Goal       | Implement Windows-specific binary replacement: use `WaitForSingleObject` to wait for tguide.exe to exit, then rename/replace. Handle Windows file locking: retry with backoff, use `MoveFileEx` with `MOVEFILE_REPLACE_EXISTING`. Test on Windows 10 and 11. |
+| Depends    | STEP-V2-04 |
+| Done when  | Updater waits for tguide.exe to exit before replacing; replacement works without file-locking errors; tested on Windows 10 and 11 |
+
+### STEP-V2-09 — Integration tests: full update flow & failure scenarios
+| Field      | Value |
+|------------|-------|
+| Layer      | QA |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | tests/test_updater.cpp (NEW), tests/test_elevation.cpp (NEW) |
+| Goal       | Write integration tests covering: full update flow (no-elevation), full update flow (with elevation), rollback on crash, network failure, signature failure, partial write recovery, permission denied, disk full. Test on all supported platforms. |
+| Depends    | STEP-V2-07, STEP-V2-08 |
+| Done when  | All integration tests pass on Linux, macOS, and Windows; failure scenarios produce correct error messages; no crashes on edge cases |
+
+### STEP-V2-10 — Security audit: signature verification & supply chain review
+| Field      | Value |
+|------------|-------|
+| Layer      | QA |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | All updater-related files |
+| Goal       | Full security audit of: Ed25519 signature verification implementation (side-channel resistance, error handling), private key storage procedure, CI signing workflow, elevation safety (no privilege escalation gaps), rollback logic (no rollback into insecure version), public key embedding (no trivial bypass). Update .ai/security.md with new threat model for binary updates. |
+| Depends    | STEP-V2-09 |
+| Done when  | Security audit report documents all findings; no HIGH/CRITICAL findings remain; security.md updated with binary update threat model |
+
+### STEP-V2-11 — Release v2.0.0 with auto-update
+| Field      | Value |
+|------------|-------|
+| Layer      | RELEASE |
+| Priority   | CRITICAL |
+| Status     | [ ] TODO |
+| Files      | GitHub Releases, CHANGELOG.md |
+| Goal       | Tag v2.0.0, create GitHub Release with all platform archives + signed artifacts + manifest. Auto-update from v1.x to v2.0 works end-to-end. Write v2.0 changelog, migration notes from v1.x, and announce. |
+| Depends    | STEP-V2-10 |
+| Done when  | GitHub Release v2.0.0 is published; `tguide --update-binary` upgrades from v1.x to v2.0 on all platforms; CHANGELOG.md documents all v2.0 features |
+
+## Future — v2.0+ (Post-V2 Release)
 
 These features are explicitly cut from v1.0 scope and moved to a future v2.0 release:
 
@@ -812,7 +1191,22 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-17a | Release R3 | L0 | Shadow Swap: download to .tmp + fix manifest URL | [x] DONE |
 | STEP-17b | Release R3 | L0 | Shadow Swap: atomic swap + update notification | [x] DONE |
 | STEP-18 | Release R3 | L2 | Shadow Swap update UI | [x] DONE |
-| STEP-61a | Release R4 | BUILD | CMake release build configuration |
+| STEP-19 | Release R3b | L0 / BOOTSTRAP | CLI argument parser framework (--help, --version, --yes) | [x] DONE |
+| STEP-20 | Release R3b | L0 / BOOTSTRAP | Output & configuration flags (--quiet, --verbose, --set, etc.) | [x] DONE |
+| STEP-21 | Release R3b | L0 / BOOTSTRAP | Tool & vulnerability display (--tool, --vuln, --filter, --category) | [x] DONE |
+| STEP-22 | Release R3b | L0 / BOOTSTRAP | Saved data & export flags (--saved-scripts, --export-*) |
+| STEP-23 | Release R3b | L0 / BOOTSTRAP | Update flags (--update, --check-update) |
+| STEP-24 | Release R3b | L0 | Log system core (logger, rotation, retention policy) |
+| STEP-25 | Release R3b | L0 / BOOTSTRAP | Log query flags (--log, --log-b*, --log-date, viewer) |
+| STEP-26 | Release R3b | L0 / L3 | Pagination system (paginator, --stream, page-size config) |
+| STEP-27 | Release R3c | L0 | Config: add lang, db_update_behavior, extension_priority defaults |
+| STEP-28 | Release R3c | L2 | Settings UI: language, DB update behavior, extension priority |
+| STEP-29 | Release R3c | L0 / BOOTSTRAP | Wire DB update behavior (never/ask_me/auto) into update workflow |
+| STEP-30 | Release R3c | L0 | YAML extension data parser (yaml-cpp) |
+| STEP-31 | Release R3c | L0 / BOOTSTRAP | Extension data loader |
+| STEP-32 | Release R3c | L1 / L2 | Extension data merge/priority engine & display integration |
+| STEP-33 | Release R3c | QA | Tests for extension data system |
+| STEP-61a | Release R4 | BUILD | CMake release build configuration | [x] DONE |
 | STEP-61b | Release R4 | BOOTSTRAP | Clean dev-only bootstrap code from CoreRunner |
 | STEP-62a | Release R4 | QA | Regression testing |
 | STEP-62b | Release R4 | QA | Platform smoke tests |
@@ -821,3 +1215,21 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-PK3 | Release R4 | PACKAGING | .deb package for Debian/Kali/Ubuntu |
 | STEP-PK4 | Release R4 | PACKAGING | Windows installer (ZIP/NSIS) |
 | STEP-PK5 | Release R4 | RELEASE | Release v1.0.0 |
+| STEP-CI1 | Release R4 | BUILD | GitHub Actions CI matrix for release builds |
+| STEP-CI2 | Release R4 | BUILD | Release workflow: archive & upload to GitHub Releases |
+| STEP-CI3 | Release R4 | BUILD | Release artifact manifest & checksum generation |
+| STEP-CI4 | Release R4 | DOCS | Pre-compiled binary install documentation |
+| STEP-CI5 | Release R4 | TOOLING | install.sh script for one-command binary install |
+| STEP-IR1 | Release R4 | L0 / BOOTSTRAP | Installation method detection (install_info.json) |
+| STEP-IR2 | Release R4 | L0 / BOOTSTRAP | Update notification with install-method-aware commands |
+| STEP-V2-01 | Release V2 | BUILD | Ed25519 signing infrastructure |
+| STEP-V2-02 | Release V2 | L0 | tguide-updater: download, hash & signature verification |
+| STEP-V2-03 | Release V2 | L0 | File replacement, backup & rollback |
+| STEP-V2-04 | Release V2 | L0 / BOOTSTRAP | IPC protocol: request/result JSON + process spawning |
+| STEP-V2-05 | Release V2 | BOOTSTRAP | Platform elevation (pkexec, UAC, macOS auth) |
+| STEP-V2-06 | Release V2 | L0 | Crash-loop detection & automatic rollback |
+| STEP-V2-07 | Release V2 | L0 / BOOTSTRAP | --update-binary flag integration |
+| STEP-V2-08 | Release V2 | L0 | Windows-specific: process wait & EXE replacement |
+| STEP-V2-09 | Release V2 | QA | Integration tests: full flow & failure scenarios |
+| STEP-V2-10 | Release V2 | QA | Security audit: signature verification & supply chain |
+| STEP-V2-11 | Release V2 | RELEASE | Release v2.0.0 with auto-update |
