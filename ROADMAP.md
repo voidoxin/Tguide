@@ -13,7 +13,7 @@
 - **L1-services**: svc_tools with search index, svc_generator with input sanitization, svc_dto decoupling layer, string table re-export, A6 DTO pattern fixed.
 - **L2-Interface_Engine**: UI_Engine with readInput(), colors with isatty()/g_colorEnabled, tool detail/category/vulnerability/module screens, template fill workflow, generator wizard, A4 header isolation fixed, A7 build-time layer enforcement fixed.
 - **Testing**: doctest framework with 28+ test cases across SHA256, ConfigManager, UserDataManager, DB recovery. CTest integration.
-- **Key remaining work before v1.0**: Replace data_adder.cpp with professional Python toolchain (STEP-DB — DONE), fix database bootstrap for no-internet first boot: installDbFile() done (STEP-B1a — DONE), bundle seed DB in CMake (STEP-B1b — DONE), fix copyDefaultToConfig() (STEP-B1c — DONE), make manifest fetch non-fatal (STEP-B1d — DONE); cross-platform path resolution (STEP-B2a — DONE), Windows + Termux path resolution (STEP-B2b — DONE), Windows CMake toolchain + MSVC compatibility (STEP-B3a — DONE), Windows ANSI colors + signal handling (STEP-B3b — DONE), Windows support (STEP-B3), cross-platform validation (STEP-CP2), enhanced search (STEP-R1), saved commands/scripts screens (STEP-R2/R3), settings screen completion (STEP-R4), remove all stubs (STEP-R5), shadow swap update system (STEP-17/18), fix manifest URL to use GitHub Releases (STEP-MU), CLI argument parser framework (STEP-19 — DONE); output & configuration flags (STEP-20 — DONE); tool & vulnerability display (STEP-21 — DONE); update flags (STEP-23 — DONE); log system core (STEP-24 — DONE); log query & pagination flags (STEP-25 and STEP-26); missing config parameters & Settings UI completion (STEP-27 through STEP-29); extension data system (STEP-30 through STEP-33); remove dev-only code (STEP-61), full QA (STEP-62), and packaging for AUR/Homebrew/Deb/Windows + v1.0 release (STEP-PK1-5).
+- **Key remaining work before v1.0**: Replace data_adder.cpp with professional Python toolchain (STEP-DB — DONE), fix database bootstrap for no-internet first boot: installDbFile() done (STEP-B1a — DONE), bundle seed DB in CMake (STEP-B1b — DONE), fix copyDefaultToConfig() (STEP-B1c — DONE), make manifest fetch non-fatal (STEP-B1d — DONE); cross-platform path resolution (STEP-B2a — DONE), Windows + Termux path resolution (STEP-B2b — DONE), Windows CMake toolchain + MSVC compatibility (STEP-B3a — DONE), Windows ANSI colors + signal handling (STEP-B3b — DONE), Windows support (STEP-B3), cross-platform validation (STEP-CP2), enhanced search (STEP-R1), saved commands/scripts screens (STEP-R2/R3), settings screen completion (STEP-R4), remove all stubs (STEP-R5), shadow swap update system (STEP-17/18), fix manifest URL to use GitHub Releases (STEP-MU), CLI argument parser framework (STEP-19 — DONE); output & configuration flags (STEP-20 — DONE); tool & vulnerability display (STEP-21 — DONE); update flags (STEP-23 — DONE); log system core (STEP-24 — DONE); log query flags (STEP-25 — DONE); pagination flags (STEP-26); missing config parameters & Settings UI completion (STEP-27 through STEP-29); extension data system (STEP-30 through STEP-33); remove dev-only code (STEP-61), full QA (STEP-62), and packaging for AUR/Homebrew/Deb/Windows + v1.0 release (STEP-PK1-5).
 
 ## Architecture Reference
 ```
@@ -713,11 +713,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L0 / BOOTSTRAP |
 | Priority   | MEDIUM |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | L0-core/src/cli_parser.cpp, L0-core/src/logger.cpp |
 | Goal       | Implement log query flags defined in `flags_tguide.md` section 10: `--log` (open interactive viewer showing full log), `--log-b` (last boot's errors), `--log-b-1`, `--log-b-2`, ... (N boots ago), and `--log-date <date>` (entries for a specific day). All open an interactive viewer with scroll/paging and wait for user input to exit. |
 | Depends    | STEP-24 |
 | Done when  | `--log` opens interactive viewer showing full log; `--log-b` shows last boot's errors; `--log-b-N` works for any N; `--log-date "2026-06-19"` shows entries for that day; viewer supports scroll, page-up/page-down, and exit key; all 60+ existing tests still pass |
+| Completed  | **2026-06-19** (`5a457a3`) — Implemented interactive log viewer flags: `--log` shows full log page-by-page, `--log-b` shows last boot's entries, `--log-b-<N>` shows entries N boots ago (N>=1), `--log-date <date>` filters by specific day. Viewer uses `std::getline` with Enter-to-advance and q-to-quit (no raw terminal mode). 6 code review issues fixed: try-catch for stoi overflow, EOF-on-stdin infinite loop guard, `--log-b-` detection fix, `resetForTesting()` for test isolation, single-boot edge case test, N>=1 validation. 171 test cases, 477 assertions. Build: 0 warnings, 0 errors. ✅ |
 
 ### STEP-26 — Pagination system
 | Field      | Value |
@@ -1200,7 +1201,7 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-22 | Release R3b | L0 / BOOTSTRAP | Saved data & export flags (--saved-scripts, --export-*) | [x] DONE |
 | STEP-23 | Release R3b | L0 / BOOTSTRAP | Update flags (--update, --check-update) | [x] DONE |
 | STEP-24 | Release R3b | L0 | Log system core (logger, rotation, retention policy) | [x] DONE |
-| STEP-25 | Release R3b | L0 / BOOTSTRAP | Log query flags (--log, --log-b*, --log-date, viewer) |
+| STEP-25 | Release R3b | L0 / BOOTSTRAP | Log query flags (--log, --log-b*, --log-date, viewer) | [x] DONE |
 | STEP-26 | Release R3b | L0 / L3 | Pagination system (paginator, --stream, page-size config) |
 | STEP-27 | Release R3c | L0 | Config: add lang, db_update_behavior, extension_priority defaults |
 | STEP-28 | Release R3c | L2 | Settings UI: language, DB update behavior, extension priority |
