@@ -93,6 +93,9 @@ endif()
 message(STATUS "Platform: ${TGUIDE_PLATFORM}")
 add_compile_definitions(TGUIDE_PLATFORM="${TGUIDE_PLATFORM}")
 
+# Program version — used by cli_parser.cpp for --version output
+add_compile_definitions(TGUIDE_VERSION="${PROJECT_VERSION}")
+
 # ==============================================================
 # Install Paths — system-wide deployment locations
 # Runtime paths use user-space (~/.config, ~/.local/share) via PathResolver
@@ -201,6 +204,7 @@ message(STATUS "libcurl: ${CURL_VERSION_STRING}")
 # database, config, cache, sha256
 # ==============================================================
 set(L0_SOURCES
+    ${CMAKE_SOURCE_DIR}/L0-core/src/cli_parser.cpp
     ${CMAKE_SOURCE_DIR}/L0-core/src/DatabaseManager.cpp
     ${CMAKE_SOURCE_DIR}/L0-core/src/DBResolver.cpp
     ${CMAKE_SOURCE_DIR}/L0-core/src/ErrorHandler.cpp

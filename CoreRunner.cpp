@@ -15,6 +15,7 @@
 #include "L0-core/include/path_resolver.h"
 #include "L0-core/include/db_cache_manager.h"
 #include "L0-core/include/UserDataManager.h"
+#include "L0-core/include/cli_parser.h"
 #include "L2-Interface_Engine/includes/UI_errorHandling.h"
 #include "L2-Interface_Engine/includes/UI_colors.h"
 #include "L2-Interface_Engine/includes/UI_disclaimer.h"
@@ -43,7 +44,31 @@ extern "C" void handleSIGINT(int /*sig*/) {
 #endif
 
 int main(int argc, char* argv[]) {
-    // ensure curl_global_cleanup() is called on all exit paths
+    // ── parse CLI arguments first, before any init ──────────────
+    ParsedArgs args = parseArgs(argc, argv);
+
+    if (!args.error.empty()) {
+        std::cerr << "Error: " << args.error << "\n\n";
+        printUsage(std::cerr);
+        return 1;
+    }
+
+    if (args.help) {
+        printUsage(std::cout);
+        return 0;
+    }
+
+    if (args.version) {
+        printVersion(std::cout);
+        return 0;
+    }
+
+    // ── if --yes was passed, we could set a global flag ─────────
+    // For STEP-19, store args.yes for later use (just a bool, not
+    // wired to anything yet — STEP-23 will use it with --update)
+    // (void)args.yes;  // available for later steps
+
+    // ── ensure curl_global_cleanup() is called on all exit paths ─
     struct CurlGuard { ~CurlGuard() { curl_global_cleanup(); } } curlGuard;
 
     // ── register Ctrl+C handler before any blocking I/O ────────────

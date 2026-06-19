@@ -67,6 +67,7 @@ roadmap_structure.md
 
 # Local documentation — keep locally, not pushed to remote
 ROADMAP.md
+flags_tguide.md
 PRIORITY_ISSUES.md
 IMPLEMENTATION_PLAN.md
 __pycache__/
