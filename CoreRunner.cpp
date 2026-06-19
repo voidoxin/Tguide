@@ -16,6 +16,7 @@
 #include "L0-core/include/db_cache_manager.h"
 #include "L0-core/include/UserDataManager.h"
 #include "L0-core/include/cli_parser.h"
+#include "L0-core/include/session_flags.h"
 #include "L2-Interface_Engine/includes/UI_errorHandling.h"
 #include "L2-Interface_Engine/includes/UI_colors.h"
 #include "L2-Interface_Engine/includes/UI_disclaimer.h"
@@ -63,10 +64,15 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    // ── if --yes was passed, we could set a global flag ─────────
-    // For STEP-19, store args.yes for later use (just a bool, not
-    // wired to anything yet — STEP-23 will use it with --update)
-    // (void)args.yes;  // available for later steps
+    // ── cache-clear: handled after directory creation (line ~122) ───
+    // ── ignore-config: handled as empty path in ConfigManager ctor ──
+    // ── set/reset: handled after config load (line ~145) ────────────
+
+    // ── set session flags from CLI args (override config behavior) ─
+    g_quietMode   = args.quiet;
+    g_verboseMode = args.verbose;
+    g_offlineMode = args.offline;
+    g_noBanner    = args.noBanner;
 
     // ── ensure curl_global_cleanup() is called on all exit paths ─
     struct CurlGuard { ~CurlGuard() { curl_global_cleanup(); } } curlGuard;
@@ -100,13 +106,81 @@ int main(int argc, char* argv[]) {
         UI_errors("Failed to create user data directories. "
                   "Saved commands and scripts may be unavailable.");
 
-    // ── load config ────────────────────────────────────────────────────────
-    ConfigManager cfg(PathResolver::configFile().string());
+    // ── handle --cache-clear: wipe cached data and exit ──────────
+    if (args.cacheClear) {
+        std::string cachePath = PathResolver::cacheFile().string();
+        if (!cachePath.empty() && std::filesystem::exists(cachePath)) {
+            if (std::filesystem::remove(cachePath)) {
+                std::cout << "Cache cleared." << std::endl;
+            } else {
+                std::cerr << "Error: Failed to clear cache." << std::endl;
+                return 1;
+            }
+        } else {
+            std::cout << "No cache to clear." << std::endl;
+        }
+        return 0;
+    }
 
-    // ── init color toggle from config ──────────────────────────────────────
+    // ── load config (or use factory defaults for --ignore-config) ─
+    ConfigManager cfg(args.ignoreConfig
+        ? std::string()
+        : PathResolver::configFile().string());
+
+    // ── init color toggle from config (--no-color overrides) ───────────────
     // must happen before any UI output so the correct mode is in effect
     bool colors = cfg.get<int>("colors", 1) == 1;
+    if (args.noColor) colors = false;
     initColors(colors);
+
+    // ── handle --set: modify a config setting and exit ───────────
+    if (!args.setArg.empty()) {
+        auto eqPos = args.setArg.find('=');
+        if (eqPos == std::string::npos) {
+            std::cerr << "Error: --set requires <key>=<value> format, "
+                      << "e.g. --set colors=off" << std::endl;
+            return 1;
+        }
+        std::string key = args.setArg.substr(0, eqPos);
+        std::string val = args.setArg.substr(eqPos + 1);
+
+        if (val == "on")        cfg.set<int>(key, 1);
+        else if (val == "off")  cfg.set<int>(key, 0);
+        else {
+            try { cfg.set<int>(key, std::stoi(val)); }
+            catch (...) { cfg.set<std::string>(key, val); }
+        }
+
+        if (cfg.save()) {
+            std::cout << "Setting '" << key << "' set to '" << val << "'."
+                      << std::endl;
+        } else {
+            std::cerr << "Error: Failed to write config." << std::endl;
+            return 1;
+        }
+        return 0;
+    }
+
+    // ── handle --reset: reset setting(s) to defaults ─────────────
+    if (!args.resetArg.empty()) {
+        if (args.resetArg == "all") {
+            // Delete config file and reload fresh defaults
+            std::string configPath = PathResolver::configFile().string();
+            if (!std::filesystem::remove(configPath)) {
+                std::cerr << "Error: Failed to remove config file." << std::endl;
+                return 1;
+            }
+            cfg = ConfigManager(configPath);  // fresh defaults → auto-saved
+            std::cout << "All settings reset to defaults." << std::endl;
+            return 0;
+        } else {
+            std::cerr << "Error: Resetting individual settings ('" << args.resetArg
+                      << "') is not yet implemented. Use --reset all."
+                      << std::endl;
+            return 1;
+        }
+        return 0;
+    }
 
     // ── init user data storage (singleton — survives bootstrap) ────────────
     // non-fatal: missing or unreadable files are recreated automatically

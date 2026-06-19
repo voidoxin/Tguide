@@ -33,10 +33,10 @@ static const FlagDef known_flags[] = {
     {"--stream",           'S',   "Disable pagination for this session."},
 
     // ── Configuration ──────────────────────────────────────────
-    {"--set",              0,     "Permanently modify a setting."},
-    {"--reset",            0,     "Reset setting(s) to defaults."},
+    {"--set",              0,     "Permanently modify a setting: --set <key>=<value>"},
+    {"--reset",            0,     "Reset setting(s) to defaults: --reset <key>|all"},
     {"--ignore-config",    0,     "Run with factory defaults."},
-    {"--cache-clear",      0,     "Clear cached data."},
+    {"--cache-clear",      0,     "Clear cached data and exit."},
 
     // ── Display ────────────────────────────────────────────────
     {"--tool",             't',   "Print tool information from database."},
@@ -124,6 +124,34 @@ ParsedArgs parseArgs(int argc, char* argv[]) {
             args.version = true;
         } else if (name == "--yes") {
             args.yes = true;
+        } else if (name == "--set") {
+            if (i + 1 >= argc) {
+                args.error = "--set requires an argument, e.g. --set colors=off";
+                break;
+            }
+            args.setArg = argv[++i];
+        } else if (name == "--reset") {
+            if (i + 1 >= argc) {
+                args.error = "--reset requires an argument, e.g. --reset colors or --reset all";
+                break;
+            }
+            args.resetArg = argv[++i];
+        } else if (name == "--quiet") {
+            args.quiet = true;
+        } else if (name == "--verbose") {
+            args.verbose = true;
+        } else if (name == "--no-color") {
+            args.noColor = true;
+        } else if (name == "--no-banner") {
+            args.noBanner = true;
+        } else if (name == "--offline") {
+            args.offline = true;
+        } else if (name == "--ignore-config") {
+            args.ignoreConfig = true;
+        } else if (name == "--cache-clear") {
+            args.cacheClear = true;
+        } else if (name == "--stream") {
+            args.stream = true;
         } else {
             args.error = std::string("Option '") + arg + "' is not yet implemented";
             break;
@@ -153,10 +181,10 @@ void printUsage(std::ostream& os) {
               << "  -S, --stream     Disable pagination for this session.\n"
               << "\n"
               << "Configuration:\n"
-              << "  --set            Permanently modify a setting.\n"
-              << "  --reset          Reset setting(s) to defaults.\n"
-              << "  --ignore-config  Run with factory defaults.\n"
-              << "  --cache-clear    Clear cached data.\n"
+              << "  --set <key>=<value>   Permanently modify a setting.\n"
+              << "  --reset <key>|all     Reset setting(s) to defaults.\n"
+              << "  --ignore-config       Run with factory defaults.\n"
+              << "  --cache-clear         Clear cached data and exit.\n"
               << "\n"
               << "Display:\n"
               << "  -t, --tool       Print tool information from database.\n"

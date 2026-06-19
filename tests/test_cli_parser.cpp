@@ -1,0 +1,222 @@
+#include "doctest.h"
+#include "cli_parser.h"
+#include <sstream>
+
+TEST_CASE("parseArgs — --help (long)") {
+    const char* argv[] = {"tguide", "--help", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK(args.help == true);
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — -h (short)") {
+    const char* argv[] = {"tguide", "-h", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK(args.help == true);
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — --version") {
+    const char* argv[] = {"tguide", "--version", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK(args.version == true);
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — -v") {
+    const char* argv[] = {"tguide", "-v", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK(args.version == true);
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — --yes") {
+    const char* argv[] = {"tguide", "--yes", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK(args.yes == true);
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — -y") {
+    const char* argv[] = {"tguide", "-y", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK(args.yes == true);
+    CHECK(args.error.empty());
+}
+
+//
+// Output Control (STEP-20)
+//
+
+TEST_CASE("parseArgs — --quiet") {
+    const char* argv[] = {"tguide", "--quiet", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK(args.quiet == true);
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — -q") {
+    const char* argv[] = {"tguide", "-q", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK(args.quiet == true);
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — --verbose") {
+    const char* argv[] = {"tguide", "--verbose", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK(args.verbose == true);
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — -V") {
+    const char* argv[] = {"tguide", "-V", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK(args.verbose == true);
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — --no-color") {
+    const char* argv[] = {"tguide", "--no-color", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK(args.noColor == true);
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — --no-banner") {
+    const char* argv[] = {"tguide", "--no-banner", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK(args.noBanner == true);
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — --offline") {
+    const char* argv[] = {"tguide", "--offline", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK(args.offline == true);
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — --stream") {
+    const char* argv[] = {"tguide", "--stream", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK(args.stream == true);
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — -S") {
+    const char* argv[] = {"tguide", "-S", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK(args.stream == true);
+    CHECK(args.error.empty());
+}
+
+//
+// Configuration (STEP-20)
+//
+
+TEST_CASE("parseArgs — --set with argument") {
+    const char* argv[] = {"tguide", "--set", "colors=off", nullptr};
+    auto args = parseArgs(3, const_cast<char**>(argv));
+    CHECK(args.setArg == "colors=off");
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs -- --set without argument produces error") {
+    const char* argv[] = {"tguide", "--set", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK_FALSE(args.error.empty());
+    CHECK(args.error.find("--set requires") != std::string::npos);
+}
+
+TEST_CASE("parseArgs — --reset with argument") {
+    const char* argv[] = {"tguide", "--reset", "all", nullptr};
+    auto args = parseArgs(3, const_cast<char**>(argv));
+    CHECK(args.resetArg == "all");
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — --reset without argument produces error") {
+    const char* argv[] = {"tguide", "--reset", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK_FALSE(args.error.empty());
+    CHECK(args.error.find("--reset requires") != std::string::npos);
+}
+
+TEST_CASE("parseArgs — --ignore-config") {
+    const char* argv[] = {"tguide", "--ignore-config", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK(args.ignoreConfig == true);
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — --cache-clear") {
+    const char* argv[] = {"tguide", "--cache-clear", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK(args.cacheClear == true);
+    CHECK(args.error.empty());
+}
+
+//
+// Combined flags
+//
+
+TEST_CASE("parseArgs — --set with --verbose combined") {
+    const char* argv[] = {"tguide", "--set", "colors=off", "--verbose", nullptr};
+    auto args = parseArgs(4, const_cast<char**>(argv));
+    CHECK(args.setArg == "colors=off");
+    CHECK(args.verbose == true);
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — --quiet --no-color --offline combined") {
+    const char* argv[] = {"tguide", "--quiet", "--no-color", "--offline", nullptr};
+    auto args = parseArgs(4, const_cast<char**>(argv));
+    CHECK(args.quiet == true);
+    CHECK(args.noColor == true);
+    CHECK(args.offline == true);
+    CHECK(args.error.empty());
+}
+
+//
+// Error cases
+//
+
+TEST_CASE("parseArgs — unknown flag produces error") {
+    const char* argv[] = {"tguide", "--bogus-flag", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK_FALSE(args.error.empty());
+    CHECK(args.error.find("Unknown option") != std::string::npos);
+}
+
+TEST_CASE("parseArgs — unknown short flag produces error") {
+    const char* argv[] = {"tguide", "-Z", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK_FALSE(args.error.empty());
+    CHECK(args.error.find("Unknown option") != std::string::npos);
+}
+
+//
+// printUsage / printVersion — basic smoke tests
+//
+
+TEST_CASE("printUsage — outputs usage text") {
+    std::ostringstream oss;
+    printUsage(oss);
+    CHECK(oss.str().size() > 100);
+    CHECK(oss.str().find("Usage: tguide") != std::string::npos);
+    CHECK(oss.str().find("--quiet") != std::string::npos);
+    CHECK(oss.str().find("--no-color") != std::string::npos);
+    CHECK(oss.str().find("--set") != std::string::npos);
+    CHECK(oss.str().find("--reset") != std::string::npos);
+    CHECK(oss.str().find("--cache-clear") != std::string::npos);
+    CHECK(oss.str().find("--ignore-config") != std::string::npos);
+    CHECK(oss.str().find("--offline") != std::string::npos);
+    CHECK(oss.str().find("--stream") != std::string::npos);
+}
+
+TEST_CASE("printVersion — outputs version string") {
+    std::ostringstream oss;
+    printVersion(oss);
+    CHECK(oss.str().find("tguide v") != std::string::npos);
+}

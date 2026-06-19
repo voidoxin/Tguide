@@ -10,6 +10,21 @@ struct ParsedArgs {
     bool help    = false;  // --help / -h
     bool version = false;  // --version / -v
     bool yes     = false;  // --yes / -y
+
+    // Output Control (STEP-20)
+    bool quiet     = false;  // --quiet / -q
+    bool verbose   = false;  // --verbose / -V
+    bool noColor   = false;  // --no-color
+    bool noBanner  = false;  // --no-banner
+    bool offline   = false;  // --offline
+    bool stream    = false;  // --stream / -S  (wired fully in STEP-26)
+
+    // Configuration (STEP-20)
+    std::string setArg;       // --set <setting>=<value>
+    std::string resetArg;     // --reset <setting>|all
+    bool ignoreConfig = false; // --ignore-config
+    bool cacheClear   = false; // --cache-clear
+
     std::string error;     // empty = no error; non-empty = error message to show
 };
 
