@@ -121,6 +121,7 @@ namespace PathResolver {
     static inline fs::path dbFile()            { return dataDir()     / "tguide.db";            }
     static inline fs::path backupFile()        { return backupDir()   / "tguide.db";            }
     static inline fs::path cacheFile()         { return dataDir()     / ".db_cache";            }
+    static inline fs::path logFile()            { return dataDir()     / "tguide.log";            }
     static inline fs::path savedCommandsFile() { return userDataDir() / "saved_commands.json";  }
     static inline fs::path savedScriptsFile()  { return userDataDir() / "saved_scripts.json";   }
     static inline fs::path scriptsDir()        { return userDataDir() / "scripts";              }

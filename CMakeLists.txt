@@ -214,6 +214,7 @@ set(L0_SOURCES
     ${CMAKE_SOURCE_DIR}/L0-core/src/sha256.cpp
     ${CMAKE_SOURCE_DIR}/L0-core/src/string_utils.cpp
     ${CMAKE_SOURCE_DIR}/L0-core/src/UserDataManager.cpp
+    ${CMAKE_SOURCE_DIR}/L0-core/src/logger.cpp
 )
 
 add_library(L0_core STATIC ${L0_SOURCES})

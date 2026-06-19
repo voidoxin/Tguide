@@ -17,6 +17,7 @@
 #include "L0-core/include/UserDataManager.h"
 #include "L0-core/include/cli_parser.h"
 #include "L0-core/include/session_flags.h"
+#include "L0-core/include/logger.h"
 #include "cli_display.h"
 #include "L2-Interface_Engine/includes/UI_errorHandling.h"
 #include "L2-Interface_Engine/includes/UI_colors.h"
@@ -106,6 +107,9 @@ int main(int argc, char* argv[]) {
     if (!PathResolver::createUserDirs())
         UI_errors("Failed to create user data directories. "
                   "Saved commands and scripts may be unavailable.");
+
+    // ── init logger ─────────────────────────────────────────────
+    Logger::instance().init(PathResolver::logFile().string());
 
     // ── handle --cache-clear: wipe cached data and exit ──────────
     if (args.cacheClear) {
