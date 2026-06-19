@@ -17,6 +17,7 @@
 #include "L0-core/include/UserDataManager.h"
 #include "L0-core/include/cli_parser.h"
 #include "L0-core/include/session_flags.h"
+#include "cli_display.h"
 #include "L2-Interface_Engine/includes/UI_errorHandling.h"
 #include "L2-Interface_Engine/includes/UI_colors.h"
 #include "L2-Interface_Engine/includes/UI_disclaimer.h"
@@ -120,6 +121,16 @@ int main(int argc, char* argv[]) {
             std::cout << "No cache to clear." << std::endl;
         }
         return 0;
+    }
+
+    // ── CLI display commands (--tool, --vuln, --category) ──────────
+    // If any display flag is set, run the display command and exit
+    // without entering interactive mode.  Display commands only need
+    // the DB file path — no config, disclaimer, or UI init is needed.
+    // --filter without a base command is also caught here.
+    if (!args.toolArg.empty() || args.vuln || !args.categoryArg.empty()
+        || !args.filterArg.empty()) {
+        return runDisplayCommand(args, PathResolver::dbFile().string());
     }
 
     // ── load config (or use factory defaults for --ignore-config) ─

@@ -25,6 +25,15 @@ struct ParsedArgs {
     bool ignoreConfig = false; // --ignore-config
     bool cacheClear   = false; // --cache-clear
 
+    // Display (STEP-21)
+    std::string toolArg;          // --tool / -t <names>  (comma-separated)
+    bool flagsFilter   = false;   // --flags / -f
+    bool descFilter    = false;   // --description / -d
+    bool templatesFilter = false; // --templates / -temp
+    std::string filterArg;        // --filter / -F <field>=<value,...>
+    bool vuln           = false;  // --vuln / -vl
+    std::string categoryArg;      // --category / -c <name>
+
     std::string error;     // empty = no error; non-empty = error message to show
 };
 

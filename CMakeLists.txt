@@ -294,7 +294,10 @@ target_link_libraries(L3_interface PRIVATE L1_services)
 # ==============================================================
 # tguide — main binary
 # ==============================================================
-add_executable(tguide ${CMAKE_SOURCE_DIR}/CoreRunner.cpp)
+add_executable(tguide
+    ${CMAKE_SOURCE_DIR}/CoreRunner.cpp
+    ${CMAKE_SOURCE_DIR}/cli_display.cpp
+)
 
 set_target_properties(tguide PROPERTIES OUTPUT_NAME "tguide")
 

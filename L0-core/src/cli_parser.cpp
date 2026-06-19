@@ -152,6 +152,32 @@ ParsedArgs parseArgs(int argc, char* argv[]) {
             args.cacheClear = true;
         } else if (name == "--stream") {
             args.stream = true;
+        } else if (name == "--tool") {
+            if (i + 1 >= argc) {
+                args.error = "--tool requires an argument, e.g. --tool nmap";
+                break;
+            }
+            args.toolArg = argv[++i];
+        } else if (name == "--flags") {
+            args.flagsFilter = true;
+        } else if (name == "--description") {
+            args.descFilter = true;
+        } else if (name == "--templates" || name == "--temp") {
+            args.templatesFilter = true;
+        } else if (name == "--filter") {
+            if (i + 1 >= argc) {
+                args.error = "--filter requires an argument, e.g. --filter severity=high";
+                break;
+            }
+            args.filterArg = argv[++i];
+        } else if (name == "--vuln" || name == "--vl") {
+            args.vuln = true;
+        } else if (name == "--category") {
+            if (i + 1 >= argc) {
+                args.error = "--category requires an argument, e.g. --category recon";
+                break;
+            }
+            args.categoryArg = argv[++i];
         } else {
             args.error = std::string("Option '") + arg + "' is not yet implemented";
             break;
