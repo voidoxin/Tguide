@@ -204,6 +204,10 @@ ParsedArgs parseArgs(int argc, char* argv[]) {
                 break;
             }
             args.exportCsvArg = argv[++i];
+        } else if (name == "--check-update") {
+            args.checkUpdate = true;
+        } else if (name == "--update") {
+            args.update = true;
         } else {
             args.error = std::string("Option '") + arg + "' is not yet implemented";
             break;

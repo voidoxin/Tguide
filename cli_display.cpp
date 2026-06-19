@@ -8,6 +8,8 @@
 #include "cli_display.h"
 #include "cli_export.h"
 #include "L0-core/include/DatabaseManager.h"
+#include "L0-core/include/DBResolver.h"
+#include "L0-core/include/db_cache_manager.h"
 #include "L0-core/include/UserDataManager.h"
 #include "L1-services/includes/svc_savedScripts.h"
 #include <iostream>
@@ -19,6 +21,7 @@
 #include <limits>
 #include <sstream>
 #include <filesystem>
+#include <iomanip>
 
 // ==============================================================
 // Levenshtein distance (case-insensitive)
@@ -524,6 +527,125 @@ int runDisplayCommand(const ParsedArgs& args, const std::string& dbPath) {
     if (!args.filterArg.empty()) {
         std::cerr << "Error: --filter requires --tool or --vuln.\n";
         return 1;
+    }
+
+    return 0;
+}
+
+// ==============================================================
+// Update command: --check-update and --update
+// ==============================================================
+int runUpdateCommand(const ParsedArgs& args,
+                     const std::string& dbPath,
+                     const std::string& cachePath) {
+    // Both flags need the cache to be initialized
+    // (caller must ensure DBCacheManager::instance().init() was called)
+    (void)cachePath; // reserved for future cache operations
+
+    // ── --check-update: fetch manifest, print info, exit ──
+    // Read-only: does NOT write to cache.  The version shown is advisory.
+    if (args.checkUpdate) {
+        auto& resolver = DBResolver::instance();
+        DBResolver::Manifest m = resolver.fetchManifest();
+
+        if (m.version.empty()) {
+            std::cerr << "Error: Could not fetch update manifest. "
+                      << "Check your internet connection.\n";
+            return 1;
+        }
+
+        std::string currentVer = DBCacheManager::instance().getLastSeenVersion();
+        if (currentVer.empty()) currentVer = "(unknown)";
+
+        std::cout << "Current database version: " << currentVer << "\n";
+        std::cout << "Latest available version: " << m.version << "\n";
+
+        // Get current DB file size
+        if (std::filesystem::exists(dbPath)) {
+            auto info = resolver.getDatabaseInfo(dbPath);
+            auto oldFmt = std::cout.flags();
+            auto oldPrec = std::cout.precision();
+            double sizeMB = static_cast<double>(info.fileSize) / (1024.0 * 1024.0);
+            std::cout << "Current database size: " << std::fixed << std::setprecision(2)
+                      << sizeMB << " MB\n";
+            std::cout.flags(oldFmt);
+            std::cout.precision(oldPrec);
+            std::cout << "Tables: " << info.tableCount
+                      << ", Rows: " << info.rowCount << "\n";
+        }
+
+        // Informational comparison only
+        if (currentVer != m.version && currentVer != "(unknown)") {
+            std::cout << "\nUpdate available: " << currentVer
+                      << " \u2192 " << m.version << "\n";
+        } else if (currentVer == m.version) {
+            std::cout << "\nDatabase is up to date.\n";
+        } else {
+            std::cout << "\nUpdate available: version " << m.version << "\n";
+        }
+
+        return 0;
+    }
+
+    // ── --update: check, prompt/download, apply ──
+    if (args.update) {
+        auto& resolver = DBResolver::instance();
+
+        if (!std::filesystem::exists(dbPath)) {
+            std::cerr << "Error: Database not found at " << dbPath << ".\n"
+                      << "Cannot update without an existing database.\n";
+            return 1;
+        }
+
+        // Fetch manifest
+        DBResolver::Manifest m = resolver.fetchManifest();
+        if (m.version.empty()) {
+            std::cerr << "Error: Could not fetch update manifest. "
+                      << "Check your internet connection.\n";
+            return 1;
+        }
+
+        // Show versions (advisory — cache may be out of sync)
+        std::string currentVer = DBCacheManager::instance().getLastSeenVersion();
+        if (currentVer.empty()) currentVer = "(unknown)";
+        std::cout << "Current version: " << currentVer << "\n";
+        std::cout << "Latest version:  " << m.version << "\n";
+
+        // Always offer the update — the version comparison is advisory.
+        // The user or --yes flag decides whether to proceed.
+        bool proceed = args.yes;  // --yes auto-approves
+        if (!proceed) {
+            std::cout << "Download and apply update " << m.version << "? [y/N]: ";
+            std::string response;
+            std::getline(std::cin, response);
+            if (response.empty() ||
+                (response[0] != 'y' && response[0] != 'Y')) {
+                std::cout << "Update cancelled.\n";
+                return 0;
+            }
+            proceed = true;
+        }
+
+        if (proceed) {
+            std::cout << "Downloading update..." << "\n";
+            bool success = resolver.manualUpdate(dbPath);
+
+            if (success) {
+                // A .tmp file was staged by manualUpdate; apply it immediately
+                bool applied = resolver.applyPendingSwap(dbPath);
+                if (applied) {
+                    std::cout << "Update applied: version " << m.version << "\n";
+                } else {
+                    std::cout << "Update downloaded but could not be applied.\n"
+                              << "The staged file may require a restart.\n";
+                }
+                return 0;
+            } else {
+                std::cerr << "Error: Update failed.\n"
+                          << "Check your internet connection and disk space.\n";
+                return 1;
+            }
+        }
     }
 
     return 0;

@@ -204,15 +204,25 @@ int main(int argc, char* argv[]) {
         return runDisplayCommand(args, PathResolver::dbFile().string());
     }
 
+    // ── init cache before any DB class is constructed ──────────────────────
+    // resolveDatabase() calls DBCache internally — must be ready first.
+    // Initialized before the disclaimer so update commands can run without
+    // requiring disclaimer acceptance (consistent with other CLI-exit flags).
+    DBCacheManager::instance().init(PathResolver::cacheFile().string());
+
+    // ── CLI update commands (--check-update, --update) ────────────
+    // Requires DBCacheManager to be initialized.
+    if (args.checkUpdate || args.update) {
+        return runUpdateCommand(args,
+                                PathResolver::dbFile().string(),
+                                PathResolver::cacheFile().string());
+    }
+
     // ── legal disclaimer — first run only ──────────────────────────────────
     if (cfg.get<int>("disclaimer_accepted", 0) == 0) {
         if (!UIDisclaimer::show(cfg))
             return 0;
     }
-
-    // ── init cache before any DB class is constructed ──────────────────────
-    // resolveDatabase() calls DBCache internally — must be ready first
-    DBCacheManager::instance().init(PathResolver::cacheFile().string());
 
     // ── init backup manager (dev only — removed before release) ───────────
 #ifdef TGUIDE_DEV_MODE

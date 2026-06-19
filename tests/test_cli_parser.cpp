@@ -310,3 +310,37 @@ TEST_CASE("parseArgs — --tool combined with --export-text") {
     CHECK(args.exportTextArg == "/tmp/out.txt");
     CHECK(args.error.empty());
 }
+
+//
+// Update flags (STEP-23)
+//
+
+TEST_CASE("parseArgs — --check-update") {
+    const char* argv[] = {"tguide", "--check-update", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK(args.checkUpdate == true);
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — --update") {
+    const char* argv[] = {"tguide", "--update", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK(args.update == true);
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — --update --yes combined") {
+    const char* argv[] = {"tguide", "--update", "--yes", nullptr};
+    auto args = parseArgs(3, const_cast<char**>(argv));
+    CHECK(args.update == true);
+    CHECK(args.yes == true);
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — --check-update --quiet combined") {
+    const char* argv[] = {"tguide", "--check-update", "--quiet", nullptr};
+    auto args = parseArgs(3, const_cast<char**>(argv));
+    CHECK(args.checkUpdate == true);
+    CHECK(args.quiet == true);
+    CHECK(args.error.empty());
+}

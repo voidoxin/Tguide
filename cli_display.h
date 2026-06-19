@@ -7,3 +7,11 @@
 // Should be called after bootstrap (config + DB ready), before UI start.
 // Returns 0 on success, 1 on error.
 int runDisplayCommand(const ParsedArgs& args, const std::string& dbPath);
+
+// Run update CLI commands (--check-update, --update).
+// Requires DBCacheManager to be initialized (cachePath).
+// dbPath is the resolved database path.
+// Returns 0 on success, 1 on error.
+int runUpdateCommand(const ParsedArgs& args,
+                     const std::string& dbPath,
+                     const std::string& cachePath);

@@ -432,3 +432,36 @@ TEST_CASE("--category --export-text writes file") {
     string fileContent((istreambuf_iterator<char>(f)), istreambuf_iterator<char>());
     CHECK(fileContent.find("nmap") != string::npos);
 }
+
+//
+// Update command tests (STEP-23)
+//
+
+TEST_CASE("runUpdateCommand --update without db returns error") {
+    // Test error path when database doesn't exist
+    ParsedArgs args;
+    args.update = true;
+
+    // Non-existent path
+    int result = runUpdateCommand(args, "/nonexistent/path/tguide.db",
+                                   "/nonexistent/path/.db_cache");
+    CHECK(result == 1);  // Error expected
+}
+
+TEST_CASE("runUpdateCommand --check-update without network returns error") {
+    // Test error path when manifest fetch fails (no network)
+    ParsedArgs args;
+    args.checkUpdate = true;
+
+    int result = runUpdateCommand(args, "/nonexistent/path/tguide.db",
+                                   "/nonexistent/path/.db_cache");
+    CHECK(result == 1);  // Error expected — no network
+}
+
+TEST_CASE("printUsage shows update flags") {
+    // Verify update flags appear in usage output
+    std::ostringstream oss;
+    printUsage(oss);
+    CHECK(oss.str().find("--update") != std::string::npos);
+    CHECK(oss.str().find("--check-update") != std::string::npos);
+}

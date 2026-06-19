@@ -41,6 +41,10 @@ struct ParsedArgs {
     std::string exportYamlArg;          // --export-yaml <file_path>
     std::string exportCsvArg;           // --export-csv <file_path>
 
+    // Update (STEP-23)
+    bool checkUpdate = false;  // --check-update
+    bool update = false;       // --update
+
     std::string error;     // empty = no error; non-empty = error message to show
 };
 
