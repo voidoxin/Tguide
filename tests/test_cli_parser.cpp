@@ -220,3 +220,93 @@ TEST_CASE("printVersion — outputs version string") {
     printVersion(oss);
     CHECK(oss.str().find("tguide v") != std::string::npos);
 }
+
+//
+// Saved Data & Export (STEP-22)
+//
+
+TEST_CASE("parseArgs — --saved-scripts (long)") {
+    const char* argv[] = {"tguide", "--saved-scripts", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK(args.savedScripts == true);
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — -sc (multi-char short)") {
+    const char* argv[] = {"tguide", "-sc", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK(args.savedScripts == true);
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — --export-text with path") {
+    const char* argv[] = {"tguide", "--export-text", "/tmp/out.txt", nullptr};
+    auto args = parseArgs(3, const_cast<char**>(argv));
+    CHECK(args.exportTextArg == "/tmp/out.txt");
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — --export-text without path produces error") {
+    const char* argv[] = {"tguide", "--export-text", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK_FALSE(args.error.empty());
+    CHECK(args.error.find("--export-text requires") != std::string::npos);
+}
+
+TEST_CASE("parseArgs — --export-json with path") {
+    const char* argv[] = {"tguide", "--export-json", "/tmp/out.json", nullptr};
+    auto args = parseArgs(3, const_cast<char**>(argv));
+    CHECK(args.exportJsonArg == "/tmp/out.json");
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — --export-yaml with path") {
+    const char* argv[] = {"tguide", "--export-yaml", "/tmp/out.yaml", nullptr};
+    auto args = parseArgs(3, const_cast<char**>(argv));
+    CHECK(args.exportYamlArg == "/tmp/out.yaml");
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — --export-csv with path") {
+    const char* argv[] = {"tguide", "--export-csv", "/tmp/out.csv", nullptr};
+    auto args = parseArgs(3, const_cast<char**>(argv));
+    CHECK(args.exportCsvArg == "/tmp/out.csv");
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — --export-json without path produces error") {
+    const char* argv[] = {"tguide", "--export-json", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK_FALSE(args.error.empty());
+    CHECK(args.error.find("--export-json requires") != std::string::npos);
+}
+
+TEST_CASE("parseArgs — --export-yaml without path produces error") {
+    const char* argv[] = {"tguide", "--export-yaml", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK_FALSE(args.error.empty());
+    CHECK(args.error.find("--export-yaml requires") != std::string::npos);
+}
+
+TEST_CASE("parseArgs — --export-csv without path produces error") {
+    const char* argv[] = {"tguide", "--export-csv", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK_FALSE(args.error.empty());
+    CHECK(args.error.find("--export-csv requires") != std::string::npos);
+}
+
+TEST_CASE("parseArgs — --saved-scripts combined with export") {
+    const char* argv[] = {"tguide", "--saved-scripts", "--export-text", "/tmp/out.txt", nullptr};
+    auto args = parseArgs(4, const_cast<char**>(argv));
+    CHECK(args.savedScripts == true);
+    CHECK(args.exportTextArg == "/tmp/out.txt");
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — --tool combined with --export-text") {
+    const char* argv[] = {"tguide", "--tool", "nmap", "--export-text", "/tmp/out.txt", nullptr};
+    auto args = parseArgs(5, const_cast<char**>(argv));
+    CHECK(args.toolArg == "nmap");
+    CHECK(args.exportTextArg == "/tmp/out.txt");
+    CHECK(args.error.empty());
+}

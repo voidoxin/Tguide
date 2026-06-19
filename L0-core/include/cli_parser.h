@@ -34,6 +34,13 @@ struct ParsedArgs {
     bool vuln           = false;  // --vuln / -vl
     std::string categoryArg;      // --category / -c <name>
 
+    // Saved Data & Export (STEP-22)
+    bool savedScripts = false;          // --saved-scripts / -sc
+    std::string exportTextArg;          // --export-text <file_path>
+    std::string exportJsonArg;          // --export-json <file_path>
+    std::string exportYamlArg;          // --export-yaml <file_path>
+    std::string exportCsvArg;           // --export-csv <file_path>
+
     std::string error;     // empty = no error; non-empty = error message to show
 };
 

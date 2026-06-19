@@ -178,6 +178,32 @@ ParsedArgs parseArgs(int argc, char* argv[]) {
                 break;
             }
             args.categoryArg = argv[++i];
+        } else if (name == "--saved-scripts" || name == "--sc") {
+            args.savedScripts = true;
+        } else if (name == "--export-text") {
+            if (i + 1 >= argc) {
+                args.error = "--export-text requires a file path argument";
+                break;
+            }
+            args.exportTextArg = argv[++i];
+        } else if (name == "--export-json") {
+            if (i + 1 >= argc) {
+                args.error = "--export-json requires a file path argument";
+                break;
+            }
+            args.exportJsonArg = argv[++i];
+        } else if (name == "--export-yaml") {
+            if (i + 1 >= argc) {
+                args.error = "--export-yaml requires a file path argument";
+                break;
+            }
+            args.exportYamlArg = argv[++i];
+        } else if (name == "--export-csv") {
+            if (i + 1 >= argc) {
+                args.error = "--export-csv requires a file path argument";
+                break;
+            }
+            args.exportCsvArg = argv[++i];
         } else {
             args.error = std::string("Option '") + arg + "' is not yet implemented";
             break;

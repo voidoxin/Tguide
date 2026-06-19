@@ -9,11 +9,17 @@
 #include "cli_parser.h"
 #include "cli_display.h"
 #include "DatabaseManager.h"
+#include "UserDataManager.h"
+#include "svc_savedScripts.h"
 #include "fixtures.h"
 #include <string>
 #include <sstream>
 #include <iostream>
+#include <fstream>
+#include <filesystem>
+#include "libs/json.hpp"
 
+using json = nlohmann::json;
 using namespace std;
 
 // Helper: open the seed database for direct query
@@ -220,4 +226,209 @@ TEST_CASE("--tool with filter by category") {
     // nmap is in Network Scanning, sqlmap is not
     CHECK(output.find("=== nmap ===") != string::npos);
     CHECK(output.find("=== sqlmap ===") == string::npos);
+}
+
+//
+// --saved-scripts tests (STEP-22)
+// These tests initialize UserDataManager with temp paths.
+//
+
+TEST_CASE("--saved-scripts with no scripts shows empty message") {
+    test_fixtures::TempDirectory tmpDir;
+    auto scriptsPath = (tmpDir.path / "scripts.json").string();
+    auto cmdsPath = (tmpDir.path / "commands.json").string();
+
+    // Init empty UserDataManager
+    UserDataManager::instance().init(cmdsPath, scriptsPath);
+    UserDataManager::instance().load();
+
+    ParsedArgs args;
+    args.savedScripts = true;
+
+    string output = captureDisplay(args);
+    CHECK(output.find("No saved scripts found") != string::npos);
+}
+
+TEST_CASE("--saved-scripts displays saved scripts") {
+    test_fixtures::TempDirectory tmpDir;
+    auto scriptsPath = (tmpDir.path / "scripts.json").string();
+    auto cmdsPath = (tmpDir.path / "commands.json").string();
+
+    UserDataManager::instance().init(cmdsPath, scriptsPath);
+    UserDataManager::instance().load();
+
+    // Save a test script
+    UserDataManager::instance().saveScript("test.sh", "/home/test.sh", "A test script");
+
+    ParsedArgs args;
+    args.savedScripts = true;
+
+    string output = captureDisplay(args);
+    CHECK(output.find("test.sh") != string::npos);
+    CHECK(output.find("/home/test.sh") != string::npos);
+    CHECK(output.find("A test script") != string::npos);
+}
+
+TEST_CASE("--saved-scripts --export-text writes file") {
+    test_fixtures::TempDirectory tmpDir;
+    auto scriptsPath = (tmpDir.path / "scripts.json").string();
+    auto cmdsPath = (tmpDir.path / "commands.json").string();
+    auto exportPath = (tmpDir.path / "export.txt").string();
+
+    UserDataManager::instance().init(cmdsPath, scriptsPath);
+    UserDataManager::instance().load();
+    UserDataManager::instance().saveScript("myscript.sh", "/opt/myscript.sh", "My script");
+
+    ParsedArgs args;
+    args.savedScripts = true;
+    args.exportTextArg = exportPath;
+
+    // captureDisplay also triggers export
+    string output = captureDisplay(args);
+
+    // Check file was written
+    CHECK(std::filesystem::exists(exportPath));
+    string fileContent;
+    {
+        ifstream f(exportPath);
+        fileContent = string((istreambuf_iterator<char>(f)), istreambuf_iterator<char>());
+    }
+    CHECK(fileContent.find("myscript.sh") != string::npos);
+    CHECK(fileContent.find("/opt/myscript.sh") != string::npos);
+}
+
+TEST_CASE("--saved-scripts --export-json writes valid JSON") {
+    test_fixtures::TempDirectory tmpDir;
+    auto scriptsPath = (tmpDir.path / "scripts.json").string();
+    auto cmdsPath = (tmpDir.path / "commands.json").string();
+    auto exportPath = (tmpDir.path / "export.json").string();
+
+    UserDataManager::instance().init(cmdsPath, scriptsPath);
+    UserDataManager::instance().load();
+    UserDataManager::instance().saveScript("script1", "/path/a", "note a");
+    UserDataManager::instance().saveScript("script2", "/path/b", "note b");
+
+    ParsedArgs args;
+    args.savedScripts = true;
+    args.exportJsonArg = exportPath;
+
+    captureDisplay(args);
+
+    CHECK(std::filesystem::exists(exportPath));
+    // Verify it's valid JSON by parsing with nlohmann/json
+    ifstream f(exportPath);
+    string content((istreambuf_iterator<char>(f)), istreambuf_iterator<char>());
+    auto parsed = json::parse(content);  // throws on invalid JSON
+    CHECK(parsed.contains("scripts"));
+    CHECK(parsed["scripts"].is_array());
+    CHECK(parsed["scripts"].size() == 2);
+    CHECK(parsed["scripts"][0]["name"] == "script1");
+    CHECK(parsed["scripts"][1]["name"] == "script2");
+}
+
+TEST_CASE("--saved-scripts --export-yaml writes YAML") {
+    test_fixtures::TempDirectory tmpDir;
+    auto scriptsPath = (tmpDir.path / "scripts.json").string();
+    auto cmdsPath = (tmpDir.path / "commands.json").string();
+    auto exportPath = (tmpDir.path / "export.yaml").string();
+
+    UserDataManager::instance().init(cmdsPath, scriptsPath);
+    UserDataManager::instance().load();
+    UserDataManager::instance().saveScript("test", "/t", "desc");
+
+    ParsedArgs args;
+    args.savedScripts = true;
+    args.exportYamlArg = exportPath;
+
+    captureDisplay(args);
+
+    CHECK(std::filesystem::exists(exportPath));
+    ifstream f(exportPath);
+    string content((istreambuf_iterator<char>(f)), istreambuf_iterator<char>());
+    CHECK(content.find("scripts:") != string::npos);
+    CHECK(content.find("test") != string::npos);
+}
+
+TEST_CASE("--saved-scripts --export-csv writes CSV") {
+    test_fixtures::TempDirectory tmpDir;
+    auto scriptsPath = (tmpDir.path / "scripts.json").string();
+    auto cmdsPath = (tmpDir.path / "commands.json").string();
+    auto exportPath = (tmpDir.path / "export.csv").string();
+
+    UserDataManager::instance().init(cmdsPath, scriptsPath);
+    UserDataManager::instance().load();
+    UserDataManager::instance().saveScript("a", "/a", "note");
+
+    ParsedArgs args;
+    args.savedScripts = true;
+    args.exportCsvArg = exportPath;
+
+    captureDisplay(args);
+
+    CHECK(std::filesystem::exists(exportPath));
+    ifstream f(exportPath);
+    string content((istreambuf_iterator<char>(f)), istreambuf_iterator<char>());
+    CHECK(content.find("id,name,path,note") != string::npos);
+    bool foundSimple = content.find("a,/a,note") != string::npos;
+    bool foundQuoted = content.find("a,\"/a\",\"note\"") != string::npos;
+    CHECK((foundSimple || foundQuoted));
+}
+
+TEST_CASE("export without base command shows error") {
+    ParsedArgs args;
+    args.exportTextArg = "/tmp/some_file.txt";
+
+    int result = runDisplayCommand(args, seedDbPath());
+    CHECK(result == 1);  // Error expected
+}
+
+TEST_CASE("--tool nmap --export-text writes file") {
+    test_fixtures::TempDirectory tmpDir;
+    auto exportPath = (tmpDir.path / "tool_output.txt").string();
+
+    ParsedArgs args;
+    args.toolArg = "nmap";
+    args.exportTextArg = exportPath;
+
+    string output = captureDisplay(args);
+    CHECK(output.find("=== nmap ===") != string::npos);
+    CHECK(std::filesystem::exists(exportPath));
+
+    ifstream f(exportPath);
+    string fileContent((istreambuf_iterator<char>(f)), istreambuf_iterator<char>());
+    CHECK(fileContent.find("=== nmap ===") != string::npos);
+}
+
+TEST_CASE("--vuln --export-text writes file") {
+    test_fixtures::TempDirectory tmpDir;
+    auto exportPath = (tmpDir.path / "vuln_output.txt").string();
+
+    ParsedArgs args;
+    args.vuln = true;
+    args.exportTextArg = exportPath;
+
+    string output = captureDisplay(args);
+    CHECK(output.find("EternalBlue") != string::npos);
+    CHECK(std::filesystem::exists(exportPath));
+
+    ifstream f(exportPath);
+    string fileContent((istreambuf_iterator<char>(f)), istreambuf_iterator<char>());
+    CHECK(fileContent.find("EternalBlue") != string::npos);
+}
+
+TEST_CASE("--category --export-text writes file") {
+    test_fixtures::TempDirectory tmpDir;
+    auto exportPath = (tmpDir.path / "cat_output.txt").string();
+
+    ParsedArgs args;
+    args.categoryArg = "Network Scanning";
+    args.exportTextArg = exportPath;
+
+    string output = captureDisplay(args);
+    CHECK(output.find("nmap") != string::npos);
+    CHECK(std::filesystem::exists(exportPath));
+
+    ifstream f(exportPath);
+    string fileContent((istreambuf_iterator<char>(f)), istreambuf_iterator<char>());
+    CHECK(fileContent.find("nmap") != string::npos);
 }

@@ -6,7 +6,10 @@
  */
 
 #include "cli_display.h"
+#include "cli_export.h"
 #include "L0-core/include/DatabaseManager.h"
+#include "L0-core/include/UserDataManager.h"
+#include "L1-services/includes/svc_savedScripts.h"
 #include <iostream>
 #include <vector>
 #include <string>
@@ -412,31 +415,114 @@ static void handleCategoryCommand(const std::string& dbPath,
 // Main dispatch — called after bootstrap, before UI start
 // ==============================================================
 int runDisplayCommand(const ParsedArgs& args, const std::string& dbPath) {
-    // Check database exists
-    if (!std::filesystem::exists(dbPath)) {
-        std::cerr << "Error: Database file not found at " << dbPath << std::endl;
-        return 1;
+    bool hasExport = !args.exportTextArg.empty() || !args.exportJsonArg.empty()
+                  || !args.exportYamlArg.empty() || !args.exportCsvArg.empty();
+
+    // ── Saved scripts command ────────────────────────────
+    if (args.savedScripts) {
+        auto scripts = SvcSavedScripts::getAllScripts();
+        // Display the scripts
+        if (scripts.empty()) {
+            std::cout << "No saved scripts found.\n"
+                      << "Use the interactive UI to save scripts.\n";
+        } else {
+            std::cout << "=== Saved Scripts ===\n";
+            for (const auto& s : scripts) {
+                std::cout << "  [" << s.id << "] " << s.name << "\n";
+                if (!s.path.empty())
+                    std::cout << "       Path: " << s.path << "\n";
+                if (!s.note.empty())
+                    std::cout << "       Note: " << s.note << "\n";
+                std::cout << "\n";
+            }
+            std::cout << scripts.size() << " script(s) total.\n";
+        }
+
+        // Export (uses the already-fetched scripts vector)
+        bool ok = true;
+        if (!args.exportTextArg.empty()) ok &= exportScriptsToText(scripts, args.exportTextArg);
+        if (!args.exportJsonArg.empty()) ok &= exportScriptsToJson(scripts, args.exportJsonArg);
+        if (!args.exportYamlArg.empty()) ok &= exportScriptsToYaml(scripts, args.exportYamlArg);
+        if (!args.exportCsvArg.empty())  ok &= exportScriptsToCsv(scripts, args.exportCsvArg);
+        return ok ? 0 : 1;
     }
 
+    // ── Database-dependent commands (--tool, --vuln, --category) ──
+    if (!args.toolArg.empty() || args.vuln || !args.categoryArg.empty()) {
+        if (!std::filesystem::exists(dbPath)) {
+            std::cerr << "Error: Database file not found at " << dbPath << "\n";
+            return 1;
+        }
+    }
+
+    // Helper lambda: run a display lambda while capturing output
+    // Restores cout.rdbuf() immediately after displayFn() completes,
+    // with a try/catch guard for exception safety.
+    auto captureAndExport = [&](auto displayFn) -> int {
+        std::stringstream buffer;
+        auto* old = std::cout.rdbuf(buffer.rdbuf());
+        try {
+            displayFn();
+        } catch (...) {
+            std::cout.rdbuf(old);
+            throw;
+        }
+        std::cout.rdbuf(old);
+        std::string output = buffer.str();
+        std::cout << output;
+
+        bool ok = true;
+        if (!args.exportTextArg.empty())
+            ok &= exportTextContent(output, args.exportTextArg);
+
+        // Structured exports only work with --saved-scripts for now
+        if (!args.exportJsonArg.empty()) {
+            std::cerr << "Error: JSON export is not yet supported for this command. "
+                      << "Use --export-text instead.\n";
+            ok = false;
+        }
+        if (!args.exportYamlArg.empty()) {
+            std::cerr << "Error: YAML export is not yet supported for this command. "
+                      << "Use --export-text instead.\n";
+            ok = false;
+        }
+        if (!args.exportCsvArg.empty()) {
+            std::cerr << "Error: CSV export is not yet supported for this command. "
+                      << "Use --export-text instead.\n";
+            ok = false;
+        }
+        return ok ? 0 : 1;
+    };
+
     if (!args.toolArg.empty()) {
-        handleToolCommand(dbPath, args.toolArg, args.flagsFilter,
-                          args.descFilter, args.templatesFilter, args.filterArg);
-        return 0;
+        return captureAndExport([&]() {
+            handleToolCommand(dbPath, args.toolArg, args.flagsFilter,
+                              args.descFilter, args.templatesFilter, args.filterArg);
+        });
     }
 
     if (args.vuln) {
-        handleVulnCommand(dbPath, args.filterArg);
-        return 0;
+        return captureAndExport([&]() {
+            handleVulnCommand(dbPath, args.filterArg);
+        });
     }
 
     if (!args.categoryArg.empty()) {
-        handleCategoryCommand(dbPath, args.categoryArg);
-        return 0;
+        return captureAndExport([&]() {
+            handleCategoryCommand(dbPath, args.categoryArg);
+        });
     }
 
-    // --filter without --tool or --vuln is meaningless
+    // ── Export without base command ──────────────────────
+    if (hasExport) {
+        std::cerr << "Error: Export flags require a base command "
+                  << "(--tool, --vuln, --saved-scripts, or --category).\n";
+        return 1;
+    }
+
+    // ── Filter without base command ──────────────────────
     if (!args.filterArg.empty()) {
-        std::cerr << "Error: --filter requires --tool or --vuln." << std::endl;
+        std::cerr << "Error: --filter requires --tool or --vuln.\n";
         return 1;
     }
 

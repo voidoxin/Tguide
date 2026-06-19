@@ -123,16 +123,6 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    // ── CLI display commands (--tool, --vuln, --category) ──────────
-    // If any display flag is set, run the display command and exit
-    // without entering interactive mode.  Display commands only need
-    // the DB file path — no config, disclaimer, or UI init is needed.
-    // --filter without a base command is also caught here.
-    if (!args.toolArg.empty() || args.vuln || !args.categoryArg.empty()
-        || !args.filterArg.empty()) {
-        return runDisplayCommand(args, PathResolver::dbFile().string());
-    }
-
     // ── load config (or use factory defaults for --ignore-config) ─
     ConfigManager cfg(args.ignoreConfig
         ? std::string()
@@ -201,6 +191,18 @@ int main(int argc, char* argv[]) {
     );
     if (!UserDataManager::instance().load())
         UI_errors("Failed to load user data files. Saved data may be unavailable.");
+
+    // ── CLI display/export commands ────────────────────────────────────────
+    // --saved-scripts needs UserDataManager to be initialized.
+    // Export flags also need display data before they can write files.
+    // --tool, --vuln, --category only need a DB path (no config/UI).
+    if (args.savedScripts ||
+        !args.exportTextArg.empty() || !args.exportJsonArg.empty() ||
+        !args.exportYamlArg.empty() || !args.exportCsvArg.empty() ||
+        !args.toolArg.empty() || args.vuln ||
+        !args.categoryArg.empty() || !args.filterArg.empty()) {
+        return runDisplayCommand(args, PathResolver::dbFile().string());
+    }
 
     // ── legal disclaimer — first run only ──────────────────────────────────
     if (cfg.get<int>("disclaimer_accepted", 0) == 0) {

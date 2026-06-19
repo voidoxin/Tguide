@@ -15,6 +15,7 @@ set(TEST_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test_cli_parser.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test_cli_display.cpp
     ${CMAKE_SOURCE_DIR}/cli_display.cpp
+    ${CMAKE_SOURCE_DIR}/cli_export.cpp
 )
 
 add_executable(tguide_tests ${TEST_SOURCES})
