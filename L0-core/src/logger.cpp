@@ -205,6 +205,12 @@ void Logger::setMaxLogSizeForTesting(size_t bytes) {
     m_maxLogSize = bytes;
 }
 
+void Logger::resetForTesting() {
+    m_initialized = false;
+    m_logPath.clear();
+    m_currentBootId = 0;
+}
+
 // ==================== file I/O ====================
 
 void Logger::writeEntry(const LogEntry& entry) {

@@ -15,3 +15,9 @@ int runDisplayCommand(const ParsedArgs& args, const std::string& dbPath);
 int runUpdateCommand(const ParsedArgs& args,
                      const std::string& dbPath,
                      const std::string& cachePath);
+
+// Run log query commands (--log, --log-b, --log-b-N, --log-date).
+// Opens an interactive viewer with pagination.
+// Requires Logger to be initialized.
+// Returns 0 on success, 1 on error.
+int runLogCommand(const ParsedArgs& args);

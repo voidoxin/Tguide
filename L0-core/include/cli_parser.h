@@ -45,6 +45,12 @@ struct ParsedArgs {
     bool checkUpdate = false;  // --check-update
     bool update = false;       // --update
 
+    // Log queries (STEP-25)
+    bool logView = false;              // --log
+    bool logLastBoot = false;          // --log-b
+    int logBootOffset = -1;            // --log-b-1, --log-b-2, ... (N >= 1)
+    std::string logDateArg;            // --log-date <YYYY-MM-DD>
+
     std::string error;     // empty = no error; non-empty = error message to show
 };
 

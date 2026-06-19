@@ -11,6 +11,7 @@
 #include "L0-core/include/DBResolver.h"
 #include "L0-core/include/db_cache_manager.h"
 #include "L0-core/include/UserDataManager.h"
+#include "L0-core/include/logger.h"
 #include "L1-services/includes/svc_savedScripts.h"
 #include <iostream>
 #include <vector>
@@ -22,6 +23,7 @@
 #include <sstream>
 #include <filesystem>
 #include <iomanip>
+#include <ctime>
 
 // ==============================================================
 // Levenshtein distance (case-insensitive)
@@ -412,6 +414,112 @@ static void handleCategoryCommand(const std::string& dbPath,
         std::cout << std::endl;
     }
     std::cout << std::endl;
+}
+
+// ==============================================================
+// Log viewer — interactive page-by-page display
+// ==============================================================
+static void showLogViewer(const std::vector<LogEntry>& entries) {
+    if (entries.empty()) {
+        std::cout << "(no matching log entries)\n";
+        return;
+    }
+
+    const size_t pageSize = 20;
+    size_t total = entries.size();
+    size_t pos = 0;
+
+    // Format string helper — converts a LogEntry to display line
+    auto formatEntry = [](const LogEntry& e) -> std::string {
+        // Convert timestamp to string
+        auto t = std::chrono::system_clock::to_time_t(e.timestamp);
+        std::tm tm;
+    #ifdef _WIN32
+        localtime_s(&tm, &t);
+    #else
+        localtime_r(&t, &tm);
+    #endif
+        std::ostringstream oss;
+        oss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+
+        // Level to string
+        const char* levelStr = "UNKNOWN";
+        switch (e.level) {
+            case LogLevel::DEBUG:   levelStr = "DEBUG";   break;
+            case LogLevel::INFO:    levelStr = "INFO";    break;
+            case LogLevel::WARNING: levelStr = "WARNING"; break;
+            case LogLevel::ERROR:   levelStr = "ERROR";   break;
+        }
+
+        oss << " [" << levelStr << "]"
+            << " [boot=" << e.bootId << "] "
+            << e.message;
+        return oss.str();
+    };
+
+    while (pos < total) {
+        // Print one page
+        size_t end = std::min(pos + pageSize, total);
+        for (size_t i = pos; i < end; ++i) {
+            std::cout << formatEntry(entries[i]) << '\n';
+        }
+        pos = end;
+
+        if (pos >= total) break;
+
+        // Prompt for more
+        size_t remaining = total - pos;
+        std::cout << "\n-- More (" << remaining << " remaining) -- "
+                  << "Press Enter for next page, q + Enter to quit: ";
+        std::string input;
+        if (!std::getline(std::cin, input)) {
+            // EOF or error on stdin — exit the viewer
+            break;
+        }
+        if (!input.empty()) {
+            char c = std::tolower(static_cast<unsigned char>(input[0]));
+            if (c == 'q' || c == 'x')
+                break;
+        }
+        // Empty line or Enter = continue
+    }
+}
+
+// ==============================================================
+// runLogCommand — dispatches log query flags
+// ==============================================================
+int runLogCommand(const ParsedArgs& args) {
+    if (!Logger::instance().isInitialized()) {
+        std::cerr << "Error: Logger not initialized.\n";
+        return 1;
+    }
+
+    std::vector<LogEntry> entries;
+
+    if (args.logView) {
+        entries = Logger::instance().allEntries();
+    } else if (args.logLastBoot) {
+        int currentBoot = Logger::instance().currentBootId();
+        // --log-b shows entries from the last boot (boot = current - 1)
+        if (currentBoot > 1) {
+            entries = Logger::instance().entriesForBoot(currentBoot - 1);
+        } else {
+            // Only one boot exists — show its entries
+            entries = Logger::instance().entriesForBoot(currentBoot);
+        }
+    } else if (args.logBootOffset >= 0) {
+        int currentBoot = Logger::instance().currentBootId();
+        int targetBoot = currentBoot - 1 - args.logBootOffset;
+        if (targetBoot >= 1) {
+            entries = Logger::instance().entriesForBoot(targetBoot);
+        }
+        // If targetBoot < 1, entries stays empty — shown as "no entries"
+    } else if (!args.logDateArg.empty()) {
+        entries = Logger::instance().entriesForDate(args.logDateArg);
+    }
+
+    showLogViewer(entries);
+    return 0;
 }
 
 // ==============================================================

@@ -80,6 +80,11 @@ public:
     // writing millions of entries.
     void setMaxLogSizeForTesting(size_t bytes);
 
+    // Reset the logger to uninitialized state (for testing).
+    // Clears the log path and sets initialized to false.
+    // The next call to init() will start a fresh session.
+    void resetForTesting();
+
 private:
     Logger() = default;
     ~Logger();

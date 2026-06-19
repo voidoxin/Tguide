@@ -109,10 +109,44 @@ ParsedArgs parseArgs(int argc, char* argv[]) {
             }
         }
 
-        // ── Not found → unknown option ─────────────────────────
+        // ── Not found → check for dynamic patterns ──────────
         if (!matched) {
-            args.error = "Unknown option: " + arg;
-            break;
+            // ── Custom pattern: --log-b-<N> (not in known_flags) ──
+            if (arg.size() >= 8 && arg.substr(0, 8) == "--log-b-") {
+                std::string numStr = arg.substr(8);
+                if (numStr.empty()) {
+                    args.error = "Missing number after --log-b-";
+                    break;
+                }
+                bool valid = true;
+                for (char c : numStr) {
+                    if (!std::isdigit(static_cast<unsigned char>(c))) {
+                        valid = false;
+                        break;
+                    }
+                }
+                if (valid) {
+                    std::size_t pos = 0;
+                    try {
+                        int n = std::stoi(numStr, &pos);
+                        if (pos != numStr.size() || n < 1) {
+                            args.error = "--log-b-<N> requires N >= 1";
+                            break;
+                        }
+                        args.logBootOffset = n;
+                        continue;   // skip routing section — matched is null
+                    } catch (const std::exception&) {
+                        args.error = "Value out of range in --log-b-<N>: " + arg;
+                        break;
+                    }
+                } else {
+                    args.error = "Invalid --log-b-N format: " + arg;
+                    break;
+                }
+            } else {
+                args.error = "Unknown option: " + arg;
+                break;
+            }
         }
 
         // ── Route to the appropriate handler ────────────────────
@@ -208,6 +242,19 @@ ParsedArgs parseArgs(int argc, char* argv[]) {
             args.checkUpdate = true;
         } else if (name == "--update") {
             args.update = true;
+
+        // ── Log flags (STEP-25) ─────────────────────────────
+        } else if (name == "--log") {
+            args.logView = true;
+        } else if (name == "--log-b") {
+            args.logLastBoot = true;
+        } else if (name == "--log-date") {
+            if (i + 1 >= argc) {
+                args.error = "--log-date requires a date argument, e.g. --log-date 2026-06-19";
+                break;
+            }
+            args.logDateArg = argv[++i];
+
         } else {
             args.error = std::string("Option '") + arg + "' is not yet implemented";
             break;

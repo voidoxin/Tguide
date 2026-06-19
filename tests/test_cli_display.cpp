@@ -10,6 +10,7 @@
 #include "cli_display.h"
 #include "DatabaseManager.h"
 #include "UserDataManager.h"
+#include "logger.h"
 #include "svc_savedScripts.h"
 #include "fixtures.h"
 #include <string>
@@ -21,6 +22,7 @@
 
 using json = nlohmann::json;
 using namespace std;
+namespace fs = std::filesystem;
 
 // Helper: open the seed database for direct query
 static string seedDbPath() {
@@ -464,4 +466,208 @@ TEST_CASE("printUsage shows update flags") {
     printUsage(oss);
     CHECK(oss.str().find("--update") != std::string::npos);
     CHECK(oss.str().find("--check-update") != std::string::npos);
+}
+
+//
+// Log query command tests (STEP-25)
+//
+
+TEST_CASE("runLogCommand — --log shows all entries") {
+    test_fixtures::TempDirectory dir;
+    fs::path logPath = dir.path / "tguide.log";
+
+    Logger::instance().init(logPath.string());
+
+    // Write some entries
+    Logger::instance().info("test entry one");
+    Logger::instance().warning("test entry two");
+
+    // Build args
+    ParsedArgs args;
+    args.logView = true;
+
+    // Capture stdout
+    std::stringstream buffer;
+    std::streambuf* old = std::cout.rdbuf(buffer.rdbuf());
+
+    runLogCommand(args);
+
+    std::cout.rdbuf(old);
+    std::string output = buffer.str();
+
+    CHECK(output.find("test entry one") != std::string::npos);
+    CHECK(output.find("test entry two") != std::string::npos);
+}
+
+TEST_CASE("runLogCommand — --log-b shows last boot entries") {
+    test_fixtures::TempDirectory dir;
+    fs::path logPath = dir.path / "tguide.log";
+
+    // Create a raw log file with entries from two different boots.
+    // We write the file manually to simulate two boot sessions.
+    {
+        std::ofstream f(logPath.string());
+        // Boot 1 entries
+        f << "2026-06-19 10:00:00 [INFO] [boot=1] first boot: startup\n";
+        f << "2026-06-19 10:01:00 [ERROR] [boot=1] first boot: something failed\n";
+        // Boot 2 entries
+        f << "2026-06-19 11:00:00 [INFO] [boot=2] second boot: started\n";
+        f << "2026-06-19 11:01:00 [WARNING] [boot=2] second boot: warning\n";
+    }
+
+    // Init logger — will scan file, find maxBootId=2, set current to 3
+    Logger::instance().init(logPath.string());
+
+    // Also write a new entry for the current boot (boot 3)
+    Logger::instance().info("current boot entry");
+
+    ParsedArgs args;
+    args.logLastBoot = true;
+
+    std::stringstream buffer;
+    std::streambuf* old = std::cout.rdbuf(buffer.rdbuf());
+
+    runLogCommand(args);
+
+    std::cout.rdbuf(old);
+    std::string output = buffer.str();
+
+    // Should contain boot 2 entries (current boot is 3, so last boot is 2)
+    CHECK(output.find("second boot: started") != std::string::npos);
+    CHECK(output.find("second boot: warning") != std::string::npos);
+    // Should NOT contain boot 1 or boot 3 entries
+    CHECK(output.find("first boot:") == std::string::npos);
+    CHECK(output.find("current boot entry") == std::string::npos);
+}
+
+TEST_CASE("runLogCommand — --log-b-1 shows boot before last") {
+    test_fixtures::TempDirectory dir;
+    fs::path logPath = dir.path / "tguide.log";
+
+    // Create raw log with three boots
+    {
+        std::ofstream f(logPath.string());
+        f << "2026-06-19 10:00:00 [INFO] [boot=1] boot 1 entry\n";
+        f << "2026-06-19 11:00:00 [INFO] [boot=2] boot 2 entry\n";
+        f << "2026-06-19 12:00:00 [INFO] [boot=3] boot 3 entry\n";
+    }
+
+    Logger::instance().init(logPath.string());
+    // current boot = 4
+
+    ParsedArgs args;
+    args.logBootOffset = 1;
+    // target = current - 1 - 1 = 4 - 1 - 1 = 2
+
+    std::stringstream buffer;
+    std::streambuf* old = std::cout.rdbuf(buffer.rdbuf());
+
+    runLogCommand(args);
+
+    std::cout.rdbuf(old);
+    std::string output = buffer.str();
+
+    CHECK(output.find("boot 2 entry") != std::string::npos);
+    CHECK(output.find("boot 1 entry") == std::string::npos);
+    CHECK(output.find("boot 3 entry") == std::string::npos);
+}
+
+TEST_CASE("runLogCommand — --log-date filters entries by date") {
+    test_fixtures::TempDirectory dir;
+    fs::path logPath = dir.path / "tguide.log";
+
+    // Create raw log with entries on different dates
+    {
+        std::ofstream f(logPath.string());
+        f << "2026-06-18 10:00:00 [INFO] [boot=1] yesterday entry\n";
+        f << "2026-06-19 10:00:00 [INFO] [boot=1] today entry one\n";
+        f << "2026-06-19 11:00:00 [INFO] [boot=1] today entry two\n";
+        f << "2026-06-20 10:00:00 [INFO] [boot=1] tomorrow entry\n";
+    }
+
+    Logger::instance().init(logPath.string());
+
+    ParsedArgs args;
+    args.logDateArg = "2026-06-19";
+
+    std::stringstream buffer;
+    std::streambuf* old = std::cout.rdbuf(buffer.rdbuf());
+
+    runLogCommand(args);
+
+    std::cout.rdbuf(old);
+    std::string output = buffer.str();
+
+    CHECK(output.find("today entry one") != std::string::npos);
+    CHECK(output.find("today entry two") != std::string::npos);
+    CHECK(output.find("yesterday entry") == std::string::npos);
+    CHECK(output.find("tomorrow entry") == std::string::npos);
+}
+
+TEST_CASE("runLogCommand — --log-date with no matches shows empty message") {
+    test_fixtures::TempDirectory dir;
+    fs::path logPath = dir.path / "tguide.log";
+
+    {
+        std::ofstream f(logPath.string());
+        f << "2026-06-19 10:00:00 [INFO] [boot=1] some entry\n";
+    }
+
+    Logger::instance().init(logPath.string());
+
+    ParsedArgs args;
+    args.logDateArg = "2025-01-01";
+
+    std::stringstream buffer;
+    std::streambuf* old = std::cout.rdbuf(buffer.rdbuf());
+
+    runLogCommand(args);
+
+    std::cout.rdbuf(old);
+    std::string output = buffer.str();
+
+    CHECK(output.find("no matching log entries") != std::string::npos);
+}
+
+TEST_CASE("runLogCommand — uninitialized logger returns error") {
+    // Reset the singleton so we can test the uninitialized path
+    Logger::instance().resetForTesting();
+    CHECK_FALSE(Logger::instance().isInitialized());
+
+    ParsedArgs args;
+    args.logView = true;
+
+    // Capture stderr
+    std::stringstream buffer;
+    std::streambuf* old = std::cerr.rdbuf(buffer.rdbuf());
+
+    int result = runLogCommand(args);
+
+    std::cerr.rdbuf(old);
+    std::string output = buffer.str();
+
+    CHECK(result == 1);
+    CHECK(output.find("Logger not initialized") != std::string::npos);
+}
+
+TEST_CASE("runLogCommand — --log-b with single boot shows all entries") {
+    test_fixtures::TempDirectory dir;
+    fs::path logPath = dir.path / "tguide.log";
+
+    Logger::instance().init(logPath.string());
+    Logger::instance().info("only boot entry");
+
+    ParsedArgs args;
+    args.logLastBoot = true;
+
+    std::stringstream buffer;
+    std::streambuf* old = std::cout.rdbuf(buffer.rdbuf());
+
+    runLogCommand(args);
+
+    std::cout.rdbuf(old);
+    std::string output = buffer.str();
+
+    // With a single boot, --log-b should show its entries
+    CHECK(output.find("only boot entry") != std::string::npos);
 }

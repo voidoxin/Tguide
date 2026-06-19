@@ -344,3 +344,88 @@ TEST_CASE("parseArgs — --check-update --quiet combined") {
     CHECK(args.quiet == true);
     CHECK(args.error.empty());
 }
+
+//
+// Log query flags (STEP-25)
+//
+
+TEST_CASE("parseArgs — --log (long form)") {
+    const char* argv[] = {"tguide", "--log", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK(args.logView == true);
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — --log-b") {
+    const char* argv[] = {"tguide", "--log-b", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK(args.logLastBoot == true);
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — --log-b-1 (N=1)") {
+    const char* argv[] = {"tguide", "--log-b-1", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK(args.logBootOffset == 1);
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — --log-b-3 (N=3)") {
+    const char* argv[] = {"tguide", "--log-b-3", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK(args.logBootOffset == 3);
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — --log-date with valid date") {
+    const char* argv[] = {"tguide", "--log-date", "2026-06-19", nullptr};
+    auto args = parseArgs(3, const_cast<char**>(argv));
+    CHECK(args.logDateArg == "2026-06-19");
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("parseArgs — --log-date without argument produces error") {
+    const char* argv[] = {"tguide", "--log-date", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK_FALSE(args.error.empty());
+    CHECK(args.error.find("--log-date requires") != std::string::npos);
+}
+
+TEST_CASE("parseArgs — --log-b- (no number → error)") {
+    const char* argv[] = {"tguide", "--log-b-", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK_FALSE(args.error.empty());
+    CHECK(args.error.find("Missing number after --log-b-") != std::string::npos);
+}
+
+TEST_CASE("parseArgs — --log-b-abc (non-numeric → invalid format → error)") {
+    const char* argv[] = {"tguide", "--log-b-abc", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK_FALSE(args.error.empty());
+    CHECK(args.error.find("Invalid --log-b-N format") != std::string::npos);
+}
+
+TEST_CASE("parseArgs — --log-b-0 (N < 1 → error)") {
+    const char* argv[] = {"tguide", "--log-b-0", nullptr};
+    auto args = parseArgs(2, const_cast<char**>(argv));
+    CHECK_FALSE(args.error.empty());
+    CHECK(args.error.find("N >= 1") != std::string::npos);
+}
+
+TEST_CASE("parseArgs — --log combined with --log-b") {
+    // Both should be set — useful for testing combined flags
+    const char* argv[] = {"tguide", "--log", "--log-b", nullptr};
+    auto args = parseArgs(3, const_cast<char**>(argv));
+    CHECK(args.logView == true);
+    CHECK(args.logLastBoot == true);
+    CHECK(args.error.empty());
+}
+
+TEST_CASE("printUsage shows log flags") {
+    std::ostringstream oss;
+    printUsage(oss);
+    CHECK(oss.str().find("--log") != std::string::npos);
+    CHECK(oss.str().find("--log-b") != std::string::npos);
+    CHECK(oss.str().find("--log-b-<N>") != std::string::npos);
+    CHECK(oss.str().find("--log-date") != std::string::npos);
+}

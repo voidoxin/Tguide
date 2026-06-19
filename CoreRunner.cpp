@@ -111,6 +111,13 @@ int main(int argc, char* argv[]) {
     // ── init logger ─────────────────────────────────────────────
     Logger::instance().init(PathResolver::logFile().string());
 
+    // ── CLI log query commands (--log, --log-b, --log-date) ──
+    // Logger is already initialized — these can run immediately.
+    if (args.logView || args.logLastBoot || args.logBootOffset >= 0 ||
+        !args.logDateArg.empty()) {
+        return runLogCommand(args);
+    }
+
     // ── handle --cache-clear: wipe cached data and exit ──────────
     if (args.cacheClear) {
         std::string cachePath = PathResolver::cacheFile().string();
