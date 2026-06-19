@@ -13,7 +13,7 @@
 - **L1-services**: svc_tools with search index, svc_generator with input sanitization, svc_dto decoupling layer, string table re-export, A6 DTO pattern fixed.
 - **L2-Interface_Engine**: UI_Engine with readInput(), colors with isatty()/g_colorEnabled, tool detail/category/vulnerability/module screens, template fill workflow, generator wizard, A4 header isolation fixed, A7 build-time layer enforcement fixed.
 - **Testing**: doctest framework with 28+ test cases across SHA256, ConfigManager, UserDataManager, DB recovery. CTest integration.
-- **Key remaining work before v1.0**: Replace data_adder.cpp with professional Python toolchain (STEP-DB — DONE), fix database bootstrap for no-internet first boot: installDbFile() done (STEP-B1a — DONE), bundle seed DB in CMake (STEP-B1b — DONE), fix copyDefaultToConfig() (STEP-B1c — DONE), make manifest fetch non-fatal (STEP-B1d — DONE); cross-platform path resolution (STEP-B2a — DONE), Windows + Termux path resolution (STEP-B2b — DONE), Windows CMake toolchain + MSVC compatibility (STEP-B3a — DONE), Windows ANSI colors + signal handling (STEP-B3b — DONE), Windows support (STEP-B3), cross-platform validation (STEP-CP2), enhanced search (STEP-R1), saved commands/scripts screens (STEP-R2/R3), settings screen completion (STEP-R4), remove all stubs (STEP-R5), shadow swap update system (STEP-17/18), fix manifest URL to use GitHub Releases (STEP-MU), CLI argument parser framework (STEP-19 — DONE); output & configuration flags (STEP-20 — DONE); tool & vulnerability display (STEP-21 — DONE); remaining CLI flags (STEP-22 through STEP-26); missing config parameters & Settings UI completion (STEP-27 through STEP-29); extension data system (STEP-30 through STEP-33); remove dev-only code (STEP-61), full QA (STEP-62), and packaging for AUR/Homebrew/Deb/Windows + v1.0 release (STEP-PK1-5).
+- **Key remaining work before v1.0**: Replace data_adder.cpp with professional Python toolchain (STEP-DB — DONE), fix database bootstrap for no-internet first boot: installDbFile() done (STEP-B1a — DONE), bundle seed DB in CMake (STEP-B1b — DONE), fix copyDefaultToConfig() (STEP-B1c — DONE), make manifest fetch non-fatal (STEP-B1d — DONE); cross-platform path resolution (STEP-B2a — DONE), Windows + Termux path resolution (STEP-B2b — DONE), Windows CMake toolchain + MSVC compatibility (STEP-B3a — DONE), Windows ANSI colors + signal handling (STEP-B3b — DONE), Windows support (STEP-B3), cross-platform validation (STEP-CP2), enhanced search (STEP-R1), saved commands/scripts screens (STEP-R2/R3), settings screen completion (STEP-R4), remove all stubs (STEP-R5), shadow swap update system (STEP-17/18), fix manifest URL to use GitHub Releases (STEP-MU), CLI argument parser framework (STEP-19 — DONE); output & configuration flags (STEP-20 — DONE); tool & vulnerability display (STEP-21 — DONE); remaining CLI flags (STEP-23 through STEP-26); missing config parameters & Settings UI completion (STEP-27 through STEP-29); extension data system (STEP-30 through STEP-33); remove dev-only code (STEP-61), full QA (STEP-62), and packaging for AUR/Homebrew/Deb/Windows + v1.0 release (STEP-PK1-5).
 
 ## Architecture Reference
 ```
@@ -677,11 +677,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L0 / BOOTSTRAP |
 | Priority   | MEDIUM |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | L0-core/src/cli_parser.cpp, L1-services/src/svc_savedScripts.cpp |
 | Goal       | Implement saved data and export flags defined in `flags_tguide.md` sections 7 and 8: `--saved-scripts` / `-sc` (display saved scripts and exit), `--export-text <path>`, `--export-json <path>`, `--export-yaml <path>`, and `--export-csv <path>` (export command output to a file in the specified format). Export captures result data only (not errors). |
 | Depends    | STEP-21 |
 | Done when  | `--saved-scripts` displays all saved scripts; each export flag writes output to specified path in correct format; `--export-json` reports error if data cannot be represented as JSON; export works when paired with any base command; all 60+ existing tests still pass |
+| Completed  | **2026-06-19** (`cf53f12`) — Implemented saved data display and export flags: `--saved-scripts`/`-sc` displays saved scripts; `--export-text`/`--export-json`/`--export-yaml`/`--export-csv` export to file formats. New files: `cli_export.h/.cpp` with RFC 4180 CSV quoting, nlohmann/json JSON output, hand-rolled YAML with special-character escaping. 20 new test cases (126 total, 354 assertions). Build: 0 warnings, 0 errors. Code review: CRITICAL (YAML newline escape) and HIGH (cout RAII guard) issues fixed before merge. ✅ |
 
 ### STEP-23 — Update flags
 | Field      | Value |
@@ -1194,7 +1195,7 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-19 | Release R3b | L0 / BOOTSTRAP | CLI argument parser framework (--help, --version, --yes) | [x] DONE |
 | STEP-20 | Release R3b | L0 / BOOTSTRAP | Output & configuration flags (--quiet, --verbose, --set, etc.) | [x] DONE |
 | STEP-21 | Release R3b | L0 / BOOTSTRAP | Tool & vulnerability display (--tool, --vuln, --filter, --category) | [x] DONE |
-| STEP-22 | Release R3b | L0 / BOOTSTRAP | Saved data & export flags (--saved-scripts, --export-*) |
+| STEP-22 | Release R3b | L0 / BOOTSTRAP | Saved data & export flags (--saved-scripts, --export-*) | [x] DONE |
 | STEP-23 | Release R3b | L0 / BOOTSTRAP | Update flags (--update, --check-update) |
 | STEP-24 | Release R3b | L0 | Log system core (logger, rotation, retention policy) |
 | STEP-25 | Release R3b | L0 / BOOTSTRAP | Log query flags (--log, --log-b*, --log-date, viewer) |
