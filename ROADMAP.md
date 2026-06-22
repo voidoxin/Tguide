@@ -13,7 +13,7 @@
 - **L1-services**: svc_tools with search index, svc_generator with input sanitization, svc_dto decoupling layer, string table re-export, A6 DTO pattern fixed.
 - **L2-Interface_Engine**: UI_Engine with readInput(), colors with isatty()/g_colorEnabled, tool detail/category/vulnerability/module screens, template fill workflow, generator wizard, A4 header isolation fixed, A7 build-time layer enforcement fixed.
 - **Testing**: doctest framework with 28+ test cases across SHA256, ConfigManager, UserDataManager, DB recovery. CTest integration.
-- **Key remaining work before v1.0**: Replace data_adder.cpp with professional Python toolchain (STEP-DB — DONE), fix database bootstrap for no-internet first boot: installDbFile() done (STEP-B1a — DONE), bundle seed DB in CMake (STEP-B1b — DONE), fix copyDefaultToConfig() (STEP-B1c — DONE), make manifest fetch non-fatal (STEP-B1d — DONE); cross-platform path resolution (STEP-B2a — DONE), Windows + Termux path resolution (STEP-B2b — DONE), Windows CMake toolchain + MSVC compatibility (STEP-B3a — DONE), Windows ANSI colors + signal handling (STEP-B3b — DONE), Windows support (STEP-B3), cross-platform validation (STEP-CP2), enhanced search (STEP-R1), saved commands/scripts screens (STEP-R2/R3), settings screen completion (STEP-R4), remove all stubs (STEP-R5), shadow swap update system (STEP-17/18), fix manifest URL to use GitHub Releases (STEP-MU), CLI argument parser framework (STEP-19 — DONE); output & configuration flags (STEP-20 — DONE); tool & vulnerability display (STEP-21 — DONE); update flags (STEP-23 — DONE); log system core (STEP-24 — DONE); log query flags (STEP-25 — DONE); pagination flags (STEP-26); missing config parameters & Settings UI completion (STEP-27 through STEP-29); extension data system (STEP-30 through STEP-33); remove dev-only code (STEP-61), full QA (STEP-62), and packaging for AUR/Homebrew/Deb/Windows + v1.0 release (STEP-PK1-5).
+- **Key remaining work before v1.0**: Replace data_adder.cpp with professional Python toolchain (STEP-DB — DONE), fix database bootstrap for no-internet first boot: installDbFile() done (STEP-B1a — DONE), bundle seed DB in CMake (STEP-B1b — DONE), fix copyDefaultToConfig() (STEP-B1c — DONE), make manifest fetch non-fatal (STEP-B1d — DONE); cross-platform path resolution (STEP-B2a — DONE), Windows + Termux path resolution (STEP-B2b — DONE), Windows CMake toolchain + MSVC compatibility (STEP-B3a — DONE), Windows ANSI colors + signal handling (STEP-B3b — DONE), Windows support (STEP-B3), cross-platform validation (STEP-CP2), enhanced search (STEP-R1), saved commands/scripts screens (STEP-R2/R3), settings screen completion (STEP-R4), remove all stubs (STEP-R5), shadow swap update system (STEP-17/18), fix manifest URL to use GitHub Releases (STEP-MU), CLI argument parser framework (STEP-19 — DONE); output & configuration flags (STEP-20 — DONE); tool & vulnerability display (STEP-21 — DONE); update flags (STEP-23 — DONE); log system core (STEP-24 — DONE); log query flags (STEP-25 — DONE); pagination flags (STEP-26 — DONE); missing config parameters & Settings UI completion (STEP-27 through STEP-29); extension data system (STEP-30 through STEP-33); remove dev-only code (STEP-61), full QA (STEP-62), and packaging for AUR/Homebrew/Deb/Windows + v1.0 release (STEP-PK1-5).
 
 ## Architecture Reference
 ```
@@ -635,7 +635,7 @@ L0-core → L1-services → L2-Interface_Engine
 | Depends    | STEP-17b |
 | Completed  | **2026-06-18** (commit 92d2be2) — Added pending-update notification banner in main menu: yellow bold `[!] Update Ready — Restart to Apply` shown when `DBCacheManager::hasPendingUpdate()` is true. Renamed `[U] Update Database` → `[C] Check for Updates` in Database Management screen with updated success message ("Apply from this menu or restart"). Added conditional `[A] Apply Update Now` option that calls `DBResolver::applyPendingSwap()` in-session, clears pending flag, and saves cache. All 60/60 tests pass. Build: zero warnings. Code review: APPROVED ✅. |
 
-## Release Phase R3b — CLI Arguments & Non-Interactive Mode (8 steps)
+## Release Phase R3b — CLI Arguments & Non-Interactive Mode (8 steps) ✅ COMPLETE
 ### STEP-19 — CLI argument parser framework
 | Field      | Value |
 |------------|-------|
@@ -725,11 +725,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L0 / L3 |
 | Priority   | MEDIUM |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | L0-core/include/paginator.h (NEW), L0-core/src/paginator.cpp (NEW), L0-core/src/config_manager.cpp |
 | Goal       | Implement a pagination engine for large output sets: page size configurable via `--set page-size=N` (default appropriate for terminal, e.g. 10-20 items), pagination enabled by default, config option to disable permanently, and `--stream` / `-S` flag to disable pagination for one session only. Each page shows N items then pauses for key press (Enter/Space = next page, q = quit). Integrate with all CLI output paths. |
 | Depends    | STEP-25 |
 | Done when  | Pagination engine works with all display commands; page size is configurable and respected; `--stream` disables pagination for one session only; pagination can be permanently disabled via `--set pagination=off`; key controls work (Enter advances, q quits); all 60+ existing tests still pass |
+| Completed  | **2026-06-19** (`c46eccd`) — Implemented CLI output pagination engine in L0-core: `Paginator::paginate()` splits output by newlines and prints page-by-page with `-- More --` prompt (Enter=next, q=quit). Streaming mode (`--stream`/`-S` or `g_stream` session flag) prints all output at once. Config keys `pagination` (1=on default) and `page-size` (20 default) added to ConfigManager defaults. Integrated with all CLI display commands (--tool, --vuln, --category, --saved-scripts, --log). Exports use raw captured output before pagination. 3 code review fixes: duplicate formatEntry lambda extracted to shared static function, pageSize threaded to showLogViewer, interactive pagination tests added. 8 paginator tests (8 total). 181 test cases, 504 assertions. Build: 0 warnings, 0 errors. ✅ |
 
 ## Release Phase R3c — Settings Completion & Extension Data System (7 steps)
 ### STEP-27 — Add missing config parameters (lang, db_update_behavior, extension_priority)
@@ -1202,7 +1203,7 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-23 | Release R3b | L0 / BOOTSTRAP | Update flags (--update, --check-update) | [x] DONE |
 | STEP-24 | Release R3b | L0 | Log system core (logger, rotation, retention policy) | [x] DONE |
 | STEP-25 | Release R3b | L0 / BOOTSTRAP | Log query flags (--log, --log-b*, --log-date, viewer) | [x] DONE |
-| STEP-26 | Release R3b | L0 / L3 | Pagination system (paginator, --stream, page-size config) |
+| STEP-26 | Release R3b | L0 / L3 | Pagination system (paginator, --stream, page-size config) | [x] DONE |
 | STEP-27 | Release R3c | L0 | Config: add lang, db_update_behavior, extension_priority defaults |
 | STEP-28 | Release R3c | L2 | Settings UI: language, DB update behavior, extension priority |
 | STEP-29 | Release R3c | L0 / BOOTSTRAP | Wire DB update behavior (never/ask_me/auto) into update workflow |
