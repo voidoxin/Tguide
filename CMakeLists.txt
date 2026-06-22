@@ -215,6 +215,7 @@ set(L0_SOURCES
     ${CMAKE_SOURCE_DIR}/L0-core/src/string_utils.cpp
     ${CMAKE_SOURCE_DIR}/L0-core/src/UserDataManager.cpp
     ${CMAKE_SOURCE_DIR}/L0-core/src/logger.cpp
+    ${CMAKE_SOURCE_DIR}/L0-core/src/paginator.cpp
 )
 
 add_library(L0_core STATIC ${L0_SOURCES})

@@ -75,6 +75,7 @@ int main(int argc, char* argv[]) {
     g_verboseMode = args.verbose;
     g_offlineMode = args.offline;
     g_noBanner    = args.noBanner;
+    g_stream      = args.stream;
 
     // ── ensure curl_global_cleanup() is called on all exit paths ─
     struct CurlGuard { ~CurlGuard() { curl_global_cleanup(); } } curlGuard;
@@ -115,7 +116,8 @@ int main(int argc, char* argv[]) {
     // Logger is already initialized — these can run immediately.
     if (args.logView || args.logLastBoot || args.logBootOffset >= 0 ||
         !args.logDateArg.empty()) {
-        return runLogCommand(args);
+        // Config is not yet loaded — use defaults (paginated, 20 lines/page)
+        return runLogCommand(args, true, 20);
     }
 
     // ── handle --cache-clear: wipe cached data and exit ──────────
@@ -212,7 +214,9 @@ int main(int argc, char* argv[]) {
         !args.exportYamlArg.empty() || !args.exportCsvArg.empty() ||
         !args.toolArg.empty() || args.vuln ||
         !args.categoryArg.empty() || !args.filterArg.empty()) {
-        return runDisplayCommand(args, PathResolver::dbFile().string());
+        return runDisplayCommand(args, PathResolver::dbFile().string(),
+                                 cfg.get<int>("pagination", 1) == 1,
+                                 cfg.get<int>("page-size", 20));
     }
 
     // ── init cache before any DB class is constructed ──────────────────────

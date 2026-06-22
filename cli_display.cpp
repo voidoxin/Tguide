@@ -12,6 +12,8 @@
 #include "L0-core/include/db_cache_manager.h"
 #include "L0-core/include/UserDataManager.h"
 #include "L0-core/include/logger.h"
+#include "L0-core/include/paginator.h"
+#include "L0-core/include/session_flags.h"
 #include "L1-services/includes/svc_savedScripts.h"
 #include <iostream>
 #include <vector>
@@ -419,49 +421,46 @@ static void handleCategoryCommand(const std::string& dbPath,
 // ==============================================================
 // Log viewer — interactive page-by-page display
 // ==============================================================
-static void showLogViewer(const std::vector<LogEntry>& entries) {
+// Format a LogEntry as a display line (shared by showLogViewer and stream mode)
+static std::string formatLogEntry(const LogEntry& e) {
+    auto t = std::chrono::system_clock::to_time_t(e.timestamp);
+    std::tm tm;
+#ifdef _WIN32
+    localtime_s(&tm, &t);
+#else
+    localtime_r(&t, &tm);
+#endif
+    std::ostringstream oss;
+    oss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+
+    const char* levelStr = "UNKNOWN";
+    switch (e.level) {
+        case LogLevel::DEBUG:   levelStr = "DEBUG";   break;
+        case LogLevel::INFO:    levelStr = "INFO";    break;
+        case LogLevel::WARNING: levelStr = "WARNING"; break;
+        case LogLevel::ERROR:   levelStr = "ERROR";   break;
+    }
+
+    oss << " [" << levelStr << "]"
+        << " [boot=" << e.bootId << "] "
+        << e.message;
+    return oss.str();
+}
+
+static void showLogViewer(const std::vector<LogEntry>& entries, size_t pageSize = 20) {
     if (entries.empty()) {
         std::cout << "(no matching log entries)\n";
         return;
     }
 
-    const size_t pageSize = 20;
     size_t total = entries.size();
     size_t pos = 0;
-
-    // Format string helper — converts a LogEntry to display line
-    auto formatEntry = [](const LogEntry& e) -> std::string {
-        // Convert timestamp to string
-        auto t = std::chrono::system_clock::to_time_t(e.timestamp);
-        std::tm tm;
-    #ifdef _WIN32
-        localtime_s(&tm, &t);
-    #else
-        localtime_r(&t, &tm);
-    #endif
-        std::ostringstream oss;
-        oss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
-
-        // Level to string
-        const char* levelStr = "UNKNOWN";
-        switch (e.level) {
-            case LogLevel::DEBUG:   levelStr = "DEBUG";   break;
-            case LogLevel::INFO:    levelStr = "INFO";    break;
-            case LogLevel::WARNING: levelStr = "WARNING"; break;
-            case LogLevel::ERROR:   levelStr = "ERROR";   break;
-        }
-
-        oss << " [" << levelStr << "]"
-            << " [boot=" << e.bootId << "] "
-            << e.message;
-        return oss.str();
-    };
 
     while (pos < total) {
         // Print one page
         size_t end = std::min(pos + pageSize, total);
         for (size_t i = pos; i < end; ++i) {
-            std::cout << formatEntry(entries[i]) << '\n';
+            std::cout << formatLogEntry(entries[i]) << '\n';
         }
         pos = end;
 
@@ -488,7 +487,7 @@ static void showLogViewer(const std::vector<LogEntry>& entries) {
 // ==============================================================
 // runLogCommand — dispatches log query flags
 // ==============================================================
-int runLogCommand(const ParsedArgs& args) {
+int runLogCommand(const ParsedArgs& args, bool paginationEnabled, int pageSize) {
     if (!Logger::instance().isInitialized()) {
         std::cerr << "Error: Logger not initialized.\n";
         return 1;
@@ -518,20 +517,38 @@ int runLogCommand(const ParsedArgs& args) {
         entries = Logger::instance().entriesForDate(args.logDateArg);
     }
 
-    showLogViewer(entries);
+    bool streamMode = g_stream || !paginationEnabled;
+
+    if (streamMode) {
+        if (entries.empty()) {
+            std::cout << "(no matching log entries)\n";
+        } else {
+            for (const auto& e : entries) {
+                std::cout << formatLogEntry(e) << '\n';
+            }
+        }
+    } else {
+        showLogViewer(entries, static_cast<size_t>(pageSize));
+    }
     return 0;
 }
 
 // ==============================================================
 // Main dispatch — called after bootstrap, before UI start
 // ==============================================================
-int runDisplayCommand(const ParsedArgs& args, const std::string& dbPath) {
+int runDisplayCommand(const ParsedArgs& args, const std::string& dbPath,
+                      bool paginationEnabled, int pageSize) {
     bool hasExport = !args.exportTextArg.empty() || !args.exportJsonArg.empty()
                   || !args.exportYamlArg.empty() || !args.exportCsvArg.empty();
 
     // ── Saved scripts command ────────────────────────────
     if (args.savedScripts) {
         auto scripts = SvcSavedScripts::getAllScripts();
+
+        // Capture display output to a stringstream
+        std::stringstream scriptBuffer;
+        auto* oldScript = std::cout.rdbuf(scriptBuffer.rdbuf());
+
         // Display the scripts
         if (scripts.empty()) {
             std::cout << "No saved scripts found.\n"
@@ -549,12 +566,24 @@ int runDisplayCommand(const ParsedArgs& args, const std::string& dbPath) {
             std::cout << scripts.size() << " script(s) total.\n";
         }
 
+        std::cout.rdbuf(oldScript);
+        std::string scriptOutput = scriptBuffer.str();
+
         // Export (uses the already-fetched scripts vector)
         bool ok = true;
         if (!args.exportTextArg.empty()) ok &= exportScriptsToText(scripts, args.exportTextArg);
         if (!args.exportJsonArg.empty()) ok &= exportScriptsToJson(scripts, args.exportJsonArg);
         if (!args.exportYamlArg.empty()) ok &= exportScriptsToYaml(scripts, args.exportYamlArg);
         if (!args.exportCsvArg.empty())  ok &= exportScriptsToCsv(scripts, args.exportCsvArg);
+
+        // Display with pagination
+        bool skipPagination = g_stream || !paginationEnabled;
+        if (!skipPagination && !scriptOutput.empty()) {
+            Paginator::paginate(scriptOutput, pageSize, false);
+        } else if (!scriptOutput.empty()) {
+            std::cout << scriptOutput;
+        }
+
         return ok ? 0 : 1;
     }
 
@@ -580,8 +609,8 @@ int runDisplayCommand(const ParsedArgs& args, const std::string& dbPath) {
         }
         std::cout.rdbuf(old);
         std::string output = buffer.str();
-        std::cout << output;
 
+        // Exports use the raw output — run BEFORE pagination
         bool ok = true;
         if (!args.exportTextArg.empty())
             ok &= exportTextContent(output, args.exportTextArg);
@@ -602,6 +631,11 @@ int runDisplayCommand(const ParsedArgs& args, const std::string& dbPath) {
                       << "Use --export-text instead.\n";
             ok = false;
         }
+
+        // Display with pagination
+        bool skipPagination = g_stream || !paginationEnabled;
+        Paginator::paginate(output, pageSize, skipPagination);
+
         return ok ? 0 : 1;
     };
 

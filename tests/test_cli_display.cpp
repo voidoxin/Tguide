@@ -11,6 +11,7 @@
 #include "DatabaseManager.h"
 #include "UserDataManager.h"
 #include "logger.h"
+#include "session_flags.h"
 #include "svc_savedScripts.h"
 #include "fixtures.h"
 #include <string>
@@ -30,11 +31,11 @@ static string seedDbPath() {
 }
 
 // Helper: capture stdout from a call to runDisplayCommand
-static string captureDisplay(const ParsedArgs& args) {
+static string captureDisplay(const ParsedArgs& args, bool paginationEnabled = false, int pageSize = 9999) {
     stringstream buffer;
     streambuf* old = cout.rdbuf(buffer.rdbuf());
 
-    runDisplayCommand(args, seedDbPath());
+    runDisplayCommand(args, seedDbPath(), paginationEnabled, pageSize);
 
     cout.rdbuf(old);
     return buffer.str();
@@ -380,7 +381,7 @@ TEST_CASE("export without base command shows error") {
     ParsedArgs args;
     args.exportTextArg = "/tmp/some_file.txt";
 
-    int result = runDisplayCommand(args, seedDbPath());
+    int result = runDisplayCommand(args, seedDbPath(), false, 9999);
     CHECK(result == 1);  // Error expected
 }
 
@@ -670,4 +671,55 @@ TEST_CASE("runLogCommand — --log-b with single boot shows all entries") {
 
     // With a single boot, --log-b should show its entries
     CHECK(output.find("only boot entry") != std::string::npos);
+}
+
+//
+// Pagination integration tests (STEP-26)
+//
+
+TEST_CASE("runLogCommand — --stream mode outputs all at once") {
+    test_fixtures::TempDirectory dir;
+    fs::path logPath = dir.path / "tguide.log";
+
+    Logger::instance().init(logPath.string());
+    Logger::instance().info("stream test entry");
+
+    ParsedArgs args;
+    args.logView = true;
+
+    bool oldStream = g_stream;
+    g_stream = true;
+
+    std::stringstream buffer;
+    std::streambuf* old = std::cout.rdbuf(buffer.rdbuf());
+
+    runLogCommand(args, true, 20);
+
+    std::cout.rdbuf(old);
+    g_stream = oldStream;
+    std::string output = buffer.str();
+
+    CHECK(output.find("stream test entry") != std::string::npos);
+}
+
+TEST_CASE("runLogCommand — pagination disabled shows all at once") {
+    test_fixtures::TempDirectory dir;
+    fs::path logPath = dir.path / "tguide.log";
+
+    Logger::instance().init(logPath.string());
+    Logger::instance().info("disabled pagination test");
+
+    ParsedArgs args;
+    args.logView = true;
+
+    std::stringstream buffer;
+    std::streambuf* old = std::cout.rdbuf(buffer.rdbuf());
+
+    // paginationEnabled = false → stream mode
+    runLogCommand(args, false, 20);
+
+    std::cout.rdbuf(old);
+    std::string output = buffer.str();
+
+    CHECK(output.find("disabled pagination test") != std::string::npos);
 }

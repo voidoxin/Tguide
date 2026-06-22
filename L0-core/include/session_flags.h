@@ -7,3 +7,4 @@ extern bool g_quietMode;    // --quiet: suppress non-critical output
 extern bool g_verboseMode;  // --verbose: print detailed operation trace
 extern bool g_offlineMode;  // --offline: prevent network requests
 extern bool g_noBanner;     // --no-banner: suppress startup banner
+extern bool g_stream;       // --stream / -S: disable pagination for this session
