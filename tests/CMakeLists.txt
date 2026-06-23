@@ -16,8 +16,11 @@ set(TEST_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test_cli_display.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test_logger.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test_paginator.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_ui_input.cpp
     ${CMAKE_SOURCE_DIR}/cli_display.cpp
     ${CMAKE_SOURCE_DIR}/cli_export.cpp
+    ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/src/UI_input.cpp
+    ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/src/UI_utils.cpp
 )
 
 add_executable(tguide_tests ${TEST_SOURCES})
@@ -26,6 +29,7 @@ target_include_directories(tguide_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/libs                         # doctest.h, json.hpp
     ${CMAKE_SOURCE_DIR}/L0-core/include              # sha256.h, config_manager.h, etc.
     ${CMAKE_SOURCE_DIR}/L1-services/includes         # svc_savedCommands.h, svc_dto.h
+    ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/includes # UI_input.h
     ${CMAKE_SOURCE_DIR}                              # cli_display.h
 )
 

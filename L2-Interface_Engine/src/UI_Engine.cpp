@@ -73,7 +73,14 @@ int UIEngine::renderMenu(
         string input = readInput("  → ");
         if (isQuit(input)) { handleQuit(); return 0; }   // 0 = quit sentinel
 
-        int choice = toNumber(input);
+        // Build label list from items for matchOption
+        vector<string> labels;
+        labels.reserve(items.size());
+        for (const auto& item : items) {
+            labels.push_back(item.label);
+        }
+
+        int choice = matchOption(input, labels) + 1;  // matchOption returns 0-based; convert to 1-based
 
         if (choice < 1 || choice > static_cast<int>(items.size())) {
             printInvalidInput();

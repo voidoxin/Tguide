@@ -13,7 +13,8 @@
 - **L1-services**: svc_tools with search index, svc_generator with input sanitization, svc_dto decoupling layer, string table re-export, A6 DTO pattern fixed.
 - **L2-Interface_Engine**: UI_Engine with readInput(), colors with isatty()/g_colorEnabled, tool detail/category/vulnerability/module screens, template fill workflow, generator wizard, A4 header isolation fixed, A7 build-time layer enforcement fixed.
 - **Testing**: doctest framework with 28+ test cases across SHA256, ConfigManager, UserDataManager, DB recovery. CTest integration.
-- **Key remaining work before v1.0**: Replace data_adder.cpp with professional Python toolchain (STEP-DB — DONE), fix database bootstrap for no-internet first boot: installDbFile() done (STEP-B1a — DONE), bundle seed DB in CMake (STEP-B1b — DONE), fix copyDefaultToConfig() (STEP-B1c — DONE), make manifest fetch non-fatal (STEP-B1d — DONE); cross-platform path resolution (STEP-B2a — DONE), Windows + Termux path resolution (STEP-B2b — DONE), Windows CMake toolchain + MSVC compatibility (STEP-B3a — DONE), Windows ANSI colors + signal handling (STEP-B3b — DONE), Windows support (STEP-B3), cross-platform validation (STEP-CP2), enhanced search (STEP-R1), saved commands/scripts screens (STEP-R2/R3), settings screen completion (STEP-R4), remove all stubs (STEP-R5), shadow swap update system (STEP-17/18), fix manifest URL to use GitHub Releases (STEP-MU), CLI argument parser framework (STEP-19 — DONE); output & configuration flags (STEP-20 — DONE); tool & vulnerability display (STEP-21 — DONE); update flags (STEP-23 — DONE); log system core (STEP-24 — DONE); log query flags (STEP-25 — DONE); pagination flags (STEP-26 — DONE); missing config parameters & Settings UI completion (STEP-27 through STEP-29); extension data system (STEP-30 through STEP-33); remove dev-only code (STEP-61), full QA (STEP-62), and packaging for AUR/Homebrew/Deb/Windows + v1.0 release (STEP-PK1-5).
+- **R3b complete**: All 8 CLI/pagination/log steps (STEP-19 through STEP-26) done. Known UX issues: main menu only accepts numbers (text like "tools" fails), no quick-jump-to-main-menu shortcut, script generator is a compile-time stub, no "view all tools" option, templates are read-only (no creation UI). These are addressed in R3b-UX (STEP-26a through STEP-26g).
+- **Key remaining work before v1.0**: Replace data_adder.cpp with professional Python toolchain (STEP-DB — DONE), fix database bootstrap for no-internet first boot: installDbFile() done (STEP-B1a — DONE), bundle seed DB in CMake (STEP-B1b — DONE), fix copyDefaultToConfig() (STEP-B1c — DONE), make manifest fetch non-fatal (STEP-B1d — DONE); cross-platform path resolution (STEP-B2a — DONE), Windows + Termux path resolution (STEP-B2b — DONE), Windows CMake toolchain + MSVC compatibility (STEP-B3a — DONE), Windows ANSI colors + signal handling (STEP-B3b — DONE), Windows support (STEP-B3), cross-platform validation (STEP-CP2), enhanced search (STEP-R1), saved commands/scripts screens (STEP-R2/R3), settings screen completion (STEP-R4), remove all stubs (STEP-R5), shadow swap update system (STEP-17/18), fix manifest URL to use GitHub Releases (STEP-MU), CLI argument parser framework (STEP-19 — DONE); output & configuration flags (STEP-20 — DONE); tool & vulnerability display (STEP-21 — DONE); update flags (STEP-23 — DONE); log system core (STEP-24 — DONE); log query flags (STEP-25 — DONE); pagination flags (STEP-26 — DONE); critical UX fixes & real script system (STEP-26a through STEP-26g); missing config parameters & Settings UI completion (STEP-27 through STEP-29); extension data system (STEP-30 through STEP-33); remove dev-only code (STEP-61), full QA (STEP-62), and packaging for AUR/Homebrew/Deb/Windows + v1.0 release (STEP-PK1-5).
 
 ## Architecture Reference
 ```
@@ -732,6 +733,86 @@ L0-core → L1-services → L2-Interface_Engine
 | Done when  | Pagination engine works with all display commands; page size is configurable and respected; `--stream` disables pagination for one session only; pagination can be permanently disabled via `--set pagination=off`; key controls work (Enter advances, q quits); all 60+ existing tests still pass |
 | Completed  | **2026-06-19** (`c46eccd`) — Implemented CLI output pagination engine in L0-core: `Paginator::paginate()` splits output by newlines and prints page-by-page with `-- More --` prompt (Enter=next, q=quit). Streaming mode (`--stream`/`-S` or `g_stream` session flag) prints all output at once. Config keys `pagination` (1=on default) and `page-size` (20 default) added to ConfigManager defaults. Integrated with all CLI display commands (--tool, --vuln, --category, --saved-scripts, --log). Exports use raw captured output before pagination. 3 code review fixes: duplicate formatEntry lambda extracted to shared static function, pageSize threaded to showLogViewer, interactive pagination tests added. 8 paginator tests (8 total). 181 test cases, 504 assertions. Build: 0 warnings, 0 errors. ✅ |
 
+## Release Phase R3b-UX — Critical UX Bug Fixes & Script System Completion (7 steps)
+
+### STEP-26a — Fix main menu text input: accept both numbers and text labels
+| Field      | Value |
+|------------|-------|
+| Layer      | L2 |
+| Priority   | CRITICAL |
+| Status     | [x] DONE |
+| Files      | L2-Interface_Engine/src/UI_Engine.cpp, L2-Interface_Engine/src/UI_input.cpp |
+| Goal       | Fix the main menu's `renderMenu()` so it accepts both numeric input ("1", "2") AND text labels ("tools", "settings", "saved scripts", "exit", etc.). Currently it only accepts numbers via `toNumber()`, rejecting text input with "invalid choice". Integrate `matchOption()` into the main menu renderer, matching against item labels (case-insensitive), with prefix matching for unambiguous cases. Respect existing `isBack()` (0/back) and `isQuit()` (q/quit/exit) checks. |
+| Depends    | STEP-26 |
+| Done when  | Typing "tools" or "settings" at main menu navigates to the correct screen; typing "exit" or "quit" exits; "0" or "back" still works; partial prefixes like "sav" are accepted when unambiguous; ambiguous prefixes (e.g. "s" matching both "saved commands" and "saved scripts") return to prompt with "ambiguous" message; all 181 existing tests still pass |
+| Completed  | **2026-06-23** — Replaced `toNumber()` with `matchOption()` in `renderMenu()` so main menu accepts text labels ("tools", "settings") in addition to numbers. Build label list from menu items for `matchOption`, then convert 0-based result to 1-based choice. Added 22 new `matchOption` tests in `tests/test_ui_input.cpp`. 203 test cases, 554 assertions. Build: 0 warnings, 0 errors. ✅ |
+
+### STEP-26b — Add quick return to main menu shortcut ("m" / "menu" at any nested screen)
+| Field      | Value |
+|------------|-------|
+| Layer      | L2 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L2-Interface_Engine/src/UI_input.cpp, L2-Interface_Engine/includes/UI_input.h, L2-Interface_Engine/src/UI_tools.cpp, L2-Interface_Engine/src/UI_savedCommands.cpp, L2-Interface_Engine/src/UI_savedScripts.cpp, L2-Interface_Engine/src/UI_settings.cpp, L2-Interface_Engine/src/UI_vulnerabilities.cpp |
+| Goal       | Add a global "jump to main menu" option at every nested menu screen. Define `isMenu(input)` that matches "m", "menu", "home". Every input loop that currently checks `isBack(input)` should also check `isMenu(input)` before `isBack()`. When triggered, the function should unwind directly to the main menu (by returning a sentinel that propagates up through caller chain or by longjmp-style flag). Ensure no resource leaks on unwind (no open file handles, no mutexes). Update prompt text to show "(m)enu" shortcut. |
+| Depends    | STEP-26a |
+| Done when  | Typing "m" or "menu" at any nested screen (tool detail, vulnerability list, saved scripts, settings, etc.) jumps directly back to main menu in one step (not one level up); "(m)enu" hint is visible in all prompts; all 181 existing tests still pass |
+
+### STEP-26c — Verify and harden quick quit: ensure "quit" works at every input prompt
+| Field      | Value |
+|------------|-------|
+| Layer      | L2 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L2-Interface_Engine/src/UI_*.cpp (audit all screens) |
+| Goal       | Audit every single input loop in the entire UI layer to confirm that `isQuit(input)` + `handleQuit()` + `return` is present at every prompt. The current codebase already has quit handlers in most screens (confirmed: 66 `isQuit` calls across 7 files), but a systematic audit must verify 100% coverage: no input loop exists without a quit exit path. Add missing handlers if found. Add integration test that simulates "quit" at every prompt type. Verify handleQuit() safely unwinds to main()->return 0 without resource leaks. |
+| Depends    | STEP-26b |
+| Done when  | Every input loop in L2 has `isQuit()` check before any action processing; no "quit" string ever produces "invalid choice" or gets stuck in loop; `handleQuit()` always leads to clean program exit (return 0 from main); audit document lists every prompt and its quit coverage; all 181 existing tests still pass |
+
+### STEP-26d — Add "View All Tools" option to tools menu with pagination
+| Field      | Value |
+|------------|-------|
+| Layer      | L2 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L2-Interface_Engine/src/UI_tools.cpp |
+| Goal       | Add a new "View All Tools" option as the FIRST item in the Tools menu. Display all tools from the database in a paginated list showing: tool name, category, short description. Use the existing Paginator (STEP-26) for page-by-page display. The user can select a tool from the list to view its detail screen. Respect current pagination config (`page-size`, `--stream`). |
+| Depends    | STEP-26c, STEP-26 (Paginator) |
+| Done when  | Tools menu shows "[1] View All Tools" as first option; selecting it displays all tools alphabetically in paginated format (Enter=next page, q=quit); user can choose a tool number to see its detail; "back" returns to tools menu; all 181 existing tests still pass |
+
+### STEP-26e — Implement real script generation system (merge templates + bash commands)
+| Field      | Value |
+|------------|-------|
+| Layer      | L1 / L2 |
+| Priority   | CRITICAL |
+| Status     | [ ] TODO |
+| Files      | L1-services/includes/svc_generator.h (rewrite), L1-services/src/svc_generator.cpp (rewrite), L2-Interface_Engine/includes/UI_generator.h, L2-Interface_Engine/src/UI_generator.cpp (rewrite), CMakeLists.txt |
+| Goal       | Rewrite the Script Generator from the current stub ("not available in this build") into a real script composition system. The user should be able to: (1) select multiple templates from different tools, (2) insert custom bash commands between template selections (cd, mkdir, echo, etc.), (3) reorder/rearrange the template/bash sequence, and (4) get the final output either as text to copy or as a saved `.sh` file. Remove the `TGUIDE_ENABLE_GENERATOR` compile-time gate — the generator is always available. Implement `SvcGenerator::buildScript()` that takes a sequence of steps (template IDs + custom bash lines) and outputs the merged script string. The generated script should have a header comment with tool/date metadata and proper shebang (`#!/bin/bash`). |
+| Depends    | STEP-26d |
+| Done when  | User can browse tools, select templates, add bash commands between them, reorder the sequence, preview the merged script, and choose to save as file or copy to clipboard (display as text); generated scripts have proper shebang, metadata header, and correct template syntax; `TGUIDE_ENABLE_GENERATOR` is removed so generator is always compiled in; all 181 existing tests still pass |
+
+### STEP-26f — Add script save prompt with configurable default path
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 / L2 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L0-core/src/config_manager.cpp, L2-Interface_Engine/src/UI_generator.cpp, L2-Interface_Engine/src/UI_savedScripts.cpp |
+| Goal       | After generating a script (STEP-26e), prompt the user: "Save to file? (default: ~/.local/share/tguide/scripts/script_N.sh) [path/Enter=default]:". If the user presses Enter without input, save to the default path (from config key `export.script_path` or fallback to PathResolver::scriptsDir()). If the user enters a custom path, save there. Add `export.script_path` config key to ConfigManager defaults (default empty → use PathResolver::scriptsDir()). The user should be able to change the default in Settings. Update Settings UI to include "Default Script Save Path". |
+| Depends    | STEP-26e |
+| Done when  | Script generation prompts for save location; Enter uses config default or fallback; custom path is accepted and file is written; config key `export.script_path` is get/settable via ConfigManager; Settings menu shows "Default Script Save Path" option; all 181 existing tests still pass |
+
+### STEP-26g — Implement template creation flow (browse category / search tool / make own)
+| Field      | Value |
+|------------|-------|
+| Layer      | L2 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L2-Interface_Engine/src/UI_tools.cpp, L2-Interface_Engine/includes/UI_tools.h, L0-core/src/DatabaseManager.cpp |
+| Goal       | Replace any free-form "type your template" UI in the saved templates section with a structured three-option flow when the user wants to add a new template: (1) Browse by Category — choose a category, then a tool, then select a template to save, (2) Search Tool — search for a tool by name, then select a template from that tool, (3) Make Own Template — the user writes custom template content (placeholders supported: `{{target}}`, `{{port}}`, etc.) and names it. Saved templates are persisted in UserDataManager (similar to saved commands) and appear alongside DB templates in the template selection screens. |
+| Depends    | STEP-26f |
+| Done when  | "Add New Template" offers three clear options; browse and search flow reuses existing UI navigation components; "Make Own" allows free-form template text with placeholder support; saved templates appear in tool detail template lists with a "(saved)" label; templates persist across restarts; all 181 existing tests still pass |
+
 ## Release Phase R3c — Settings Completion & Extension Data System (7 steps)
 ### STEP-27 — Add missing config parameters (lang, db_update_behavior, extension_priority)
 | Field      | Value |
@@ -1204,6 +1285,13 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-24 | Release R3b | L0 | Log system core (logger, rotation, retention policy) | [x] DONE |
 | STEP-25 | Release R3b | L0 / BOOTSTRAP | Log query flags (--log, --log-b*, --log-date, viewer) | [x] DONE |
 | STEP-26 | Release R3b | L0 / L3 | Pagination system (paginator, --stream, page-size config) | [x] DONE |
+| STEP-26a | Release R3b-UX | L2 | Fix main menu text input: accept both numbers and text labels | [x] DONE |
+| STEP-26b | Release R3b-UX | L2 | Add quick return to main menu shortcut ("m" / "menu") | [ ] TODO |
+| STEP-26c | Release R3b-UX | L2 | Verify and harden quick quit at every input prompt | [ ] TODO |
+| STEP-26d | Release R3b-UX | L2 | Add "View All Tools" option to tools menu with pagination | [ ] TODO |
+| STEP-26e | Release R3b-UX | L1 / L2 | Implement real script generation (merge templates + bash commands) | [ ] TODO |
+| STEP-26f | Release R3b-UX | L0 / L2 | Add script save prompt with configurable default path | [ ] TODO |
+| STEP-26g | Release R3b-UX | L2 | Implement template creation flow (browse/search/custom) | [ ] TODO |
 | STEP-27 | Release R3c | L0 | Config: add lang, db_update_behavior, extension_priority defaults |
 | STEP-28 | Release R3c | L2 | Settings UI: language, DB update behavior, extension priority |
 | STEP-29 | Release R3c | L0 / BOOTSTRAP | Wire DB update behavior (never/ask_me/auto) into update workflow |
