@@ -5,6 +5,7 @@ enum class StringID : int {
     // Tools entry screen
     TOOLS_BROWSE_CATEGORY,
     TOOLS_SEARCH,
+    TOOLS_VIEW_ALL,
     TOOLS_BACK,
     TOOLS_INVALID_CHOICE,
     TOOLS_AMBIGUOUS,

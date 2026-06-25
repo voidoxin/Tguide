@@ -777,11 +777,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L2 |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
-| Files      | L2-Interface_Engine/src/UI_tools.cpp |
+| Status     | [x] DONE |
+| Files      | L0-core/include/string_utils.h, L0-core/src/string_utils.cpp, L1-services/includes/svc_tools.h, L1-services/src/svc_tools.cpp, L2-Interface_Engine/src/UI_tools.cpp |
 | Goal       | Add a new "View All Tools" option as the FIRST item in the Tools menu. Display all tools from the database in a paginated list showing: tool name, category, short description. Use the existing Paginator (STEP-26) for page-by-page display. The user can select a tool from the list to view its detail screen. Respect current pagination config (`page-size`, `--stream`). |
 | Depends    | STEP-26c, STEP-26 (Paginator) |
-| Done when  | Tools menu shows "[1] View All Tools" as first option; selecting it displays all tools alphabetically in paginated format (Enter=next page, q=quit); user can choose a tool number to see its detail; "back" returns to tools menu; all 181 existing tests still pass |
+| Done when  | Tools menu shows "[1] View All Tools" as first option; selecting it displays all tools alphabetically in paginated format (Enter=next page, q=quit); user can choose a tool number to see its detail; "back" returns to tools menu; all 217 existing tests still pass |
+| Completed  | **2026-06-25** — Implemented "View All Tools" option: added `TOOLS_VIEW_ALL` enum to `string_utils.h`, string entry in `string_utils.cpp`, `getAllTools()` in `svc_tools.h`/`svc_tools.cpp` with database query, `showAllTools()` in `UI_tools.cpp` with paginated display and quit/back/menu handlers. 217 tests, 681 assertions, all passing. Build: 0 warnings, 0 errors. ✅ |
 
 ### STEP-26e — Implement real script generation system (merge templates + bash commands)
 | Field      | Value |
@@ -1398,7 +1399,7 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-26a | Release R3b-UX | L2 | Fix main menu text input: accept both numbers and text labels | [x] DONE |
 | STEP-26b | Release R3b-UX | L2 | Add quick return to main menu shortcut ("m" / "menu") | [x] DONE |
 | STEP-26c | Release R3b-UX | L2 | Verify and harden quick quit at every input prompt | [x] DONE |
-| STEP-26d | Release R3b-UX | L2 | Add "View All Tools" option to tools menu with pagination | [ ] TODO |
+| STEP-26d | Release R3b-UX | L2 | Add "View All Tools" option to tools menu with pagination | [x] DONE |
 | STEP-26e | Release R3b-UX | L1 / L2 | Implement real script generation (merge templates + bash commands) | [ ] TODO |
 | STEP-26f | Release R3b-UX | L0 / L2 | Add script save prompt with configurable default path | [ ] TODO |
 | STEP-26g | Release R3b-UX | L2 | Implement template creation flow (browse/search/custom) | [ ] TODO |

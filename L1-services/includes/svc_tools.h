@@ -20,6 +20,9 @@ namespace SvcTools {
     // returns all tools whose category matches the given string (case-sensitive DB match)
     std::vector<SvcDTO::ToolDTO> getToolsByCategory(const std::string& category);
 
+    // Returns ALL tools from the database, sorted alphabetically by name
+    std::vector<SvcDTO::ToolDTO> getAllTools();
+
     // Search tools by name, short_desc, or description (case-insensitive LIKE)
     // Returns matching ToolDTOs sorted by name
     std::vector<SvcDTO::ToolDTO> searchTools(const std::string& query);

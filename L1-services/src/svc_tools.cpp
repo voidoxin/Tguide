@@ -55,6 +55,21 @@ vector<SvcDTO::ToolDTO> getToolsByCategory(const string& category) {
     return toDTOs(res.items);
 }
 
+// ── ALL TOOLS ────────────────────────────────────────────────────────────────
+
+vector<SvcDTO::ToolDTO> getAllTools() {
+    ToolD db(PathResolver::dbFile().string());
+    ToolResults res = db.getAll();
+
+    // Sort by name for consistent ordering
+    sort(res.items.begin(), res.items.end(),
+         [](const Tool& a, const Tool& b) {
+             return a.name < b.name;
+         });
+
+    return toDTOs(res.items);
+}
+
 // ── SEARCH ──────────────────────────────────────────────────────────────────
 
 vector<SvcDTO::ToolDTO> searchTools(const string& query) {

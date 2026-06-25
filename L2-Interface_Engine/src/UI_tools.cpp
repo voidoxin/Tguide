@@ -31,6 +31,7 @@ static void showToolDetail(const SvcDTO::ToolDTO& tool);
 static void showToolsByCategory(const string& category);
 static void showCategories();
 static void showSearch();
+static void showAllTools();
 static void showTemplateFill(const SvcDTO::ToolDTO& tool,
                               const SvcDTO::TemplateDTO& templ);
 static void showVulnerabilities();
@@ -932,10 +933,79 @@ static void showVulnerabilities() {
     }
 }
 
+// ==================== ALL TOOLS ====================
+
+static void showAllTools() {
+    vector<SvcDTO::ToolDTO> tools = SvcTools::getAllTools();
+
+    if (tools.empty()) {
+        cout << "\n  no tools found.\n\n";
+        return;
+    }
+
+    // pre-build display strings with ANSI formatting
+    vector<string> lines;
+    lines.reserve(tools.size());
+    for (const SvcDTO::ToolDTO& t : tools) {
+        string line;
+        if (colorsEnabled()) {
+            line += string(Color::RESET) + Color::BOLD + Color::CYAN;
+            line += t.name;
+            line += string(Color::RESET) + "  " + Color::DIM;
+            line += t.short_desc;
+            line += Color::RESET;
+        } else {
+            line = t.name + "  " + t.short_desc;
+        }
+        lines.push_back(line);
+    }
+
+    string    crumb = "tools \u203a all tools";
+    Paginator pager(lines, true);
+
+    while (true) {
+        pager.render(crumb);
+
+        string input = readInput("  \u2192 ");
+        if (input.empty()) continue;
+        if (isQuit(input)) { handleQuit(); return; }
+        if (isMenu(input)) throw MenuJump{};
+        if (isBack(input)) return;
+        if (isNext(input)) {
+            if (!pager.nextPage())
+                cout << "  already on last page.\n";
+            continue;
+        }
+        if (isPrev(input)) {
+            if (!pager.prevPage())
+                cout << "  already on first page.\n";
+            continue;
+        }
+
+        int idx = pager.select(input);
+        vector<string> clean;
+        if (idx == -1) {
+            clean.reserve(tools.size());
+            for (const auto& t : tools) clean.push_back(t.name);
+            idx = matchOption(input, clean);
+        }
+        if (idx == -1) {
+            if (isAmbiguous(input, clean))
+                cout << "  " << Strings::get(StringID::TOOLS_AMBIGUOUS) << "\n";
+            else
+                cout << "  " << Strings::get(StringID::TOOLS_INVALID_CHOICE) << "\n";
+            continue;
+        }
+
+        showToolDetail(tools[static_cast<size_t>(idx)]);
+    }
+}
+
 // ==================== TOOLS ENTRY ====================
 
 void UITools::show() {
     const vector<string> opts = {
+        Strings::get(StringID::TOOLS_VIEW_ALL),
         Strings::get(StringID::TOOLS_BROWSE_CATEGORY),
         Strings::get(StringID::TOOLS_SEARCH)
     };
@@ -947,8 +1017,9 @@ void UITools::show() {
         UI::printDivider();
 
         cout << "\n"
-             << "  \u251C\u2500 \u25C9  " << Strings::get(StringID::TOOLS_BROWSE_CATEGORY) << "   [1]\n"
-             << "  \u251C\u2500 \u2315  " << Strings::get(StringID::TOOLS_SEARCH) << "               [2]\n"
+             << "  \u251C\u2500 \u2605  " << Strings::get(StringID::TOOLS_VIEW_ALL) << "        [1]\n"
+             << "  \u251C\u2500 \u25C9  " << Strings::get(StringID::TOOLS_BROWSE_CATEGORY) << "   [2]\n"
+             << "  \u251C\u2500 \u2315  " << Strings::get(StringID::TOOLS_SEARCH) << "               [3]\n"
              << (colorsEnabled() ? Color::DIM : "")
              << "  \u2514\u2500 \u2190  " << Strings::get(StringID::TOOLS_BACK) << "                 [0]"
              << (colorsEnabled() ? Color::RESET : "")
@@ -966,8 +1037,10 @@ void UITools::show() {
         int idx = matchOption(input, opts);
 
         if (idx == 0) {
-            showCategories();
+            showAllTools();
         } else if (idx == 1) {
+            showCategories();
+        } else if (idx == 2) {
             showSearch();
         } else {
             if (isAmbiguous(input, opts))
