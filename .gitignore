@@ -71,3 +71,8 @@ flags_tguide.md
 PRIORITY_ISSUES.md
 IMPLEMENTATION_PLAN.md
 __pycache__/
+
+# Runtime-generated user data files (created by UserDataManager during tests/runtime)
+saved_commands.json
+saved_scripts.json
+saved_templates.json
