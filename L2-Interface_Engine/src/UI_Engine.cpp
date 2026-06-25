@@ -68,6 +68,7 @@ int UIEngine::renderMenu(
         cout << "\n"
              << Color::DIM << "  ─── " << Color::RESET
              << Color::BOLD << "choose" << Color::RESET
+             << Color::DIM << "  [m=menu]" << Color::RESET
              << Color::DIM << " ──────────────────────\n" << Color::RESET;
 
         string input = readInput("  → ");
@@ -99,9 +100,15 @@ int UIEngine::renderMenu(
         UI::printDivider();
         cout << "\n";
 
-        // run the action if set
-        if (items[choice - 1].action)
-            items[choice - 1].action();
+        // run the action if set — catch MenuJump to return to main menu
+        if (items[choice - 1].action) {
+            try {
+                items[choice - 1].action();
+            } catch (const MenuJump&) {
+                // User typed "m"/"menu"/"home" in a nested screen — back to main menu
+                continue;
+            }
+        }
 
         return choice;
     }

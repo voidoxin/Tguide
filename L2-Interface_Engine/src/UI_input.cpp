@@ -97,6 +97,12 @@ bool isPrev(const string& input) {
     return n == "p" || n == "prev";
 }
 
+// returns true if input normalizes to "m", "menu", or "home"
+bool isMenu(const string& input) {
+    string n = normalize(input);
+    return n == "m" || n == "menu" || n == "home";
+}
+
 // ==================== NUMBER ====================
 
 // returns the integer value for a pure digit string, -1 on any non-digit or overflow

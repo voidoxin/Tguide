@@ -172,3 +172,39 @@ TEST_CASE("normalize — control chars stripped") {
     string withCtrl = "ab\x01" "c";
     CHECK(normalize(withCtrl) == "abc");
 }
+
+// =============================================================
+// isMenu  —  quick return to main menu shortcut
+// =============================================================
+
+TEST_CASE("isMenu — matches m, menu, home") {
+    CHECK(isMenu("m"));
+    CHECK(isMenu("M"));
+    CHECK(isMenu("menu"));
+    CHECK(isMenu("MENU"));
+    CHECK(isMenu("  m  "));   // whitespace trimmed
+    CHECK(isMenu("  MENU  "));
+    CHECK(isMenu("home"));
+    CHECK(isMenu("HOME"));
+}
+
+TEST_CASE("isMenu — rejects non-matches") {
+    CHECK(!isMenu(""));
+    CHECK(!isMenu("0"));
+    CHECK(!isMenu("back"));
+    CHECK(!isMenu("me"));      // prefix of "menu" but not exact
+    CHECK(!isMenu("men"));
+    CHECK(!isMenu("q"));
+    CHECK(!isMenu("quit"));
+    CHECK(!isMenu("exit"));
+    CHECK(!isMenu("settings"));
+    CHECK(!isMenu("tools"));
+}
+
+TEST_CASE("isMenu — whitespace handling") {
+    // normalize trims whitespace and lowercases, so "m " -> "m"
+    CHECK(isMenu("  m  "));
+    CHECK(isMenu("\tm"));
+    CHECK(isMenu("menu "));
+    CHECK(isMenu("  HOME  "));
+}

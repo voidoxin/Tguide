@@ -93,9 +93,10 @@ static void showScriptList() {
         while (!refreshed) {
             pager.render(crumb);
 
-            string input = readInput("  \u2192 ");
+            string input = readInput("  \u2192 (m=menu) ");
             if (input.empty()) continue;
             if (isQuit(input)) { handleQuit(); return; }
+            if (isMenu(input)) throw MenuJump{};
             if (isBack(input)) return;
 
             if (isNext(input)) {
@@ -167,9 +168,10 @@ static void showScriptDetail(const SvcDTO::SavedScriptDTO& script) {
              << (colorsEnabled() ? Color::RESET : "")
              << "\n\n";
 
-        string input = readInput("  \u2192 ");
+        string input = readInput("  \u2192 (m=menu) ");
         if (input.empty()) continue;
         if (isQuit(input)) { handleQuit(); return; }
+        if (isMenu(input)) throw MenuJump{};
         if (isBack(input)) return;
 
         if (input == "e" || input == "E") {
@@ -208,8 +210,9 @@ static void editScriptNote(const SvcDTO::SavedScriptDTO& script) {
 
     cout << "  " << Strings::get(StringID::SAVED_NOTE_PROMPT)
          << " (enter to keep current):\n";
-    string newNote = readInput("  \u2192 ");
+    string newNote = readInput("  \u2192 (m=menu) ");
     if (isQuit(newNote)) { handleQuit(); return; }
+    if (isMenu(newNote)) throw MenuJump{};
     if (isBack(newNote)) return;
 
     // If empty, keep current note
@@ -238,6 +241,7 @@ static bool deleteScript(const SvcDTO::SavedScriptDTO& script) {
     string confirm = readInput("");
     if (confirm.empty()) return false;
     if (isQuit(confirm)) { handleQuit(); return false; }
+    if (isMenu(confirm)) throw MenuJump{};
     if (isBack(confirm)) return false;
 
     if (confirm == "y" || confirm == "Y") {
@@ -294,9 +298,10 @@ void UISavedScripts::show() {
         UI::printDivider();
         cout << "\n";
 
-        string input = readInput("  \u2192 ");
+        string input = readInput("  \u2192 (m=menu) ");
         if (input.empty()) continue;
         if (isQuit(input)) { handleQuit(); return; }
+        if (isMenu(input)) throw MenuJump{};
         if (isBack(input)) return;
 
         int idx = matchOption(input, opts);

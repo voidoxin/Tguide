@@ -70,9 +70,10 @@ void UISettings::show(ConfigManager& cfg) {
         UI::printDivider();
         cout << "\n";
 
-        string input = readInput("  \u2192 ");
+        string input = readInput("  \u2192 (m=menu) ");
         if (input.empty()) continue;
         if (isQuit(input)) { handleQuit(); return; }
+        if (isMenu(input)) throw MenuJump{};
         if (isBack(input)) return;
 
         if (input == "1") {
@@ -199,9 +200,10 @@ void UISettings::showDatabaseMenu() {
         UI::printDivider();
         cout << "\n";
 
-        string input = readInput("  \u2192 ");
+        string input = readInput("  \u2192 (m=menu) ");
         if (input.empty()) continue;
         if (isQuit(input)) { handleQuit(); return; }
+        if (isMenu(input)) throw MenuJump{};
         if (isBack(input)) return;
 
         char c = std::tolower(static_cast<unsigned char>(input[0]));

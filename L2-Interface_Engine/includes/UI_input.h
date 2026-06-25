@@ -34,6 +34,12 @@ bool isNext(const std::string& input);
 // returns true if input is "p" or "prev" (case-insensitive)
 bool isPrev(const std::string& input);
 
+// returns true if input normalizes to "m", "menu", or "home" (case-insensitive)
+bool isMenu(const std::string& input);
+
+// Exception thrown to jump directly to main menu from any nested screen
+struct MenuJump {};
+
 // ==================== NUMBER ====================
 
 // returns integer value if input is a pure digit string, -1 otherwise

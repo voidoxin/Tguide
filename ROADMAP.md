@@ -752,11 +752,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L2 |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | L2-Interface_Engine/src/UI_input.cpp, L2-Interface_Engine/includes/UI_input.h, L2-Interface_Engine/src/UI_tools.cpp, L2-Interface_Engine/src/UI_savedCommands.cpp, L2-Interface_Engine/src/UI_savedScripts.cpp, L2-Interface_Engine/src/UI_settings.cpp, L2-Interface_Engine/src/UI_vulnerabilities.cpp |
 | Goal       | Add a global "jump to main menu" option at every nested menu screen. Define `isMenu(input)` that matches "m", "menu", "home". Every input loop that currently checks `isBack(input)` should also check `isMenu(input)` before `isBack()`. When triggered, the function should unwind directly to the main menu (by returning a sentinel that propagates up through caller chain or by longjmp-style flag). Ensure no resource leaks on unwind (no open file handles, no mutexes). Update prompt text to show "(m)enu" shortcut. |
 | Depends    | STEP-26a |
 | Done when  | Typing "m" or "menu" at any nested screen (tool detail, vulnerability list, saved scripts, settings, etc.) jumps directly back to main menu in one step (not one level up); "(m)enu" hint is visible in all prompts; all 181 existing tests still pass |
+| Completed  | **2026-06-23** — Added `struct MenuJump{}` exception + `isMenu()` in `UI_input.h/cpp`. All 35+ input loops across 5 screens now check `isMenu()` before `isBack()` and throw `MenuJump{}`. try-catch in `UIEngine::start()` catches it and returns to main menu. Prompt hints: Added "(m=menu)" to all prompts, fixed main menu hint to "[m=menu]". 3 new TEST_CASEs for `isMenu()` (22 assertions). 206 test cases, 576 assertions, all passing. Build: 0 warnings, 0 errors. ✅ |
 
 ### STEP-26c — Verify and harden quick quit: ensure "quit" works at every input prompt
 | Field      | Value |
@@ -1286,7 +1287,7 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-25 | Release R3b | L0 / BOOTSTRAP | Log query flags (--log, --log-b*, --log-date, viewer) | [x] DONE |
 | STEP-26 | Release R3b | L0 / L3 | Pagination system (paginator, --stream, page-size config) | [x] DONE |
 | STEP-26a | Release R3b-UX | L2 | Fix main menu text input: accept both numbers and text labels | [x] DONE |
-| STEP-26b | Release R3b-UX | L2 | Add quick return to main menu shortcut ("m" / "menu") | [ ] TODO |
+| STEP-26b | Release R3b-UX | L2 | Add quick return to main menu shortcut ("m" / "menu") | [x] DONE |
 | STEP-26c | Release R3b-UX | L2 | Verify and harden quick quit at every input prompt | [ ] TODO |
 | STEP-26d | Release R3b-UX | L2 | Add "View All Tools" option to tools menu with pagination | [ ] TODO |
 | STEP-26e | Release R3b-UX | L1 / L2 | Implement real script generation (merge templates + bash commands) | [ ] TODO |

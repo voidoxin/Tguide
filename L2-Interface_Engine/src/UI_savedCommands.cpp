@@ -111,9 +111,10 @@ static void showCommandList() {
         while (!refreshed) {
             pager.render(crumb);
 
-            string input = readInput("  \u2192 ");
+            string input = readInput("  \u2192 (m=menu) ");
             if (input.empty()) continue;
             if (isQuit(input)) { handleQuit(); return; }
+            if (isMenu(input)) throw MenuJump{};
             if (isBack(input)) return;
 
             if (isNext(input)) {
@@ -189,9 +190,10 @@ static void showCommandDetail(const SvcDTO::SavedCommandDTO& cmd) {
              << (colorsEnabled() ? Color::RESET : "")
              << "\n\n";
 
-        string input = readInput("  \u2192 ");
+        string input = readInput("  \u2192 (m=menu) ");
         if (input.empty()) continue;
         if (isQuit(input)) { handleQuit(); return; }
+        if (isMenu(input)) throw MenuJump{};
         if (isBack(input)) return;
 
         if (input == "e" || input == "E") {
@@ -229,8 +231,9 @@ static void editCommandNote(const SvcDTO::SavedCommandDTO& cmd) {
 
     cout << "  " << Strings::get(StringID::SAVED_NOTE_PROMPT)
          << " (enter to keep current):\n";
-    string newNote = readInput("  \u2192 ");
+    string newNote = readInput("  \u2192 (m=menu) ");
     if (isQuit(newNote)) { handleQuit(); return; }
+    if (isMenu(newNote)) throw MenuJump{};
     if (isBack(newNote)) return;
 
     // If empty, keep current note
@@ -259,6 +262,7 @@ static bool deleteCommand(const SvcDTO::SavedCommandDTO& cmd) {
     string confirm = readInput("");
     if (confirm.empty()) return false;
     if (isQuit(confirm)) { handleQuit(); return false; }
+    if (isMenu(confirm)) throw MenuJump{};
     if (isBack(confirm)) return false;
 
     if (confirm == "y" || confirm == "Y") {
@@ -313,9 +317,10 @@ static void addNewCommand() {
             cout << " [" << note << "]";
         cout << ":\n";
         {
-            string inp = readInput("  \u2192 ");
+            string inp = readInput("  \u2192 (m=menu) ");
             if (!inp.empty()) {
                 if (isQuit(inp)) { handleQuit(); return; }
+                if (isMenu(inp)) throw MenuJump{};
                 if (isBack(inp)) return;
                 note = sanitizeInput(inp);
             }
@@ -325,7 +330,7 @@ static void addNewCommand() {
         cout << "\n  " << Strings::get(StringID::SAVED_COMMAND_PROMPT)
              << " (required):\n";
         {
-            string inp = readInput("  \u2192 ");
+            string inp = readInput("  \u2192 (m=menu) ");
             if (inp.empty()) {
                 cout << "\n  "
                      << (colorsEnabled() ? Color::YELLOW : "")
@@ -335,6 +340,7 @@ static void addNewCommand() {
                 continue;
             }
             if (isQuit(inp)) { handleQuit(); return; }
+            if (isMenu(inp)) throw MenuJump{};
             if (isBack(inp)) return;
             command = sanitizeInput(inp);
         }
@@ -366,7 +372,7 @@ static void addNewCommand() {
              << (colorsEnabled() ? Color::RESET : "")
              << "\n\n";
 
-        string inp = readInput("  \u2192 ");
+        string inp = readInput("  \u2192 (m=menu) ");
         if (inp.empty()) continue;
         if (isQuit(inp)) { handleQuit(); return; }
 
@@ -385,6 +391,7 @@ static void addNewCommand() {
             return;
         }
 
+        if (isMenu(inp)) throw MenuJump{};
         if (isBack(inp)) return;
 
         cout << "  " << Strings::get(StringID::TOOLS_INVALID_CHOICE) << "\n";
@@ -423,9 +430,10 @@ void UISavedCommands::show() {
         UI::printDivider();
         cout << "\n";
 
-        string input = readInput("  \u2192 ");
+        string input = readInput("  \u2192 (m=menu) ");
         if (input.empty()) continue;
         if (isQuit(input)) { handleQuit(); return; }
+        if (isMenu(input)) throw MenuJump{};
         if (isBack(input)) return;
 
         int idx = matchOption(input, opts);
