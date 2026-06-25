@@ -208,3 +208,57 @@ TEST_CASE("isMenu — whitespace handling") {
     CHECK(isMenu("menu "));
     CHECK(isMenu("  HOME  "));
 }
+
+// =============================================================
+// isQuit  —  quick quit shortcut
+// =============================================================
+
+TEST_CASE("isQuit — core quit keywords") {
+    CHECK(isQuit("q"));
+    CHECK(isQuit("Q"));
+    CHECK(isQuit("quit"));
+    CHECK(isQuit("QUIT"));
+    CHECK(isQuit("exit"));
+    CHECK(isQuit("EXIT"));
+}
+
+TEST_CASE("isQuit — whitespace handling") {
+    CHECK(isQuit("  q  "));
+    CHECK(isQuit("  quit  "));
+    CHECK(isQuit("  EXIT  "));
+}
+
+TEST_CASE("isQuit — rejects non-quit") {
+    CHECK(!isQuit(""));
+    CHECK(!isQuit("0"));
+    CHECK(!isQuit("back"));
+    CHECK(!isQuit("m"));
+    CHECK(!isQuit("menu"));
+    CHECK(!isQuit("tools"));
+    CHECK(!isQuit("agree"));
+}
+
+// =============================================================
+// isBack  —  quick back / go up shortcut
+// =============================================================
+
+TEST_CASE("isBack — core back keywords") {
+    CHECK(isBack("0"));
+    CHECK(isBack("back"));
+    CHECK(isBack("BACK"));
+    CHECK(isBack("Back"));
+}
+
+TEST_CASE("isBack — whitespace handling") {
+    CHECK(isBack("  0  "));
+    CHECK(isBack("  back  "));
+}
+
+TEST_CASE("isBack — rejects non-back") {
+    CHECK(!isBack(""));
+    CHECK(!isBack("1"));
+    CHECK(!isBack("q"));
+    CHECK(!isBack("quit"));
+    CHECK(!isBack("exit"));
+    CHECK(!isBack("m"));
+}

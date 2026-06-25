@@ -14,7 +14,8 @@
 - **L2-Interface_Engine**: UI_Engine with readInput(), colors with isatty()/g_colorEnabled, tool detail/category/vulnerability/module screens, template fill workflow, generator wizard, A4 header isolation fixed, A7 build-time layer enforcement fixed.
 - **Testing**: doctest framework with 28+ test cases across SHA256, ConfigManager, UserDataManager, DB recovery. CTest integration.
 - **R3b complete**: All 8 CLI/pagination/log steps (STEP-19 through STEP-26) done. Known UX issues: main menu only accepts numbers (text like "tools" fails), no quick-jump-to-main-menu shortcut, script generator is a compile-time stub, no "view all tools" option, templates are read-only (no creation UI). These are addressed in R3b-UX (STEP-26a through STEP-26g).
-- **Key remaining work before v1.0**: Replace data_adder.cpp with professional Python toolchain (STEP-DB — DONE), fix database bootstrap for no-internet first boot: installDbFile() done (STEP-B1a — DONE), bundle seed DB in CMake (STEP-B1b — DONE), fix copyDefaultToConfig() (STEP-B1c — DONE), make manifest fetch non-fatal (STEP-B1d — DONE); cross-platform path resolution (STEP-B2a — DONE), Windows + Termux path resolution (STEP-B2b — DONE), Windows CMake toolchain + MSVC compatibility (STEP-B3a — DONE), Windows ANSI colors + signal handling (STEP-B3b — DONE), Windows support (STEP-B3), cross-platform validation (STEP-CP2), enhanced search (STEP-R1), saved commands/scripts screens (STEP-R2/R3), settings screen completion (STEP-R4), remove all stubs (STEP-R5), shadow swap update system (STEP-17/18), fix manifest URL to use GitHub Releases (STEP-MU), CLI argument parser framework (STEP-19 — DONE); output & configuration flags (STEP-20 — DONE); tool & vulnerability display (STEP-21 — DONE); update flags (STEP-23 — DONE); log system core (STEP-24 — DONE); log query flags (STEP-25 — DONE); pagination flags (STEP-26 — DONE); critical UX fixes & real script system (STEP-26a through STEP-26g); missing config parameters & Settings UI completion (STEP-27 through STEP-29); extension data system (STEP-30 through STEP-33); remove dev-only code (STEP-61), full QA (STEP-62), and packaging for AUR/Homebrew/Deb/Windows + v1.0 release (STEP-PK1-5).
+- **R4b planned** (post-R4): Package Manager Expansion (Snap, AppImage, WinGet, Scoop, Chocolatey, Homebrew Tap — STEP-PK6–PK11) and Smart Engine (environment detection, path redirection, dynamic update bypass, platform-aware feature toggling — STEP-SM1–SM3).
+- **Key remaining work before v1.0**: Replace data_adder.cpp with professional Python toolchain (STEP-DB — DONE), fix database bootstrap for no-internet first boot: installDbFile() done (STEP-B1a — DONE), bundle seed DB in CMake (STEP-B1b — DONE), fix copyDefaultToConfig() (STEP-B1c — DONE), make manifest fetch non-fatal (STEP-B1d — DONE); cross-platform path resolution (STEP-B2a — DONE), Windows + Termux path resolution (STEP-B2b — DONE), Windows CMake toolchain + MSVC compatibility (STEP-B3a — DONE), Windows ANSI colors + signal handling (STEP-B3b — DONE), Windows support (STEP-B3), cross-platform validation (STEP-CP2), enhanced search (STEP-R1), saved commands/scripts screens (STEP-R2/R3), settings screen completion (STEP-R4), remove all stubs (STEP-R5), shadow swap update system (STEP-17/18), fix manifest URL to use GitHub Releases (STEP-MU), CLI argument parser framework (STEP-19 — DONE); output & configuration flags (STEP-20 — DONE); tool & vulnerability display (STEP-21 — DONE); update flags (STEP-23 — DONE); log system core (STEP-24 — DONE); log query flags (STEP-25 — DONE); pagination flags (STEP-26 — DONE); critical UX fixes & real script system (STEP-26a through STEP-26g); missing config parameters & Settings UI completion (STEP-27 through STEP-29); extension data system (STEP-30 through STEP-33); remove dev-only code (STEP-61), full QA (STEP-62), packaging for AUR/Homebrew/Deb/Windows + v1.0 release (STEP-PK1-5); package manager expansion (Snap, AppImage, WinGet, Scoop, Chocolatey, Homebrew Tap — STEP-PK6 through STEP-PK11); Smart Engine environment detection & path redirection (STEP-SM1); dynamic update bypass for managed PMs (STEP-SM2); platform-aware feature toggling (STEP-SM3).
 
 ## Architecture Reference
 ```
@@ -764,11 +765,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L2 |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
-| Files      | L2-Interface_Engine/src/UI_*.cpp (audit all screens) |
+| Status     | [x] DONE |
+| Files      | L2-Interface_Engine/src/UI_tools.cpp (6 sub-prompt fixes, note prompt fix, + isMenu additions), L2-Interface_Engine/src/UI_disclaimer.cpp (isQuit + handleQuit + isBack + isMenu), L2-Interface_Engine/src/UI_errorHandling.cpp (handleQuit in UI_attention) |
 | Goal       | Audit every single input loop in the entire UI layer to confirm that `isQuit(input)` + `handleQuit()` + `return` is present at every prompt. The current codebase already has quit handlers in most screens (confirmed: 66 `isQuit` calls across 7 files), but a systematic audit must verify 100% coverage: no input loop exists without a quit exit path. Add missing handlers if found. Add integration test that simulates "quit" at every prompt type. Verify handleQuit() safely unwinds to main()->return 0 without resource leaks. |
 | Depends    | STEP-26b |
-| Done when  | Every input loop in L2 has `isQuit()` check before any action processing; no "quit" string ever produces "invalid choice" or gets stuck in loop; `handleQuit()` always leads to clean program exit (return 0 from main); audit document lists every prompt and its quit coverage; all 181 existing tests still pass |
+| Done when  | Every input loop in L2 has `isQuit()` check before any action processing; no "quit" string ever produces "invalid choice" or gets stuck in loop; `handleQuit()` always leads to clean program exit (return 0 from main); audit document lists every prompt and its quit coverage; all 217 existing tests still pass |
+| Completed  | **2026-06-25** — Audited and hardened all input loops: 6 sub-prompt fixes in `UI_tools.cpp` (tool detail, category tool list, saved scripts, settings search, tool properties, note prompt) + isMenu additions. Added `isQuit()`, `handleQuit()`, `isBack()`, `isMenu()` to `UI_disclaimer.cpp`. Added `handleQuit()` to `UI_attention` in `UI_errorHandling.cpp`. New test file `tests/test_ui_quit.cpp` with integration tests for handleQuit, disclaimer, and UI_attention quit paths. 217 test cases, 649 assertions, all passing. Build: 0 warnings, 0 errors. ✅ |
 
 ### STEP-26d — Add "View All Tools" option to tools menu with pagination
 | Field      | Value |
@@ -1078,6 +1080,113 @@ L0-core → L1-services → L2-Interface_Engine
 | Depends    | STEP-23, STEP-IR1, STEP-CI3 |
 | Done when  | `--check-update` shows version info + platform-specific update command; `--update` shows same but prompts to proceed; methods with no auto-update (binary, source) print manual download URL; all 60+ existing tests still pass |
 
+## Release Phase R4b — Package Manager Expansion & Smart Engine (9 steps)
+
+### STEP-PK6 — Snapcraft Snap package for Linux
+| Field      | Value |
+|------------|-------|
+| Layer      | PACKAGING |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | dist/linux/snap/snapcraft.yaml (NEW), dist/linux/snap/hooks/ (NEW) |
+| Goal       | Create Snapcraft `snapcraft.yaml` with strict confinement, proper interfaces (network, home, removable-media), and staged dependencies (libcurl, sqlite3). Configure `$SNAP_USER_DATA` as the configuration and database storage root. Set up auto-connection plugs for network access. Write `install_info.json` with method="snap" in the install hook. Ensure automatic updates via Snap Store propagate DB and binary without triggering tguide's internal update mechanism. |
+| Ref        | `.ai/installation_design.md` — section 3.4 (Snap confinement, SNAP_USER_DATA) |
+| Depends    | STEP-62b |
+| Done when  | `snap install tguide.snap --dangerous` installs and runs correctly; config stored in `$SNAP_USER_DATA`; `install_info.json` contains method="snap"; auto-updates via Snap Store work |
+
+### STEP-PK7 — AppImage distribution for Linux
+| Field      | Value |
+|------------|-------|
+| Layer      | PACKAGING |
+| Priority   | MEDIUM |
+| Status     | [ ] TODO |
+| Files      | dist/linux/appimage/tguide.AppDir/ (NEW directory), dist/linux/appimage/AppRun (NEW), scripts/build-appimage.sh (NEW) |
+| Goal       | Create AppImage distribution using linuxdeploy or appimagetool. Bundle tguide binary, seed DB, libcurl, sqlite3, and all shared objects into an AppDir with proper `.desktop` file and icon. The AppImage is a standalone executable with no runtime dependencies. Write `install_info.json` with method="appimage" at first launch (detected via FUSE mount path). Since AppImage is standalone, retain full internal update mechanism (deferred to V2 routines per standalone-manager strategy). |
+| Ref        | `.ai/installation_design.md` — section 3.5 (AppImage bundling, FUSE) |
+| Depends    | STEP-62b |
+| Done when  | AppImage launches on Ubuntu 20.04+, Fedora 38+, and Arch Linux without any pre-installed dependencies; config/db stored relative to `$HOME/.config/tguide` and `$HOME/.local/share/tguide`; `install_info.json` written on first boot |
+
+### STEP-PK8 — WinGet package for Windows
+| Field      | Value |
+|------------|-------|
+| Layer      | PACKAGING |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | dist/windows/winget/voidoxin.tguide.yaml (NEW) |
+| Goal       | Create WinGet package manifest (`voidoxin.tguide.yaml`) with version, installer URL (MSI or ZIP from GitHub Releases), architecture (x64), installer type, SHA256 checksum, and package dependencies. Submit to the WinGet community repository via PR. Write `install_info.json` with method="winget" at first boot. Since WinGet manages upgrades, disable the internal update mechanism. |
+| Ref        | `.ai/installation_design.md` — section 5.2 (WinGet manifest schema, submission) |
+| Depends    | STEP-PK5 |
+| Done when  | `winget install voidoxin.tguide` installs and runs correctly on Windows 10/11; `install_info.json` contains method="winget"; upgrades via `winget upgrade` work without triggering internal updates |
+
+### STEP-PK9 — Scoop package for Windows
+| Field      | Value |
+|------------|-------|
+| Layer      | PACKAGING |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | dist/windows/scoop/tguide.json (NEW) |
+| Goal       | Create Scoop bucket manifest (`tguide.json`) with proper URL, hash, bin entry, architecture detection, and dependencies. Submit to the Scoop Extras bucket via PR. Write `install_info.json` with method="scoop" at first boot. Since Scoop manages upgrades via `scoop update`, disable the internal update mechanism. |
+| Ref        | `.ai/installation_design.md` — section 5.3 (Scoop manifest schema, extras bucket) |
+| Depends    | STEP-PK5 |
+| Done when  | `scoop bucket add extras && scoop install tguide` installs and runs correctly on Windows 10/11; `install_info.json` contains method="scoop"; upgrades via `scoop update tguide` work |
+
+### STEP-PK10 — Chocolatey package for Windows
+| Field      | Value |
+|------------|-------|
+| Layer      | PACKAGING |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | dist/windows/chocolatey/tguide.nuspec (NEW), dist/windows/chocolatey/tools/chocolateyinstall.ps1 (NEW) |
+| Goal       | Create Chocolatey package (`tguide.nuspec`) with PowerShell install script that downloads the latest release from GitHub, verifies checksum, extracts to `%PROGRAMFILES%`, and adds to PATH. Submit to the Chocolatey Community Repository via PR. Write `install_info.json` with method="chocolatey" at first boot. Since Chocolatey manages upgrades via `choco upgrade`, disable the internal update mechanism. |
+| Ref        | `.ai/installation_design.md` — section 5.4 (Chocolatey nuspec, install.ps1, submission) |
+| Depends    | STEP-PK5 |
+| Done when  | `choco install tguide` installs and runs correctly on Windows 10/11; `install_info.json` contains method="chocolatey"; upgrades via `choco upgrade tguide` work |
+
+### STEP-PK11 — Homebrew custom Tap for macOS
+| Field      | Value |
+|------------|-------|
+| Layer      | PACKAGING |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | dist/macos/tguide.rb (updated from formula), Homebrew tap repository `homebrew-tguide` (NEW) |
+| Goal       | Move from a single Homebrew formula to a dedicated Tap repository (`voidoxin/homebrew-tguide`) for better control over versioning and distribution. The Tap formula supports both Intel and Apple Silicon via `depends_on :arch`, includes proper bottle configuration, and writes `install_info.json` with method="brew-tap". Since Homebrew manages upgrades via `brew upgrade`, disable the internal update mechanism. Document the Tap setup in README. |
+| Ref        | `.ai/installation_design.md` — section 3.6 (Homebrew Tap, custom repo setup) |
+| Depends    | STEP-PK5 |
+| Done when  | `brew tap voidoxin/tguide && brew install tguide` installs and runs correctly on macOS Intel and Apple Silicon; `install_info.json` contains method="brew-tap"; `brew upgrade tguide` works |
+
+### STEP-SM1 — Smart Engine: environment detection & path redirection
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 / BOOTSTRAP |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L0-core/src/smart_engine.cpp (NEW), L0-core/include/smart_engine.h (NEW), CoreRunner.cpp, L0-core/src/path_resolver.cpp |
+| Goal       | Implement the Smart Engine initialization function that runs at the very beginning of the bootstrap sequence (before config load). It detects the current host environment by evaluating environment variables and platform signals: (1) **Package manager detection** — reads `install_info.json` (from STEP-IR1) to determine if installed via Snap (`$SNAP_USER_DATA`), WinGet, Scoop, Chocolatey, Homebrew Tap, AUR, .deb, AppImage (FUSE path), or source; (2) **Path redirection** — automatically sets config/database/log directories to the correct platform-native location (`$SNAP_USER_DATA` for Snap, `%APPDATA%` for Windows, `~/.config/` and `~/.local/share/` for native Unix/macOS, AppImage-adjacent paths for AppImage); (3) **Environment properties** — populates a `SmartEngine::Environment` struct with detected OS, package manager, install path, config root, data root, and feature flags. This struct is passed to ConfigManager and other bootstrap components so they self-configure without hardcoded assumptions. |
+| Depends    | STEP-IR1, STEP-PK6, STEP-PK7, STEP-PK8, STEP-PK9, STEP-PK10, STEP-PK11 |
+| Done when  | Smart Engine runs before any other bootstrap code; correctly detects Snap/Snap path redirects to `$SNAP_USER_DATA`; detects WinGet/Scoop/Chocolatey and redirects to `%APPDATA%`; detects Homebrew Tap and uses `~/.config` and `~/Library/Application Support`; detects AppImage standalone and uses `~/.config/tguide` and `~/.local/share/tguide`; Environment struct is populated and consumed by ConfigManager/PathResolver; no hardcoded paths remain for config/data/log storage; all 206+ existing tests still pass |
+
+### STEP-SM2 — Smart Engine: dynamic update bypass for managed package managers
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 / BOOTSTRAP |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L0-core/src/smart_engine.cpp, CoreRunner.cpp, L0-core/src/DBResolver.cpp, L0-core/src/DBCacheManager.cpp |
+| Goal       | Extend the Smart Engine to control update behavior based on the detected package manager type. Two categories: (1) **Managed PMs** (Snap, WinGet, Scoop, Chocolatey, Homebrew Tap, .deb via apt, AUR via yay/paru) — these handle ALL upgrades (binary + database schema) through their ecosystem. Disable tguide's internal update mechanism entirely: skip `--update` and `--check-update` manifest fetches at boot (unless manually forced via `--force-check`), skip `db_update_behavior` auto/ask_me prompts. Print a message: "Updates are managed by [Snap/WinGet/brew/etc]. Use `[pm update command]` to upgrade." (2) **Standalone/Unmanaged** (AppImage, binary install via install.sh, source build, NSIS/ZIP manual install) — retain the full internal update mechanism (STEP-23, STEP-29, deferred V2 binary update). The Smart Engine's decision is exposed via `SmartEngine::updatePolicy()` returning an enum: `managed`, `standalone`, or `unknown`. |
+| Depends    | STEP-SM1, STEP-29, STEP-PK6, STEP-PK7, STEP-PK8, STEP-PK9, STEP-PK10, STEP-PK11 |
+| Done when  | Managed PMs completely bypass internal updates at boot and when `--update`/`--check-update` is used; standalone PMs retain full internal update flow; `SmartEngine::updatePolicy()` returns correct value for each PM; all 206+ existing tests still pass |
+
+### STEP-SM3 — Smart Engine: platform-aware feature toggling
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 / BOOTSTRAP |
+| Priority   | MEDIUM |
+| Status     | [ ] TODO |
+| Files      | L0-core/src/smart_engine.cpp, L2-Interface_Engine/src/UI_colors.h, L0-core/src/config_manager.cpp |
+| Goal       | Extend the Smart Engine to dynamically configure feature toggles based on the detected environment. Specifically: (1) **ANSI color presets** — detect if running inside Snap strict confinement (no PTY access → force colors off), inside AppImage (PTY available → colors on), inside WinGet/Scoop/Chocolatey terminal (Windows Terminal → colors on, old cmd.exe → colors off). (2) **Connection parameters** — detect Snap strict confinement (no direct network → force offline mode unless snap connect network:removable-media is active), AppImage (full network → normal). (3) **UI adaptation** — detect narrow-terminal scenarios (AppImage FUSE, Snap windowed) and adjust default `page-size` config accordingly. Feature state is exposed via `SmartEngine::FeatureFlags` struct read by the rest of the application at startup. |
+| Depends    | STEP-SM1 |
+| Done when  | ANSI colors are automatically configured per environment; connection/offline mode adapts per confinement; `page-size` adjusts for narrow terminals; FeatureFlags struct is consumed by UI_colors and ConfigManager at boot; all 206+ existing tests still pass |
+
 ## Release Phase V2 — Binary Auto-Update & Code Signing (11 steps)
 
 ### STEP-V2-01 — Ed25519 signing infrastructure
@@ -1288,7 +1397,7 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-26 | Release R3b | L0 / L3 | Pagination system (paginator, --stream, page-size config) | [x] DONE |
 | STEP-26a | Release R3b-UX | L2 | Fix main menu text input: accept both numbers and text labels | [x] DONE |
 | STEP-26b | Release R3b-UX | L2 | Add quick return to main menu shortcut ("m" / "menu") | [x] DONE |
-| STEP-26c | Release R3b-UX | L2 | Verify and harden quick quit at every input prompt | [ ] TODO |
+| STEP-26c | Release R3b-UX | L2 | Verify and harden quick quit at every input prompt | [x] DONE |
 | STEP-26d | Release R3b-UX | L2 | Add "View All Tools" option to tools menu with pagination | [ ] TODO |
 | STEP-26e | Release R3b-UX | L1 / L2 | Implement real script generation (merge templates + bash commands) | [ ] TODO |
 | STEP-26f | Release R3b-UX | L0 / L2 | Add script save prompt with configurable default path | [ ] TODO |
@@ -1316,6 +1425,15 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-CI5 | Release R4 | TOOLING | install.sh script for one-command binary install |
 | STEP-IR1 | Release R4 | L0 / BOOTSTRAP | Installation method detection (install_info.json) |
 | STEP-IR2 | Release R4 | L0 / BOOTSTRAP | Update notification with install-method-aware commands |
+| STEP-PK6 | Release R4b | PACKAGING | Snapcraft Snap package for Linux | [ ] TODO |
+| STEP-PK7 | Release R4b | PACKAGING | AppImage distribution for Linux | [ ] TODO |
+| STEP-PK8 | Release R4b | PACKAGING | WinGet package for Windows | [ ] TODO |
+| STEP-PK9 | Release R4b | PACKAGING | Scoop package for Windows | [ ] TODO |
+| STEP-PK10 | Release R4b | PACKAGING | Chocolatey package for Windows | [ ] TODO |
+| STEP-PK11 | Release R4b | PACKAGING | Homebrew custom Tap for macOS | [ ] TODO |
+| STEP-SM1 | Release R4b | L0 / BOOTSTRAP | Smart Engine: environment detection & path redirection | [ ] TODO |
+| STEP-SM2 | Release R4b | L0 / BOOTSTRAP | Smart Engine: dynamic update bypass for managed PMs | [ ] TODO |
+| STEP-SM3 | Release R4b | L0 / BOOTSTRAP | Smart Engine: platform-aware feature toggling | [ ] TODO |
 | STEP-V2-01 | Release V2 | BUILD | Ed25519 signing infrastructure |
 | STEP-V2-02 | Release V2 | L0 | tguide-updater: download, hash & signature verification |
 | STEP-V2-03 | Release V2 | L0 | File replacement, backup & rollback |

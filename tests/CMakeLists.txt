@@ -17,10 +17,13 @@ set(TEST_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test_logger.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test_paginator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test_ui_input.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_ui_quit.cpp
     ${CMAKE_SOURCE_DIR}/cli_display.cpp
     ${CMAKE_SOURCE_DIR}/cli_export.cpp
     ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/src/UI_input.cpp
     ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/src/UI_utils.cpp
+    ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/src/UI_disclaimer.cpp
+    ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/src/UI_errorHandling.cpp
 )
 
 add_executable(tguide_tests ${TEST_SOURCES})

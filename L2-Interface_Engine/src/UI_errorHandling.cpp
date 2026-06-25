@@ -76,7 +76,7 @@ char UI_attention(const std::string& msg) {
          << msg << "\n";
 
     string input = readInput("  → ");
-    if (isQuit(input)) return 0;
+    if (isQuit(input)) { handleQuit(); return 0; }
     if (input.empty()) return 0;
     return input[0];
 }

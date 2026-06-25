@@ -88,10 +88,9 @@ bool UIDisclaimer::show(ConfigManager& cfg) {
             return true;
         }
 
-        if (input == "exit" || input == "q" || input == "quit") {
-            cout << "\n";
-            return false;
-        }
+        if (isQuit(input)) { handleQuit(); return false; }
+        if (isBack(input)) { cout << "\n"; return false; }
+        if (isMenu(input)) { cout << "\n"; return false; }
 
         // any other input — redisplay without error message
     }

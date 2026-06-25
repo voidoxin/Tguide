@@ -482,6 +482,9 @@ static void showTemplateFill(const SvcDTO::ToolDTO& tool,
         if (inp == "s" || inp == "S") {
             cout << "  note (one-line description): ";
             string note = readInput("");
+            if (isQuit(note)) { handleQuit(); return; }
+            if (isMenu(note)) throw MenuJump{};
+            if (isBack(note)) return;
             if (note.empty()) note = tool.name + " \u2014 " + templ.template_name;
 
             int id = SvcTools::saveTemplateCommand(tool.id, cmd, note);
@@ -676,7 +679,8 @@ static void showModules() {
                  << "    [2] platform\n"
                  << "    [0] cancel\n  \u2192 ";
             string fIn = readInput("");
-            if (fIn.empty() || isQuit(fIn)) continue;
+            if (isQuit(fIn)) { handleQuit(); return; }
+            if (fIn.empty()) continue;
             if (isMenu(fIn)) throw MenuJump{};
             if (isBack(fIn)) continue;
 
@@ -696,7 +700,8 @@ static void showModules() {
                 cout << "    [" << (vi + 1) << "] " << vals[vi] << "\n";
             cout << "  \u2192 ";
             string vIn = readInput("");
-            if (vIn.empty() || isQuit(vIn)) continue;
+            if (isQuit(vIn)) { handleQuit(); return; }
+            if (vIn.empty()) continue;
             if (isMenu(vIn)) throw MenuJump{};
             if (isBack(vIn)) continue;
             int vIdx = toNumber(vIn);
@@ -717,7 +722,8 @@ static void showModules() {
         if (input == "s" || input == "S") {
             cout << "\n  search: ";
             string query = readInput("");
-            if (query.empty() || isQuit(query)) continue;
+            if (isQuit(query)) { handleQuit(); return; }
+            if (query.empty()) continue;
             if (isMenu(query)) throw MenuJump{};
             if (isBack(query)) continue;
             modules = SvcTools::searchModules(query);
@@ -844,7 +850,8 @@ static void showVulnerabilities() {
                  << "    [3] platform\n"
                  << "    [0] cancel\n  \u2192 ";
             string fIn = readInput("");
-            if (fIn.empty() || isQuit(fIn)) continue;
+            if (isQuit(fIn)) { handleQuit(); return; }
+            if (fIn.empty()) continue;
             if (isMenu(fIn)) throw MenuJump{};
             if (isBack(fIn)) continue;
 
@@ -865,7 +872,8 @@ static void showVulnerabilities() {
                 cout << "    [" << (vi + 1) << "] " << vals[vi] << "\n";
             cout << "  \u2192 ";
             string vIn = readInput("");
-            if (vIn.empty() || isQuit(vIn)) continue;
+            if (isQuit(vIn)) { handleQuit(); return; }
+            if (vIn.empty()) continue;
             if (isMenu(vIn)) throw MenuJump{};
             if (isBack(vIn)) continue;
             int vIdx = toNumber(vIn);
@@ -886,7 +894,8 @@ static void showVulnerabilities() {
         if (input == "s" || input == "S") {
             cout << "\n  search: ";
             string query = readInput("");
-            if (query.empty() || isQuit(query)) continue;
+            if (isQuit(query)) { handleQuit(); return; }
+            if (query.empty()) continue;
             if (isMenu(query)) throw MenuJump{};
             if (isBack(query)) continue;
             vulns = SvcTools::searchVulnerabilities(query);
