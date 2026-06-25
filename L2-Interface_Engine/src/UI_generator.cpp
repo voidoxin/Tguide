@@ -176,14 +176,17 @@ static bool addTemplateStep(vector<SvcGenerator::ScriptStep>& steps) {
          << "Command: " << (colorsEnabled() ? Color::RESET : "")
          << (colorsEnabled() ? Color::BOLD : "") << cmd
          << (colorsEnabled() ? Color::RESET : "") << "\n\n"
-         << "  add this step? (y/n): ";
+         << "  add this step? (y/n): " << flush;
 
-    inp = readInput("");
-    if (inp.empty() || isQuit(inp)) return false;
-    if (inp != "y" && inp != "Y") {
-        cout << "  step cancelled.\n";
-        waitForEnter();
-        return false;
+    // y/n confirm with retry loop
+    while (true) {
+        inp = readInput("");
+        if (isQuit(inp)) { handleQuit(); return false; }
+        if (isMenu(inp)) throw MenuJump{};
+        if (isBack(inp)) { cout << "  step cancelled.\n"; waitForEnter(); return false; }
+        if (inp == "y" || inp == "Y") break;
+        if (inp == "n" || inp == "N") { cout << "  step cancelled.\n"; waitForEnter(); return false; }
+        cout << "  please enter y or n: " << flush;
     }
 
     // 7. Add the step
@@ -298,14 +301,17 @@ static void previewAndSave(const vector<SvcGenerator::ScriptStep>& steps, Config
     cout << (colorsEnabled() ? Color::DIM : "")
          << "  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n"
          << (colorsEnabled() ? Color::RESET : "")
-         << "\n  save this script? (y/n): ";
+         << "\n  save this script? (y/n): " << flush;
 
-    string inp = readInput("");
-    if (inp.empty() || isQuit(inp)) return;
-    if (inp != "y" && inp != "Y") {
-        cout << "  script not saved.\n";
-        waitForEnter();
-        return;
+    // y/n confirm with retry loop
+    while (true) {
+        string inp = readInput("");
+        if (isQuit(inp)) { handleQuit(); return; }
+        if (isMenu(inp)) throw MenuJump{};
+        if (isBack(inp)) { cout << "  script not saved.\n"; waitForEnter(); return; }
+        if (inp == "y" || inp == "Y") break;
+        if (inp == "n" || inp == "N") { cout << "  script not saved.\n"; waitForEnter(); return; }
+        cout << "  please enter y or n: " << flush;
     }
 
     // Ask for a note/description

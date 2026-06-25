@@ -1389,21 +1389,28 @@ static void addNewTemplate() {
             if (isBack(desc)) desc = "";
 
             cout << "\n  preview:  $ " << content << "\n\n";
-            cout << "  save this template? (y/n): ";
-            string confirm = readInput("");
-            if (isQuit(confirm)) { handleQuit(); return; }
-            if (isMenu(confirm)) throw MenuJump{};
-            if (isBack(confirm)) continue;
-            if (confirm == "y" || confirm == "Y") {
-                int id = SvcSavedTemplates::saveTemplate(selectedTool.id, tName, content, desc);
-                if (id != -1) {
-                    cout << "  " << (colorsEnabled() ? Color::GREEN : "")
-                         << "\u2713 custom template saved (id " << id << ")"
-                         << (colorsEnabled() ? Color::RESET : "") << "\n";
-                } else {
-                    cout << "  ! failed to save template.\n";
+            cout << "  save this template? (y/n): " << flush;
+
+            // y/n confirm with retry loop
+            while (true) {
+                string confirm = readInput("");
+                if (isQuit(confirm)) { handleQuit(); return; }
+                if (isMenu(confirm)) throw MenuJump{};
+                if (isBack(confirm)) { cout << "  template not saved.\n"; waitForEnter(); return; }
+                if (confirm == "y" || confirm == "Y") {
+                    int id = SvcSavedTemplates::saveTemplate(selectedTool.id, tName, content, desc);
+                    if (id != -1) {
+                        cout << "  " << (colorsEnabled() ? Color::GREEN : "")
+                             << "\u2713 custom template saved (id " << id << ")"
+                             << (colorsEnabled() ? Color::RESET : "") << "\n";
+                    } else {
+                        cout << "  ! failed to save template.\n";
+                    }
+                    waitForEnter();
+                    break;
                 }
-                waitForEnter();
+                if (confirm == "n" || confirm == "N") { cout << "  template not saved.\n"; waitForEnter(); return; }
+                cout << "  please enter y or n: " << flush;
             }
             return;
         }

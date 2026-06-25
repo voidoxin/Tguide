@@ -24,7 +24,7 @@ void UI::clearScreen() noexcept {
 }
 
 void UI::printBanner() {
-    cout << Color::CYAN << Color::BOLD;
+    if (colorsEnabled()) cout << Color::CYAN << Color::BOLD;
     cout << R"(
   ████████╗ ██████╗ ██╗   ██╗██╗██████╗ ███████╗
      ██╔══╝██╔════╝ ██║   ██║██║██╔══██╗██╔════╝
@@ -32,23 +32,26 @@ void UI::printBanner() {
      ██║   ██║   ██║██║   ██║██║██║  ██║██╔══╝
      ██║   ╚██████╔╝╚██████╔╝██║██████╔╝███████╗
      ╚═╝    ╚═════╝  ╚═════╝ ╚═╝╚═════╝ ╚══════╝
-)" << Color::RESET;
+)" << (colorsEnabled() ? Color::RESET : "");
 
-    cout << Color::DIM
-         << "          security tools reference — by voidoxin\n"
-         << Color::RESET << "\n";
+    if (colorsEnabled()) cout << Color::DIM;
+    cout << "          security tools reference — by voidoxin\n"
+         << (colorsEnabled() ? Color::RESET : "") << "\n";
 }
 
 void UI::printDivider() {
-    cout << Color::DIM
-         << "  ──────────────────────────────────────────────\n"
-         << Color::RESET;
+    if (colorsEnabled()) cout << Color::DIM;
+    cout << "  ──────────────────────────────────────────────\n"
+         << (colorsEnabled() ? Color::RESET : "");
 }
 
 void UI::printBreadcrumb(const std::string& section) {
-    cout << Color::DIM << "  tguide"
-         << Color::RESET
-         << Color::CYAN << " › " << Color::RESET
-         << Color::BOLD << section << Color::RESET
+    if (colorsEnabled()) cout << Color::DIM;
+    cout << "  tguide"
+         << (colorsEnabled() ? Color::RESET : "")
+         << (colorsEnabled() ? Color::CYAN : "") << " › "
+         << (colorsEnabled() ? Color::RESET : "")
+         << (colorsEnabled() ? Color::BOLD : "") << section
+         << (colorsEnabled() ? Color::RESET : "")
          << "\n\n";
 }
