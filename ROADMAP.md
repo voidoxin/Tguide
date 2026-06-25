@@ -789,11 +789,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L1 / L2 |
 | Priority   | CRITICAL |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | L1-services/includes/svc_generator.h (rewrite), L1-services/src/svc_generator.cpp (rewrite), L2-Interface_Engine/includes/UI_generator.h, L2-Interface_Engine/src/UI_generator.cpp (rewrite), CMakeLists.txt |
 | Goal       | Rewrite the Script Generator from the current stub ("not available in this build") into a real script composition system. The user should be able to: (1) select multiple templates from different tools, (2) insert custom bash commands between template selections (cd, mkdir, echo, etc.), (3) reorder/rearrange the template/bash sequence, and (4) get the final output either as text to copy or as a saved `.sh` file. Remove the `TGUIDE_ENABLE_GENERATOR` compile-time gate — the generator is always available. Implement `SvcGenerator::buildScript()` that takes a sequence of steps (template IDs + custom bash lines) and outputs the merged script string. The generated script should have a header comment with tool/date metadata and proper shebang (`#!/bin/bash`). |
 | Depends    | STEP-26d |
-| Done when  | User can browse tools, select templates, add bash commands between them, reorder the sequence, preview the merged script, and choose to save as file or copy to clipboard (display as text); generated scripts have proper shebang, metadata header, and correct template syntax; `TGUIDE_ENABLE_GENERATOR` is removed so generator is always compiled in; all 181 existing tests still pass |
+| Done when  | User can browse tools, select templates, add bash commands between them, reorder the sequence, preview the merged script, and choose to save as file or copy to clipboard (display as text); generated scripts have proper shebang, metadata header, and correct template syntax; `TGUIDE_ENABLE_GENERATOR` is removed so generator is always compiled in; all 217 existing tests still pass |
+| Completed  | **2026-06-25** — Full script generation system implemented (see STEP-26e details). 217 tests, 612 assertions, all passing. ✅ |
 
 ### STEP-26f — Add script save prompt with configurable default path
 | Field      | Value |
@@ -1400,7 +1401,7 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-26b | Release R3b-UX | L2 | Add quick return to main menu shortcut ("m" / "menu") | [x] DONE |
 | STEP-26c | Release R3b-UX | L2 | Verify and harden quick quit at every input prompt | [x] DONE |
 | STEP-26d | Release R3b-UX | L2 | Add "View All Tools" option to tools menu with pagination | [x] DONE |
-| STEP-26e | Release R3b-UX | L1 / L2 | Implement real script generation (merge templates + bash commands) | [ ] TODO |
+| STEP-26e | Release R3b-UX | L1 / L2 | Implement real script generation (merge templates + bash commands) | [x] DONE |
 | STEP-26f | Release R3b-UX | L0 / L2 | Add script save prompt with configurable default path | [ ] TODO |
 | STEP-26g | Release R3b-UX | L2 | Implement template creation flow (browse/search/custom) | [ ] TODO |
 | STEP-27 | Release R3c | L0 | Config: add lang, db_update_behavior, extension_priority defaults |
