@@ -61,7 +61,10 @@ bool ConfigManager::load() {
         {"colors",              1},   // 1 = ANSI on, 0 = plain output
         {"disclaimer_accepted", 0},   // 0 = not accepted, 1 = accepted
         {"pagination",          1},   // 1 = paginated output, 0 = continuous
-        {"page-size",           20}   // lines per page
+        {"page-size",           20},   // lines per page
+        {"export", {
+            {"script_path", ""}
+        }}
     };
 
     json before = config;

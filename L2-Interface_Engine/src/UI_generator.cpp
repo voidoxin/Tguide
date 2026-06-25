@@ -18,12 +18,14 @@
 #include "../../L1-services/includes/svc_tools.h"
 #include "../../L1-services/includes/svc_savedScripts.h"
 #include "../../L0-core/include/path_resolver.h"
+#include "../../L0-core/include/config_manager.h"
 #include <algorithm>
 #include <ctime>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <system_error>
 #include <vector>
 
 using namespace std;
@@ -262,7 +264,7 @@ static void reorderSteps(vector<SvcGenerator::ScriptStep>& steps) {
 }
 
 // ── preview and save ────────────────────────────────────────────────────
-static void previewAndSave(const vector<SvcGenerator::ScriptStep>& steps) {
+static void previewAndSave(const vector<SvcGenerator::ScriptStep>& steps, ConfigManager& cfg) {
     if (steps.empty()) {
         cout << "\n  sequence is empty \u2014 nothing to save.\n";
         waitForEnter();
@@ -311,20 +313,47 @@ static void previewAndSave(const vector<SvcGenerator::ScriptStep>& steps) {
     string note = readInput("");
     if (isQuit(note)) return;
 
+    // Determine default save directory
+    string cfgPath = cfg.get<string>("export.script_path", "");
+    fs::path saveDir = cfgPath.empty() ? PathResolver::scriptsDir() : fs::path(cfgPath);
+
     // Generate filename from timestamp
     time_t now = time(nullptr);
     struct tm local;
     localtime_r(&now, &local);
     char nameBuf[64];
     strftime(nameBuf, sizeof(nameBuf), "script_%Y%m%d_%H%M%S", &local);
-    string filename = string(nameBuf) + ".sh";
+    string defaultName = string(nameBuf) + ".sh";
+    fs::path defaultPath = saveDir / defaultName;
 
-    // Write file to scriptsDir
-    fs::path scriptPath = PathResolver::scriptsDir() / filename;
+    // Prompt for save path
+    cout << "\n  Save path [Enter=default]:\n"
+         << "  default: " << defaultPath.string() << "\n"
+         << "  \u2192 ";
+    string pathInput = readInput("");
+    if (isQuit(pathInput)) return;
+
+    fs::path scriptPath;
+    if (pathInput.empty()) {
+        scriptPath = defaultPath;
+    } else {
+        scriptPath = fs::path(pathInput);
+        // If user entered an existing directory, append the default filename
+        error_code ec2;
+        if (fs::is_directory(scriptPath, ec2) || !scriptPath.has_extension()) {
+            scriptPath /= defaultName;
+        }
+    }
+
+    // Create parent directories if needed
+    error_code ec;
+    fs::create_directories(scriptPath.parent_path(), ec);
+
+    // Write file
     ofstream outFile(scriptPath.string());
     if (!outFile) {
         cout << "\n  " << (colorsEnabled() ? Color::YELLOW : "")
-             << "! failed to open script file for writing."
+             << "! failed to open script file for writing: " << scriptPath.string()
              << (colorsEnabled() ? Color::RESET : "") << "\n";
         waitForEnter();
         return;
@@ -340,7 +369,6 @@ static void previewAndSave(const vector<SvcGenerator::ScriptStep>& steps) {
     }
 
     // Make executable
-    error_code ec;
     fs::permissions(scriptPath,
                     fs::perms::owner_read | fs::perms::owner_write | fs::perms::owner_exec,
                     fs::perm_options::add, ec);
@@ -374,7 +402,7 @@ static void previewAndSave(const vector<SvcGenerator::ScriptStep>& steps) {
 
 // ==================== PUBLIC ENTRY POINT ====================
 
-void UIGenerator::show() {
+void UIGenerator::show(ConfigManager& cfg) {
     vector<SvcGenerator::ScriptStep> steps;
 
     while (true) {
@@ -408,7 +436,7 @@ void UIGenerator::show() {
         } else if (input == "3") {
             reorderSteps(steps);
         } else if (input == "4") {
-            previewAndSave(steps);
+            previewAndSave(steps, cfg);
         } else {
             cout << "  " << "invalid choice." << "\n";
             waitForEnter();

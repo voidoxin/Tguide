@@ -129,7 +129,7 @@ void UIEngine::start(ConfigManager& cfg) {
 
         vector<MenuItem> mainMenu = {
             { "⊞", "Tools",            "flags, templates, usage",       []() { UITools::show();           } },
-            { "◎", "Script Generator", "build commands interactively",   []() { UIGenerator::show();       } },
+            { "◎", "Script Generator", "build commands interactively",   [&cfg]() { UIGenerator::show(cfg); } },
             { "◈", "Saved Commands",   "your personal command library",  []() { UISavedCommands::show();   } },
             { "▦", "Saved Scripts",    "your generated scripts",         []() { UISavedScripts::show();    } },
             { "⊙", "Settings",         "configure tguide behavior",      [&cfg]() { UISettings::show(cfg); } },

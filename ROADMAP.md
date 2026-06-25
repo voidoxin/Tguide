@@ -801,11 +801,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L0 / L2 |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
-| Files      | L0-core/src/config_manager.cpp, L2-Interface_Engine/src/UI_generator.cpp, L2-Interface_Engine/src/UI_savedScripts.cpp |
+| Status     | [x] DONE |
+| Files      | L0-core/src/config_manager.cpp, L2-Interface_Engine/includes/UI_generator.h, L2-Interface_Engine/src/UI_generator.cpp, L2-Interface_Engine/src/UI_settings.cpp, L2-Interface_Engine/src/UI_Engine.cpp |
 | Goal       | After generating a script (STEP-26e), prompt the user: "Save to file? (default: ~/.local/share/tguide/scripts/script_N.sh) [path/Enter=default]:". If the user presses Enter without input, save to the default path (from config key `export.script_path` or fallback to PathResolver::scriptsDir()). If the user enters a custom path, save there. Add `export.script_path` config key to ConfigManager defaults (default empty → use PathResolver::scriptsDir()). The user should be able to change the default in Settings. Update Settings UI to include "Default Script Save Path". |
 | Depends    | STEP-26e |
-| Done when  | Script generation prompts for save location; Enter uses config default or fallback; custom path is accepted and file is written; config key `export.script_path` is get/settable via ConfigManager; Settings menu shows "Default Script Save Path" option; all 181 existing tests still pass |
+| Done when  | Script generation prompts for save location; Enter uses config default or fallback; custom path is accepted and file is written; config key `export.script_path` is get/settable via ConfigManager; Settings menu shows "Default Script Save Path" option; all 217 existing tests still pass |
+| Completed  | **2026-06-25** — Script save prompt with configurable default path implemented (config key `export.script_path`, Settings UI option [3]). 217 tests, 612 assertions, all passing. ✅ |
 
 ### STEP-26g — Implement template creation flow (browse category / search tool / make own)
 | Field      | Value |
@@ -1402,7 +1403,7 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-26c | Release R3b-UX | L2 | Verify and harden quick quit at every input prompt | [x] DONE |
 | STEP-26d | Release R3b-UX | L2 | Add "View All Tools" option to tools menu with pagination | [x] DONE |
 | STEP-26e | Release R3b-UX | L1 / L2 | Implement real script generation (merge templates + bash commands) | [x] DONE |
-| STEP-26f | Release R3b-UX | L0 / L2 | Add script save prompt with configurable default path | [ ] TODO |
+| STEP-26f | Release R3b-UX | L0 / L2 | Add script save prompt with configurable default path | [x] DONE |
 | STEP-26g | Release R3b-UX | L2 | Implement template creation flow (browse/search/custom) | [ ] TODO |
 | STEP-27 | Release R3c | L0 | Config: add lang, db_update_behavior, extension_priority defaults |
 | STEP-28 | Release R3c | L2 | Settings UI: language, DB update behavior, extension priority |

@@ -7,6 +7,8 @@
 
 #pragma once
 
+class ConfigManager;
+
 namespace UIGenerator {
-    void show();
+    void show(ConfigManager& cfg);
 }

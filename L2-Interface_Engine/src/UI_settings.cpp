@@ -13,15 +13,17 @@
 #include "../includes/UI_colors.h"
 #include "../includes/UI_errorHandling.h"
 #include "../includes/UI_input.h"
+#include "../../L0-core/include/config_manager.h"
 #include "../../L0-core/include/db_cache_manager.h"
 #include "../../L0-core/include/DBResolver.h"
 #include "../../L0-core/include/path_resolver.h"
 #include "../../L0-core/include/string_utils.h"
 #include "../../L1-services/includes/svc_settings.h"
 #include <filesystem>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
-#include <iomanip>
+#include <system_error>
 
 using namespace std;
 
@@ -33,6 +35,8 @@ void UISettings::show(ConfigManager& cfg) {
         UI::printDivider();
 
         bool colorOn = SvcSettings::getColorEnabled(cfg);
+        string scriptPath = cfg.get<string>("export.script_path", "");
+        if (scriptPath.empty()) scriptPath = "(default: " + PathResolver::scriptsDir().string() + ")";
 
         cout << "\n"
              << (colorsEnabled() ? Color::BOLD : "")
@@ -60,6 +64,14 @@ void UISettings::show(ConfigManager& cfg) {
              << "  \u2502    "
              << (colorsEnabled() ? Color::RESET : "")
              << "manage backups and rollback\n"
+             << (colorsEnabled() ? Color::DIM : "")
+             << "  \u251c\u2500 \u25c9  Default Script Save Path"
+             << (colorsEnabled() ? Color::RESET : "")
+             << "  [3]\n"
+             << (colorsEnabled() ? Color::DIM : "")
+             << "  \u2502    "
+             << (colorsEnabled() ? Color::RESET : "")
+             << scriptPath << "\n"
              << (colorsEnabled() ? Color::DIM : "")
              << "  \u2514\u2500 "
              << (colorsEnabled() ? Color::RESET : "")
@@ -103,6 +115,23 @@ void UISettings::show(ConfigManager& cfg) {
 
         } else if (input == "2") {
             showDatabaseMenu();
+
+        } else if (input == "3") {
+            cout << "\n  enter default script save path\n"
+                 << "  (empty to reset to default):\n  \u2192 ";
+            string newPath = readInput("");
+            if (isQuit(newPath)) continue;
+            cfg.set<string>("export.script_path", newPath);
+            if (cfg.save()) {
+                cout << "\n  " << (colorsEnabled() ? Color::GREEN : "")
+                     << "\u2713 path saved"
+                     << (colorsEnabled() ? Color::RESET : "") << "\n";
+            } else {
+                cout << "\n  " << (colorsEnabled() ? Color::YELLOW : "")
+                     << "! failed to persist path"
+                     << (colorsEnabled() ? Color::RESET : "") << "\n";
+            }
+            waitForEnter();
 
         } else {
             cout << (colorsEnabled() ? Color::YELLOW : "")
