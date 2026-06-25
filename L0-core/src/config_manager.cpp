@@ -58,10 +58,13 @@ bool ConfigManager::load() {
             {"os",   "-1"},
             {"root", "unknown"}
         }},
-        {"colors",              1},   // 1 = ANSI on, 0 = plain output
-        {"disclaimer_accepted", 0},   // 0 = not accepted, 1 = accepted
-        {"pagination",          1},   // 1 = paginated output, 0 = continuous
-        {"page-size",           20},   // lines per page
+        {"colors",              1},       // 1 = ANSI on, 0 = plain output
+        {"disclaimer_accepted", 0},       // 0 = not accepted, 1 = accepted
+        {"pagination",          1},       // 1 = paginated output, 0 = continuous
+        {"page-size",           20},       // lines per page
+        {"lang",                "en"},     // UI language (only English for now)
+        {"db_update_behavior",  "ask_me"}, // "never" | "ask_me" | "auto"
+        {"extension_priority",  "color"},  // "db_only" | "color" | "ext_only"
         {"export", {
             {"script_path", ""}
         }}
