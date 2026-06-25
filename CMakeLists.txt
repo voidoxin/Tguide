@@ -237,6 +237,7 @@ set(L1_SOURCES
     ${CMAKE_SOURCE_DIR}/L1-services/src/svc_tools.cpp
     ${CMAKE_SOURCE_DIR}/L1-services/src/svc_generator.cpp
     ${CMAKE_SOURCE_DIR}/L1-services/src/svc_savedCommands.cpp
+    ${CMAKE_SOURCE_DIR}/L1-services/src/svc_savedTemplates.cpp
     ${CMAKE_SOURCE_DIR}/L1-services/src/svc_savedScripts.cpp
     ${CMAKE_SOURCE_DIR}/L1-services/src/svc_settings.cpp
 )

@@ -25,11 +25,19 @@ struct SavedScript {
     std::string note;      // one-line description
 };
 
+struct SavedTemplate {
+    int         id;
+    int         tool_id;
+    std::string name;        // display name
+    std::string content;     // template text with {{target}}, {{port}} etc.
+    std::string description; // one-line description
+};
+
 // ==================== UserDataManager ====================
 
 /*
- * Manages saved_commands.json and saved_scripts.json.
- * No SQLite — both files live in userDataDir() and require no root.
+ * Manages saved_commands.json, saved_scripts.json, and saved_templates.json.
+ * No SQLite — all files live in userDataDir() and require no root.
  * Caller must call load() explicitly after construction.
  * save() writes both files; returns false if either write fails.
  */
@@ -63,15 +71,25 @@ public:
     bool deleteScript(int id);
     std::vector<SavedScript> getScripts();
 
+    // returns new id on success, -1 on failure
+    int  saveTemplate(int tool_id, const std::string& name,
+                      const std::string& content, const std::string& description);
+    bool deleteTemplate(int id);
+    std::vector<SavedTemplate> getTemplates();
+    std::vector<SavedTemplate> getTemplatesByToolId(int toolId);
+
 private:
     UserDataManager() = default;
 
     std::string               m_commandsPath;
     std::string               m_scriptsPath;
+    std::string               m_templatesPath;
     std::vector<SavedCommand> m_commands;
     std::vector<SavedScript>  m_scripts;
+    std::vector<SavedTemplate> m_templates;
     bool                      m_initialized = false;
 
     int nextCommandId() const;
     int nextScriptId()  const;
+    int nextTemplateId() const;
 };

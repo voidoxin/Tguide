@@ -92,4 +92,13 @@ namespace SvcDTO {
         std::string note;
     };
 
+    struct SavedTemplateDTO {
+        int         id;
+        int         tool_id;
+        std::string name;
+        std::string content;
+        std::string description;
+        std::string tool_name;
+    };
+
 } // namespace SvcDTO

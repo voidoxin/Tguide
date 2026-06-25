@@ -17,6 +17,7 @@
 #include "../includes/svc_generator.h"
 #include "../includes/svc_strings.h"
 #include "../includes/svc_tools.h"
+#include "../includes/svc_savedTemplates.h"
 #include "../includes/UI_colors.h"
 #include "../includes/UI_errorHandling.h"
 #include "../includes/UI_input.h"
@@ -34,6 +35,9 @@ static void showSearch();
 static void showAllTools();
 static void showTemplateFill(const SvcDTO::ToolDTO& tool,
                               const SvcDTO::TemplateDTO& templ);
+static void showMyTemplates();
+static void addNewTemplate();
+static void useSavedTemplate(const SvcDTO::SavedTemplateDTO& st);
 static void showVulnerabilities();
 static void showModules();
 
@@ -84,8 +88,9 @@ static bool isReconNg(const SvcDTO::ToolDTO& tool) {
 // ==================== TOOL DETAIL (STUB) ====================
 
 static void showToolDetail(const SvcDTO::ToolDTO& tool) {
-    vector<SvcDTO::ToolFlagDTO> flags    = SvcTools::getFlagsByToolId(tool.id);
+    vector<SvcDTO::ToolFlagDTO> flags     = SvcTools::getFlagsByToolId(tool.id);
     vector<SvcDTO::TemplateDTO> templates = SvcTools::getTemplatesByToolId(tool.id);
+    vector<SvcDTO::SavedTemplateDTO> savedTmpls = SvcSavedTemplates::getTemplatesByToolId(tool.id);
 
     while (true) {
         UI::clearScreen();
@@ -147,6 +152,26 @@ static void showToolDetail(const SvcDTO::ToolDTO& tool) {
             }
         }
 
+        // ── saved templates ──
+        if (!savedTmpls.empty()) {
+            if (!templates.empty()) {
+                cout << "\n  " << (colorsEnabled() ? Color::DIM : "")
+                     << "  \u2014\u2014\u2014 user templates \u2014\u2014\u2014"
+                     << (colorsEnabled() ? Color::RESET : "") << "\n";
+            }
+            for (size_t i = 0; i < savedTmpls.size(); i++) {
+                const auto& st = savedTmpls[i];
+                int num = static_cast<int>(templates.size() + i + 1);
+                cout << "    [" << num << "] "
+                     << (colorsEnabled() ? Color::CYAN : "") << st.name
+                     << (colorsEnabled() ? Color::RESET : "")
+                     << "  (saved)";
+                if (!st.description.empty())
+                    cout << "  \u2014 " << st.description;
+                cout << "\n";
+            }
+        }
+
         UI::printDivider();
         cout << "\n";
 
@@ -156,10 +181,16 @@ static void showToolDetail(const SvcDTO::ToolDTO& tool) {
         if (isMenu(input)) throw MenuJump{};
         if (isBack(input)) return;
 
-        // Check if input is a template number (1..N)
+        // Check if input is a template number (DB + saved)
         int num = toNumber(input);
-        if (num >= 1 && num <= static_cast<int>(templates.size())) {
-            showTemplateFill(tool, templates[static_cast<size_t>(num - 1)]);
+        int totalTemplates = static_cast<int>(templates.size() + savedTmpls.size());
+        if (num >= 1 && num <= totalTemplates) {
+            if (num <= static_cast<int>(templates.size())) {
+                showTemplateFill(tool, templates[static_cast<size_t>(num - 1)]);
+            } else {
+                int savedIdx = num - static_cast<int>(templates.size()) - 1;
+                useSavedTemplate(savedTmpls[savedIdx]);
+            }
             continue;
         }
 
@@ -1001,13 +1032,490 @@ static void showAllTools() {
     }
 }
 
+// ==================== SAVED TEMPLATES ====================
+
+static void showMyTemplates() {
+    while (true) {
+        auto all = SvcSavedTemplates::getAllTemplates();
+        UI::clearScreen();
+        UI::printBanner();
+        UI::printBreadcrumb("tools \u203a my templates");
+        UI::printDivider();
+
+        if (all.empty()) {
+            cout << "\n  " << Strings::get(StringID::SAVED_TEMPLATES_EMPTY) << "\n\n";
+            cout << (colorsEnabled() ? Color::DIM : "")
+                 << "  [a] " << Strings::get(StringID::SAVED_TEMPLATES_ADD) << "\n"
+                 << "  [0] " << Strings::get(StringID::TOOLS_BACK) << "\n"
+                 << (colorsEnabled() ? Color::RESET : "") << "\n\n";
+            string input = readInput("  \u2192 (m=menu) ");
+            if (input.empty()) continue;
+            if (isQuit(input)) { handleQuit(); return; }
+            if (isMenu(input)) throw MenuJump{};
+            if (isBack(input)) return;
+            if (input == "a" || input == "A") { addNewTemplate(); continue; }
+            cout << "  " << Strings::get(StringID::TOOLS_INVALID_CHOICE) << "\n";
+            waitForEnter();
+            continue;
+        }
+
+        // Build display lines
+        vector<string> lines;
+        for (const auto& t : all) {
+            string line = t.name;
+            if (!t.description.empty())
+                line += "  \u2014 " + t.description;
+            line += "  (" + t.tool_name + ")";
+            lines.push_back(line);
+        }
+        Paginator pager(lines, true);
+        string crumb = "tools \u203a my templates";
+
+        while (true) {
+            pager.render(crumb);
+            cout << (colorsEnabled() ? Color::DIM : "")
+                 << "  [a] " << Strings::get(StringID::SAVED_TEMPLATES_ADD) << "   "
+                 << "[d] delete   [0] " << Strings::get(StringID::TOOLS_BACK)
+                 << (colorsEnabled() ? Color::RESET : "") << "\n\n";
+            string input = readInput("  \u2192 (m=menu) ");
+            if (input.empty()) continue;
+            if (isQuit(input)) { handleQuit(); return; }
+            if (isMenu(input)) throw MenuJump{};
+            if (isBack(input)) return;
+            if (isNext(input)) { if (!pager.nextPage()) cout << "  already on last page.\n"; continue; }
+            if (isPrev(input)) { if (!pager.prevPage()) cout << "  already on first page.\n"; continue; }
+
+            if (input == "a" || input == "A") { addNewTemplate(); break; }
+
+            if (input == "d" || input == "D") {
+                cout << "\n  " << Strings::get(StringID::SAVED_TEMPLATES_CONFIRM_DELETE) << " ";
+                string confirm = readInput("");
+                if (isQuit(confirm)) { handleQuit(); return; }
+                if (isMenu(confirm)) throw MenuJump{};
+                if (isBack(confirm)) continue;
+                if (confirm == "y" || confirm == "Y") {
+                    cout << "  enter number: ";
+                    string delNum = readInput("");
+                    if (isQuit(delNum)) { handleQuit(); return; }
+                    if (isMenu(delNum)) throw MenuJump{};
+                    if (isBack(delNum)) continue;
+                    int di = toNumber(delNum);
+                    if (di >= 1 && di <= static_cast<int>(all.size())) {
+                        if (SvcSavedTemplates::deleteTemplate(all[di - 1].id))
+                            cout << "  " << Strings::get(StringID::SAVED_TEMPLATES_DELETED) << "\n";
+                        else
+                            cout << "  ! failed to delete.\n";
+                    } else {
+                        cout << "  " << Strings::get(StringID::TOOLS_INVALID_CHOICE) << "\n";
+                    }
+                }
+                waitForEnter();
+                break;
+            }
+
+            int idx = pager.select(input);
+            if (idx == -1) {
+                cout << "  " << Strings::get(StringID::TOOLS_INVALID_CHOICE) << "\n";
+                continue;
+            }
+            useSavedTemplate(all[idx]);
+        }
+    }
+}
+
+// ==================== ADD NEW TEMPLATE ====================
+
+static void addNewTemplate() {
+    while (true) {
+        UI::clearScreen();
+        UI::printBanner();
+        UI::printBreadcrumb("tools \u203a add template");
+        UI::printDivider();
+
+        cout << "\n  select method:\n\n"
+             << "  [1] " << Strings::get(StringID::SAVED_TEMPLATES_BROWSE) << "\n"
+             << "  [2] " << Strings::get(StringID::SAVED_TEMPLATES_SEARCH_TOOL) << "\n"
+             << "  [3] " << Strings::get(StringID::SAVED_TEMPLATES_MAKE_OWN) << "\n"
+             << (colorsEnabled() ? Color::DIM : "")
+             << "  [0] " << Strings::get(StringID::TOOLS_BACK) << "\n"
+             << (colorsEnabled() ? Color::RESET : "") << "\n";
+
+        string input = readInput("  \u2192 ");
+        if (input.empty()) continue;
+        if (isQuit(input)) { handleQuit(); return; }
+        if (isMenu(input)) throw MenuJump{};
+        if (isBack(input)) return;
+        int num = toNumber(input);
+        if (num < 1 || num > 3) {
+            cout << "  " << Strings::get(StringID::TOOLS_INVALID_CHOICE) << "\n";
+            waitForEnter();
+            continue;
+        }
+
+        // --- Select a tool first (common to all three options) ---
+        SvcDTO::ToolDTO selectedTool;
+        if (num == 1) {
+            // Browse by Category
+            auto catList = SvcTools::getCategoryList();
+            if (catList.empty()) {
+                cout << "  no categories available.\n"; waitForEnter(); continue;
+            }
+            while (true) {
+                UI::clearScreen();
+                UI::printBanner();
+                UI::printBreadcrumb("tools \u203a add template \u203a browse");
+                UI::printDivider();
+                cout << "\n  select category:\n\n";
+                for (size_t i = 0; i < catList.size(); i++)
+                    cout << "  [" << (i+1) << "] " << catList[i].name << "\n";
+                cout << (colorsEnabled() ? Color::DIM : "")
+                     << "  [0] back\n"
+                     << (colorsEnabled() ? Color::RESET : "") << "\n";
+                string ci = readInput("  \u2192 ");
+                if (isQuit(ci)) { handleQuit(); return; }
+                if (isMenu(ci)) throw MenuJump{};
+                if (isBack(ci)) break;
+                int ciNum = toNumber(ci);
+                if (ciNum < 1 || ciNum > static_cast<int>(catList.size())) {
+                    cout << "  invalid.\n"; waitForEnter(); continue;
+                }
+                auto tools = SvcTools::getToolsByCategory(catList[ciNum-1].name);
+                if (tools.empty()) { cout << "  no tools.\n"; waitForEnter(); continue; }
+                while (true) {
+                    UI::clearScreen();
+                    UI::printBanner();
+                    UI::printBreadcrumb("tools \u203a add template \u203a browse \u203a " + catList[ciNum-1].name);
+                    UI::printDivider();
+                    cout << "\n  select tool:\n\n";
+                    for (size_t i = 0; i < tools.size(); i++)
+                        cout << "  [" << (i+1) << "] " << tools[i].name << "\n";
+                    cout << (colorsEnabled() ? Color::DIM : "")
+                         << "  [0] back\n"
+                         << (colorsEnabled() ? Color::RESET : "") << "\n";
+                    string ti = readInput("  \u2192 ");
+                    if (isQuit(ti)) { handleQuit(); return; }
+                    if (isMenu(ti)) throw MenuJump{};
+                    if (isBack(ti)) break;
+                    int tiNum = toNumber(ti);
+                    if (tiNum < 1 || tiNum > static_cast<int>(tools.size())) {
+                        cout << "  invalid.\n"; waitForEnter(); continue;
+                    }
+                    selectedTool = tools[tiNum-1];
+                    break;
+                }
+                if (selectedTool.id != 0) break;
+            }
+        } else if (num == 2) {
+            // Search Tool
+            while (true) {
+                UI::clearScreen();
+                UI::printBanner();
+                UI::printBreadcrumb("tools \u203a add template \u203a search");
+                UI::printDivider();
+                cout << "\n  search: ";
+                string query = readInput("");
+                if (isQuit(query)) { handleQuit(); return; }
+                if (isMenu(query)) throw MenuJump{};
+                if (isBack(query)) break;
+                auto results = SvcTools::searchTools(query);
+                if (results.empty()) {
+                    cout << "  no tools found.\n"; waitForEnter(); continue;
+                }
+                while (true) {
+                    UI::clearScreen();
+                    UI::printBanner();
+                    UI::printBreadcrumb("tools \u203a add template \u203a search results");
+                    UI::printDivider();
+                    cout << "\n  results for \"" << query << "\":\n\n";
+                    for (size_t i = 0; i < results.size(); i++)
+                        cout << "  [" << (i+1) << "] " << results[i].name << "\n";
+                    cout << (colorsEnabled() ? Color::DIM : "")
+                         << "  [0] back\n"
+                         << (colorsEnabled() ? Color::RESET : "") << "\n";
+                    string ri = readInput("  \u2192 ");
+                    if (isQuit(ri)) { handleQuit(); return; }
+                    if (isMenu(ri)) throw MenuJump{};
+                    if (isBack(ri)) break;
+                    int riNum = toNumber(ri);
+                    if (riNum < 1 || riNum > static_cast<int>(results.size())) {
+                        cout << "  invalid.\n"; waitForEnter(); continue;
+                    }
+                    selectedTool = results[riNum - 1];
+                    break;
+                }
+                if (selectedTool.id != 0) break;
+            }
+        } else if (num == 3) {
+            // Make Own Template — first select a tool then create content
+            auto catList = SvcTools::getCategoryList();
+            if (catList.empty()) {
+                cout << "  no categories available.\n"; waitForEnter(); continue;
+            }
+            while (true) {
+                UI::clearScreen();
+                UI::printBanner();
+                UI::printBreadcrumb("tools \u203a add template \u203a make own");
+                UI::printDivider();
+                cout << "\n  select a tool for this template:\n\n";
+                for (size_t i = 0; i < catList.size(); i++)
+                    cout << "  [" << (i+1) << "] " << catList[i].name << "\n";
+                cout << (colorsEnabled() ? Color::DIM : "")
+                     << "  [0] back\n"
+                     << (colorsEnabled() ? Color::RESET : "") << "\n";
+                string ci = readInput("  \u2192 ");
+                if (isQuit(ci)) { handleQuit(); return; }
+                if (isMenu(ci)) throw MenuJump{};
+                if (isBack(ci)) break;
+                int ciNum = toNumber(ci);
+                if (ciNum < 1 || ciNum > static_cast<int>(catList.size())) {
+                    cout << "  invalid.\n"; waitForEnter(); continue;
+                }
+                auto tools = SvcTools::getToolsByCategory(catList[ciNum-1].name);
+                if (tools.empty()) { cout << "  no tools.\n"; waitForEnter(); continue; }
+                while (true) {
+                    UI::clearScreen();
+                    UI::printBanner();
+                    UI::printBreadcrumb("tools \u203a add template \u203a make own \u203a " + catList[ciNum-1].name);
+                    UI::printDivider();
+                    cout << "\n  select tool:\n\n";
+                    for (size_t i = 0; i < tools.size(); i++)
+                        cout << "  [" << (i+1) << "] " << tools[i].name << "\n";
+                    cout << (colorsEnabled() ? Color::DIM : "")
+                         << "  [0] back\n"
+                         << (colorsEnabled() ? Color::RESET : "") << "\n";
+                    string ti = readInput("  \u2192 ");
+                    if (isQuit(ti)) { handleQuit(); return; }
+                    if (isMenu(ti)) throw MenuJump{};
+                    if (isBack(ti)) break;
+                    int tiNum = toNumber(ti);
+                    if (tiNum < 1 || tiNum > static_cast<int>(tools.size())) {
+                        cout << "  invalid.\n"; waitForEnter(); continue;
+                    }
+                    selectedTool = tools[tiNum-1];
+                    break;
+                }
+                if (selectedTool.id != 0) break;
+            }
+        }
+
+        if (selectedTool.id == 0) {
+            cout << "  no tool selected.\n"; waitForEnter(); continue;
+        }
+
+        // Now handle the actual template creation based on the path
+        if (num == 1 || num == 2) {
+            // Browse/Search: user selects a DB template to save
+            auto templates = SvcTools::getTemplatesByToolId(selectedTool.id);
+            if (templates.empty()) {
+                cout << "  no templates for this tool.\n"; waitForEnter(); continue;
+            }
+            UI::clearScreen();
+            UI::printBanner();
+            UI::printBreadcrumb("tools \u203a add template \u203a " + selectedTool.name);
+            UI::printDivider();
+            cout << "\n  select a template to save:\n\n";
+            for (size_t i = 0; i < templates.size(); i++)
+                cout << "  [" << (i+1) << "] " << templates[i].template_name
+                     << (!templates[i].description.empty() ? "  \u2014 " + templates[i].description : "")
+                     << "\n";
+            cout << (colorsEnabled() ? Color::DIM : "")
+                 << "  [0] cancel\n"
+                 << (colorsEnabled() ? Color::RESET : "") << "\n";
+            string pi = readInput("  \u2192 ");
+            if (isQuit(pi)) { handleQuit(); return; }
+            if (isMenu(pi)) throw MenuJump{};
+            if (isBack(pi)) { continue; }
+            int piNum = toNumber(pi);
+            if (piNum < 1 || piNum > static_cast<int>(templates.size())) {
+                cout << "  invalid.\n"; waitForEnter(); continue;
+            }
+            const auto& tmpl = templates[piNum - 1];
+
+            // Build command to show preview
+            string previewCmd = SvcTools::buildCommand(selectedTool, tmpl, "{{target}}", "{{port}}");
+
+            cout << "\n  template: " << tmpl.template_name << "\n"
+                 << "  command:  " << previewCmd << "\n\n";
+            cout << "  " << Strings::get(StringID::SAVED_TEMPLATES_NAME_PROMPT)
+                 << " [" << tmpl.template_name << "]: ";
+            string name = readInput("");
+            if (isQuit(name)) { handleQuit(); return; }
+            if (isMenu(name)) throw MenuJump{};
+            if (name.empty()) name = tmpl.template_name;
+
+            cout << "  " << Strings::get(StringID::SAVED_TEMPLATES_DESC_PROMPT)
+                 << " [" << tmpl.description << "]: ";
+            string desc = readInput("");
+            if (isQuit(desc)) { handleQuit(); return; }
+            if (isMenu(desc)) throw MenuJump{};
+            if (desc.empty()) desc = tmpl.description;
+
+            int id = SvcSavedTemplates::saveTemplate(selectedTool.id, name, previewCmd, desc);
+            if (id != -1) {
+                cout << "\n  " << (colorsEnabled() ? Color::GREEN : "")
+                     << "\u2713 template saved (id " << id << ")"
+                     << (colorsEnabled() ? Color::RESET : "") << "\n";
+            } else {
+                cout << "\n  ! failed to save template.\n";
+            }
+            waitForEnter();
+            return;
+        } else {
+            // Make Own Template: user enters custom content
+            cout << "\n  " << Strings::get(StringID::SAVED_TEMPLATES_NAME_PROMPT) << ": ";
+            string tName = readInput("");
+            if (isQuit(tName)) { handleQuit(); return; }
+            if (isMenu(tName)) throw MenuJump{};
+            if (isBack(tName)) continue;
+            if (tName.empty()) {
+                cout << "  name cannot be empty.\n"; waitForEnter(); continue;
+            }
+
+            cout << "\n  " << Strings::get(StringID::SAVED_TEMPLATES_CONTENT_PROMPT) << ":\n"
+                 << "  (use {{target}} and {{port}} as placeholders)\n"
+                 << "  \u2192 ";
+            string content = readInput("");
+            if (isQuit(content)) { handleQuit(); return; }
+            if (isMenu(content)) throw MenuJump{};
+            if (isBack(content)) continue;
+            if (content.empty()) {
+                cout << "  content cannot be empty.\n"; waitForEnter(); continue;
+            }
+
+            cout << "\n  " << Strings::get(StringID::SAVED_TEMPLATES_DESC_PROMPT) << ": ";
+            string desc = readInput("");
+            if (isQuit(desc)) { handleQuit(); return; }
+            if (isMenu(desc)) throw MenuJump{};
+            if (isBack(desc)) desc = "";
+
+            cout << "\n  preview:  $ " << content << "\n\n";
+            cout << "  save this template? (y/n): ";
+            string confirm = readInput("");
+            if (isQuit(confirm)) { handleQuit(); return; }
+            if (isMenu(confirm)) throw MenuJump{};
+            if (isBack(confirm)) continue;
+            if (confirm == "y" || confirm == "Y") {
+                int id = SvcSavedTemplates::saveTemplate(selectedTool.id, tName, content, desc);
+                if (id != -1) {
+                    cout << "  " << (colorsEnabled() ? Color::GREEN : "")
+                         << "\u2713 custom template saved (id " << id << ")"
+                         << (colorsEnabled() ? Color::RESET : "") << "\n";
+                } else {
+                    cout << "  ! failed to save template.\n";
+                }
+                waitForEnter();
+            }
+            return;
+        }
+    }
+}
+
+// ==================== USE SAVED TEMPLATE ====================
+
+static void useSavedTemplate(const SvcDTO::SavedTemplateDTO& st) {
+    string target, port;
+    string content = st.content;
+
+    while (true) {
+        UI::clearScreen();
+        UI::printBanner();
+        UI::printBreadcrumb("tools \u203a " + st.tool_name + " \u203a " + st.name + " (saved)");
+        UI::printDivider();
+
+        cout << "\n  " << (colorsEnabled() ? string(Color::BOLD) + Color::CYAN : "")
+             << st.name << " (saved)"
+             << (colorsEnabled() ? Color::RESET : "");
+        if (!st.description.empty())
+            cout << "  \u2014 " << st.description;
+        cout << "\n\n  enter values for the placeholders below.\n\n";
+
+        // Target (always prompted)
+        cout << "  target (IP/hostname)";
+        if (!target.empty()) cout << " [" << target << "]";
+        cout << ": ";
+        string inp = readInput("");
+        if (isQuit(inp)) { handleQuit(); return; }
+        if (isMenu(inp)) throw MenuJump{};
+        if (isBack(inp)) return;
+        if (!inp.empty()) target = sanitizeInput(inp);
+
+        // Port (prompted if content has {{port}} or {{PORT}})
+        if (content.find("{{port}}") != string::npos || content.find("{{PORT}}") != string::npos) {
+            cout << "  port (e.g. 80, 1-1000)";
+            if (!port.empty()) cout << " [" << port << "]";
+            cout << ": ";
+            inp = readInput("");
+            if (isQuit(inp)) { handleQuit(); return; }
+            if (isMenu(inp)) throw MenuJump{};
+            if (isBack(inp)) return;
+            if (!inp.empty()) port = sanitizeInput(inp);
+        }
+
+        // Build command by replacing placeholders
+        string cmd = content;
+        size_t pos;
+        while ((pos = cmd.find("{{target}}")) != string::npos)
+            cmd.replace(pos, 10, target.empty() ? "TARGET" : target);
+        while ((pos = cmd.find("{{port}}")) != string::npos)
+            cmd.replace(pos, 8, port.empty() ? "PORT" : port);
+        while ((pos = cmd.find("{{TARGET}}")) != string::npos)
+            cmd.replace(pos, 10, target.empty() ? "TARGET" : target);
+        while ((pos = cmd.find("{{PORT}}")) != string::npos)
+            cmd.replace(pos, 8, port.empty() ? "PORT" : port);
+
+        // Preview
+        cout << "\n  command preview:\n\n";
+        string label = "  $ " + cmd;
+        size_t inner = label.size() + 2;
+        string hline;
+        hline.reserve(inner * 3);
+        for (size_t i = 0; i < inner; ++i) hline += "\u2500";
+        cout << "  \u250c" << hline << "\u2510\n"
+             << "  \u2502 " << label << "  " << "\u2502\n"
+             << "  \u2514" << hline << "\u2518\n\n";
+
+        cout << (colorsEnabled() ? Color::DIM : "")
+             << "  [s] save command   [0] cancel"
+             << (colorsEnabled() ? Color::RESET : "") << "\n\n";
+
+        inp = readInput("  \u2192 ");
+        if (inp.empty()) continue;
+        if (isQuit(inp)) { handleQuit(); return; }
+        if (isMenu(inp)) throw MenuJump{};
+        if (isBack(inp)) return;
+
+        if (inp == "s" || inp == "S") {
+            cout << "  note (one-line description): ";
+            string note = readInput("");
+            if (isQuit(note)) { handleQuit(); return; }
+            if (isMenu(note)) throw MenuJump{};
+            if (isBack(note)) return;
+            if (note.empty()) note = st.tool_name + " \u2014 " + st.name;
+
+            int id = SvcTools::saveTemplateCommand(st.tool_id, cmd, note);
+            if (id != -1) {
+                cout << "\n  " << (colorsEnabled() ? Color::CYAN : "")
+                     << "\u2713 command saved (id " << id << ")"
+                     << (colorsEnabled() ? Color::RESET : "") << "\n\n";
+            } else {
+                cout << "\n  " << (colorsEnabled() ? Color::YELLOW : "")
+                     << "! failed to save command"
+                     << (colorsEnabled() ? Color::RESET : "") << "\n\n";
+            }
+            waitForEnter();
+            return;
+        }
+    }
+}
+
 // ==================== TOOLS ENTRY ====================
 
 void UITools::show() {
     const vector<string> opts = {
         Strings::get(StringID::TOOLS_VIEW_ALL),
         Strings::get(StringID::TOOLS_BROWSE_CATEGORY),
-        Strings::get(StringID::TOOLS_SEARCH)
+        Strings::get(StringID::TOOLS_SEARCH),
+        Strings::get(StringID::SAVED_TEMPLATES_LIST)
     };
 
     while (true) {
@@ -1020,6 +1528,7 @@ void UITools::show() {
              << "  \u251C\u2500 \u2605  " << Strings::get(StringID::TOOLS_VIEW_ALL) << "        [1]\n"
              << "  \u251C\u2500 \u25C9  " << Strings::get(StringID::TOOLS_BROWSE_CATEGORY) << "   [2]\n"
              << "  \u251C\u2500 \u2315  " << Strings::get(StringID::TOOLS_SEARCH) << "               [3]\n"
+             << "  \u251C\u2500 \u2630  " << Strings::get(StringID::SAVED_TEMPLATES_LIST) << "       [4]\n"
              << (colorsEnabled() ? Color::DIM : "")
              << "  \u2514\u2500 \u2190  " << Strings::get(StringID::TOOLS_BACK) << "                 [0]"
              << (colorsEnabled() ? Color::RESET : "")
@@ -1042,6 +1551,8 @@ void UITools::show() {
             showCategories();
         } else if (idx == 2) {
             showSearch();
+        } else if (idx == 3) {
+            showMyTemplates();
         } else {
             if (isAmbiguous(input, opts))
                 cout << "  " << Strings::get(StringID::TOOLS_AMBIGUOUS) << "\n";

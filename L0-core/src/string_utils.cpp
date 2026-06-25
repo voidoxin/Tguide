@@ -27,6 +27,18 @@ static const std::array<std::string, static_cast<size_t>(StringID::_COUNT)> s_st
     /* SAVED_SCRIPTS_EMPTY   */ "no saved scripts.",
     /* SAVED_SCRIPT_NAME_PROMPT*/ "script name",
     /* SAVED_SCRIPT_PATH_PROMPT*/ "path",
+
+    /* SAVED_TEMPLATES_LIST          */ "My Templates",
+    /* SAVED_TEMPLATES_ADD           */ "Add New Template",
+    /* SAVED_TEMPLATES_EMPTY         */ "no saved templates.",
+    /* SAVED_TEMPLATES_DELETED       */ "template deleted.",
+    /* SAVED_TEMPLATES_CONFIRM_DELETE*/ "delete this template? (y/n)",
+    /* SAVED_TEMPLATES_NAME_PROMPT   */ "template name",
+    /* SAVED_TEMPLATES_DESC_PROMPT   */ "description",
+    /* SAVED_TEMPLATES_CONTENT_PROMPT*/ "template content",
+    /* SAVED_TEMPLATES_BROWSE        */ "Browse by Category",
+    /* SAVED_TEMPLATES_SEARCH_TOOL   */ "Search Tool",
+    /* SAVED_TEMPLATES_MAKE_OWN      */ "Make Own Template",
 }};
 
 static_assert(s_strings.size() == static_cast<size_t>(StringID::_COUNT), "string table size must match StringID enum count");

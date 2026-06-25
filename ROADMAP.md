@@ -813,11 +813,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L2 |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | L2-Interface_Engine/src/UI_tools.cpp, L2-Interface_Engine/includes/UI_tools.h, L0-core/src/DatabaseManager.cpp |
 | Goal       | Replace any free-form "type your template" UI in the saved templates section with a structured three-option flow when the user wants to add a new template: (1) Browse by Category — choose a category, then a tool, then select a template to save, (2) Search Tool — search for a tool by name, then select a template from that tool, (3) Make Own Template — the user writes custom template content (placeholders supported: `{{target}}`, `{{port}}`, etc.) and names it. Saved templates are persisted in UserDataManager (similar to saved commands) and appear alongside DB templates in the template selection screens. |
 | Depends    | STEP-26f |
-| Done when  | "Add New Template" offers three clear options; browse and search flow reuses existing UI navigation components; "Make Own" allows free-form template text with placeholder support; saved templates appear in tool detail template lists with a "(saved)" label; templates persist across restarts; all 181 existing tests still pass |
+| Done when  | "Add New Template" offers three clear options; browse and search flow reuses existing UI navigation components; "Make Own" allows free-form template text with placeholder support; saved templates appear in tool detail template lists with a "(saved)" label; templates persist across restarts; all 217 existing tests still pass |
+| Completed | **2026-06-25** — Template creation flow with browse/search/make-own implemented. 217 tests, 623 assertions, all passing. ✅ |
 
 ## Release Phase R3c — Settings Completion & Extension Data System (7 steps)
 ### STEP-27 — Add missing config parameters (lang, db_update_behavior, extension_priority)
@@ -1404,7 +1405,7 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-26d | Release R3b-UX | L2 | Add "View All Tools" option to tools menu with pagination | [x] DONE |
 | STEP-26e | Release R3b-UX | L1 / L2 | Implement real script generation (merge templates + bash commands) | [x] DONE |
 | STEP-26f | Release R3b-UX | L0 / L2 | Add script save prompt with configurable default path | [x] DONE |
-| STEP-26g | Release R3b-UX | L2 | Implement template creation flow (browse/search/custom) | [ ] TODO |
+| STEP-26g | Release R3b-UX | L2 | Implement template creation flow (browse/search/custom) | [x] DONE |
 | STEP-27 | Release R3c | L0 | Config: add lang, db_update_behavior, extension_priority defaults |
 | STEP-28 | Release R3c | L2 | Settings UI: language, DB update behavior, extension priority |
 | STEP-29 | Release R3c | L0 / BOOTSTRAP | Wire DB update behavior (never/ask_me/auto) into update workflow |

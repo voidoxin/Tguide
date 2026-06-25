@@ -8,6 +8,9 @@
 #include "../../libs/json.hpp"
 #include <fstream>
 #include <algorithm>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 using json = nlohmann::json;
 
@@ -47,6 +50,7 @@ void UserDataManager::init(const std::string& commandsPath,
                             const std::string& scriptsPath) {
     m_commandsPath = commandsPath;
     m_scriptsPath  = scriptsPath;
+    m_templatesPath = fs::path(commandsPath).parent_path() / "saved_templates.json";
     m_initialized  = true;
 }
 
@@ -54,6 +58,7 @@ UserDataManager::UserDataManager(const std::string& commandsPath,
                                  const std::string& scriptsPath)
     : m_commandsPath(commandsPath), m_scriptsPath(scriptsPath)
 {
+    m_templatesPath = fs::path(commandsPath).parent_path() / "saved_templates.json";
     m_initialized = true;
     // paths stored — caller must call load() explicitly
 }
@@ -112,6 +117,30 @@ bool UserDataManager::load() {
         }
     }
 
+    // ── templates ─────────────────────────────────────────────────────────
+    {
+        json data = readJson(m_templatesPath);
+        m_templates.clear();
+        if (!data.contains("templates") || !data["templates"].is_array()) {
+            if (!writeJson(m_templatesPath, { {"templates", json::array()} }))
+                ok = false;
+        } else {
+            for (auto& item : data["templates"]) {
+                try {
+                    SavedTemplate t;
+                    t.id          = item.at("id").get<int>();
+                    t.tool_id     = item.at("tool_id").get<int>();
+                    t.name        = item.at("name").get<std::string>();
+                    t.content     = item.at("content").get<std::string>();
+                    t.description = item.at("description").get<std::string>();
+                    m_templates.push_back(t);
+                } catch (...) {
+                    if (g_errorHandler.error) g_errorHandler.error("UserDataManager: skipped malformed template entry.");
+                }
+            }
+        }
+    }
+
     return ok;
 }
 
@@ -137,9 +166,21 @@ bool UserDataManager::save() {
         });
     }
 
+    json tmplArray = json::array();
+    for (auto& t : m_templates) {
+        tmplArray.push_back({
+            {"id", t.id},
+            {"tool_id", t.tool_id},
+            {"name", t.name},
+            {"content", t.content},
+            {"description", t.description}
+        });
+    }
+
     // writeJson already calls UI_errors on write failure
     bool ok = writeJson(m_commandsPath, { {"commands", cmdArray} });
     ok     &= writeJson(m_scriptsPath,  { {"scripts",  scrArray} });
+    ok     &= writeJson(m_templatesPath, { {"templates", tmplArray} });
 
     return ok;
 }
@@ -300,4 +341,65 @@ bool UserDataManager::deleteScript(int id) {
 
 std::vector<SavedScript> UserDataManager::getScripts() {
     return m_scripts;
+}
+
+// ── template id helpers ──────────────────────────────────────────────────
+
+int UserDataManager::nextTemplateId() const {
+    if (m_templates.empty()) return 1;
+    int maxId = 0;
+    for (auto& t : m_templates)
+        if (t.id > maxId) maxId = t.id;
+    return maxId + 1;
+}
+
+// ── templates ────────────────────────────────────────────────────────────
+
+int UserDataManager::saveTemplate(int tool_id, const std::string& name,
+                                   const std::string& content,
+                                   const std::string& description) {
+    if (!m_initialized) return -1;
+    if (m_templatesPath.empty()) return -1;
+
+    SavedTemplate t;
+    t.id          = nextTemplateId();
+    t.tool_id     = tool_id;
+    t.name        = name;
+    t.content     = content;
+    t.description = description;
+    m_templates.push_back(t);
+
+    if (!save()) {
+        m_templates.pop_back();
+        return -1;
+    }
+    return t.id;
+}
+
+bool UserDataManager::deleteTemplate(int id) {
+    if (!m_initialized) return false;
+    auto it = std::find_if(m_templates.begin(), m_templates.end(),
+        [id](const SavedTemplate& t) { return t.id == id; });
+    if (it == m_templates.end()) return false;
+
+    SavedTemplate backup = *it;
+    m_templates.erase(it);
+
+    if (!save()) {
+        m_templates.push_back(backup);
+        return false;
+    }
+    return true;
+}
+
+std::vector<SavedTemplate> UserDataManager::getTemplates() {
+    return m_templates;
+}
+
+std::vector<SavedTemplate> UserDataManager::getTemplatesByToolId(int toolId) {
+    std::vector<SavedTemplate> result;
+    for (const auto& t : m_templates) {
+        if (t.tool_id == toolId) result.push_back(t);
+    }
+    return result;
 }
