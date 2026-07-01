@@ -72,6 +72,33 @@ void UISettings::show(ConfigManager& cfg) {
              << "  \u2502    "
              << (colorsEnabled() ? Color::RESET : "")
              << scriptPath << "\n"
+             // Language
+             << (colorsEnabled() ? Color::DIM : "")
+             << "  \u251c\u2500 \u25c9  Language"
+             << (colorsEnabled() ? Color::RESET : "")
+             << "                    [4]\n"
+             << (colorsEnabled() ? Color::DIM : "")
+             << "  \u2502    "
+             << (colorsEnabled() ? Color::RESET : "")
+             << SvcSettings::langToLabel(SvcSettings::getLanguage(cfg)) << "\n"
+             // DB Update Behavior
+             << (colorsEnabled() ? Color::DIM : "")
+             << "  \u251c\u2500 \u25c9  Database Update Behavior"
+             << (colorsEnabled() ? Color::RESET : "")
+             << "  [5]\n"
+             << (colorsEnabled() ? Color::DIM : "")
+             << "  \u2502    "
+             << (colorsEnabled() ? Color::RESET : "")
+             << SvcSettings::dbBehaviorToLabel(SvcSettings::getDbUpdateBehavior(cfg)) << "\n"
+             // Extension Priority
+             << (colorsEnabled() ? Color::DIM : "")
+             << "  \u251c\u2500 \u25c9  Extension Data Priority"
+             << (colorsEnabled() ? Color::RESET : "")
+             << "  [6]\n"
+             << (colorsEnabled() ? Color::DIM : "")
+             << "  \u2502    "
+             << (colorsEnabled() ? Color::RESET : "")
+             << SvcSettings::extPriorityToLabel(SvcSettings::getExtensionPriority(cfg)) << "\n"
              << (colorsEnabled() ? Color::DIM : "")
              << "  \u2514\u2500 "
              << (colorsEnabled() ? Color::RESET : "")
@@ -132,6 +159,167 @@ void UISettings::show(ConfigManager& cfg) {
                      << (colorsEnabled() ? Color::RESET : "") << "\n";
             }
             waitForEnter();
+
+        } else if (input == "4") {
+            // Language selector dropdown
+            while (true) {
+                string currentLang = SvcSettings::getLanguage(cfg);
+                UI::clearScreen();
+                UI::printBanner();
+                UI::printBreadcrumb("settings > language");
+                UI::printDivider();
+                cout << "\n  Select Language:\n\n"
+                     << "  [1] English (en)\n\n";
+                UI::printDivider();
+                cout << "\n";
+                string inp = readInput("  \u2192 (b=back, m=menu) ");
+                if (inp.empty()) continue;
+                if (isQuit(inp)) { handleQuit(); return; }
+                if (isMenu(inp)) throw MenuJump{};
+                if (isBack(inp)) break;
+                if (inp == "1") {
+                    if (SvcSettings::setLanguage(cfg, "en")) {
+                        cout << "\n  " << (colorsEnabled() ? Color::GREEN : "")
+                             << "\u2713  language set to English"
+                             << (colorsEnabled() ? Color::RESET : "") << "\n";
+                    } else {
+                        cout << "\n  " << (colorsEnabled() ? Color::YELLOW : "")
+                             << "!  failed to persist language preference"
+                             << (colorsEnabled() ? Color::RESET : "") << "\n";
+                    }
+                    waitForEnter();
+                    break;
+                } else {
+                    cout << (colorsEnabled() ? Color::YELLOW : "")
+                         << "\n  invalid choice.\n"
+                         << (colorsEnabled() ? Color::RESET : "");
+                    waitForEnter();
+                }
+            }
+
+        } else if (input == "5") {
+            while (true) {
+                string currentBehavior = SvcSettings::getDbUpdateBehavior(cfg);
+                UI::clearScreen();
+                UI::printBanner();
+                UI::printBreadcrumb("settings > db update behavior");
+                UI::printDivider();
+                cout << "\n  Select Database Update Behavior:\n\n"
+                     << "  [1] Never\n"
+                     << "  [2] Ask Me\n"
+                     << "  [3] Auto\n\n";
+                UI::printDivider();
+                cout << "\n";
+                string inp = readInput("  \u2192 (b=back, m=menu) ");
+                if (inp.empty()) continue;
+                if (isQuit(inp)) { handleQuit(); return; }
+                if (isMenu(inp)) throw MenuJump{};
+                if (isBack(inp)) break;
+                if (inp == "1") {
+                    if (SvcSettings::setDbUpdateBehavior(cfg, "never")) {
+                        cout << "\n  " << (colorsEnabled() ? Color::GREEN : "")
+                             << "\u2713  DB updates: Never"
+                             << (colorsEnabled() ? Color::RESET : "") << "\n";
+                    } else {
+                        cout << "\n  " << (colorsEnabled() ? Color::YELLOW : "")
+                             << "!  failed to persist"
+                             << (colorsEnabled() ? Color::RESET : "") << "\n";
+                    }
+                    waitForEnter();
+                    break;
+                } else if (inp == "2") {
+                    if (SvcSettings::setDbUpdateBehavior(cfg, "ask_me")) {
+                        cout << "\n  " << (colorsEnabled() ? Color::GREEN : "")
+                             << "\u2713  DB updates: Ask Me"
+                             << (colorsEnabled() ? Color::RESET : "") << "\n";
+                    } else {
+                        cout << "\n  " << (colorsEnabled() ? Color::YELLOW : "")
+                             << "!  failed to persist"
+                             << (colorsEnabled() ? Color::RESET : "") << "\n";
+                    }
+                    waitForEnter();
+                    break;
+                } else if (inp == "3") {
+                    if (SvcSettings::setDbUpdateBehavior(cfg, "auto")) {
+                        cout << "\n  " << (colorsEnabled() ? Color::GREEN : "")
+                             << "\u2713  DB updates: Auto"
+                             << (colorsEnabled() ? Color::RESET : "") << "\n";
+                    } else {
+                        cout << "\n  " << (colorsEnabled() ? Color::YELLOW : "")
+                             << "!  failed to persist"
+                             << (colorsEnabled() ? Color::RESET : "") << "\n";
+                    }
+                    waitForEnter();
+                    break;
+                } else {
+                    cout << (colorsEnabled() ? Color::YELLOW : "")
+                         << "\n  invalid choice.\n"
+                         << (colorsEnabled() ? Color::RESET : "");
+                    waitForEnter();
+                }
+            }
+
+        } else if (input == "6") {
+            while (true) {
+                string currentPriority = SvcSettings::getExtensionPriority(cfg);
+                UI::clearScreen();
+                UI::printBanner();
+                UI::printBreadcrumb("settings > extension priority");
+                UI::printDivider();
+                cout << "\n  Select Extension Data Priority:\n\n"
+                     << "  [1] Database Data Only\n"
+                     << "  [2] Color + Label\n"
+                     << "  [3] Extension Data Only\n\n";
+                UI::printDivider();
+                cout << "\n";
+                string inp = readInput("  \u2192 (b=back, m=menu) ");
+                if (inp.empty()) continue;
+                if (isQuit(inp)) { handleQuit(); return; }
+                if (isMenu(inp)) throw MenuJump{};
+                if (isBack(inp)) break;
+                if (inp == "1") {
+                    if (SvcSettings::setExtensionPriority(cfg, "db_only")) {
+                        cout << "\n  " << (colorsEnabled() ? Color::GREEN : "")
+                             << "\u2713  extension priority: Database Data Only"
+                             << (colorsEnabled() ? Color::RESET : "") << "\n";
+                    } else {
+                        cout << "\n  " << (colorsEnabled() ? Color::YELLOW : "")
+                             << "!  failed to persist"
+                             << (colorsEnabled() ? Color::RESET : "") << "\n";
+                    }
+                    waitForEnter();
+                    break;
+                } else if (inp == "2") {
+                    if (SvcSettings::setExtensionPriority(cfg, "color")) {
+                        cout << "\n  " << (colorsEnabled() ? Color::GREEN : "")
+                             << "\u2713  extension priority: Color + Label"
+                             << (colorsEnabled() ? Color::RESET : "") << "\n";
+                    } else {
+                        cout << "\n  " << (colorsEnabled() ? Color::YELLOW : "")
+                             << "!  failed to persist"
+                             << (colorsEnabled() ? Color::RESET : "") << "\n";
+                    }
+                    waitForEnter();
+                    break;
+                } else if (inp == "3") {
+                    if (SvcSettings::setExtensionPriority(cfg, "ext_only")) {
+                        cout << "\n  " << (colorsEnabled() ? Color::GREEN : "")
+                             << "\u2713  extension priority: Extension Data Only"
+                             << (colorsEnabled() ? Color::RESET : "") << "\n";
+                    } else {
+                        cout << "\n  " << (colorsEnabled() ? Color::YELLOW : "")
+                             << "!  failed to persist"
+                             << (colorsEnabled() ? Color::RESET : "") << "\n";
+                    }
+                    waitForEnter();
+                    break;
+                } else {
+                    cout << (colorsEnabled() ? Color::YELLOW : "")
+                         << "\n  invalid choice.\n"
+                         << (colorsEnabled() ? Color::RESET : "");
+                    waitForEnter();
+                }
+            }
 
         } else {
             cout << (colorsEnabled() ? Color::YELLOW : "")

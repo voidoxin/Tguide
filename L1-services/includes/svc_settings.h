@@ -34,4 +34,21 @@ namespace SvcSettings {
     DbInfo  getDbInfo();
     bool    triggerDbUpdate();
 
+    // Language
+    std::string getLanguage(const ConfigManager& cfg);           // returns raw value like "en"
+    bool setLanguage(ConfigManager& cfg, const std::string& lang);
+
+    // DB Update Behavior
+    std::string getDbUpdateBehavior(const ConfigManager& cfg);   // returns raw value like "ask_me"
+    bool setDbUpdateBehavior(ConfigManager& cfg, const std::string& behavior);
+
+    // Extension Priority
+    std::string getExtensionPriority(const ConfigManager& cfg);  // returns raw value like "color"
+    bool setExtensionPriority(ConfigManager& cfg, const std::string& priority);
+
+    // Display label helpers
+    std::string dbBehaviorToLabel(const std::string& value);     // "ask_me" → "Ask Me"
+    std::string extPriorityToLabel(const std::string& value);    // "color" → "Color + Label"
+    std::string langToLabel(const std::string& value);           // "en" → "English (en)"
+
 }

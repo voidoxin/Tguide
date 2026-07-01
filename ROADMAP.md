@@ -838,11 +838,12 @@ L0-core → L1-services → L2-Interface_Engine
 |------------|-------|
 | Layer      | L2 |
 | Priority   | HIGH |
-| Status     | [ ] TODO |
+| Status     | [x] DONE |
 | Files      | L2-Interface_Engine/src/UI_settings.cpp, L2-Interface_Engine/include/UI_settings.h |
 | Goal       | Extend Settings screen with three new options: "Language" (dropdown with only "English" for now), "Database Update Behavior" (dropdown: "Never" / "Ask Me" / "Auto", default "Ask Me"), "Extension Data Priority" (dropdown: "Database Data Only" / "Color + Label" / "Extension Data Only", default "Color + Label"). Each persists to ConfigManager on selection. |
 | Depends    | STEP-27 |
 | Done when  | Settings menu shows all three new options; each dropdown reads current value from ConfigManager and correctly writes new value on selection; changes persist across restarts; all existing tests pass |
+| Completed | **2026-06-25** — Settings menu shows [4] Language, [5] DB Update Behavior, [6] Extension Priority; all three dropdowns read ConfigManager current value and persist on selection; 217 tests, 623 assertions, all passing. ✅ |
 
 ### STEP-29 — Wire DB update behavior into update workflow
 | Field      | Value |
@@ -1408,7 +1409,7 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-26f | Release R3b-UX | L0 / L2 | Add script save prompt with configurable default path | [x] DONE |
 | STEP-26g | Release R3b-UX | L2 | Implement template creation flow (browse/search/custom) | [x] DONE |
 | STEP-27 | Release R3c | L0 | Config: add lang, db_update_behavior, extension_priority defaults | [x] DONE |
-| STEP-28 | Release R3c | L2 | Settings UI: language, DB update behavior, extension priority |
+| STEP-28 | Release R3c | L2 | Settings UI: language, DB update behavior, extension priority | [x] DONE |
 | STEP-29 | Release R3c | L0 / BOOTSTRAP | Wire DB update behavior (never/ask_me/auto) into update workflow |
 | STEP-30 | Release R3c | L0 | YAML extension data parser (yaml-cpp) |
 | STEP-31 | Release R3c | L0 / BOOTSTRAP | Extension data loader |
