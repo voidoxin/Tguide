@@ -157,11 +157,12 @@ int matchOption(const string& input, const vector<string>& options) {
 
 // ==================== QUIT ====================
 
-// clear screen and print goodbye — caller is responsible for returning
+// clear screen, print goodbye, and throw QuitSignal to unwind the entire UI stack
 void handleQuit() {
     UI::clearScreen();
     cout << (colorsEnabled() ? Color::CYAN  : "")
          << (colorsEnabled() ? Color::BOLD  : "")
          << "\n  goodbye.\n\n"
          << (colorsEnabled() ? Color::RESET : "");
+    throw QuitSignal{};
 }

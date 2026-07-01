@@ -40,6 +40,9 @@ bool isMenu(const std::string& input);
 // Exception thrown to jump directly to main menu from any nested screen
 struct MenuJump {};
 
+// Exception thrown to quit the entire application from any nested screen
+struct QuitSignal {};
+
 // ==================== NUMBER ====================
 
 // returns integer value if input is a pure digit string, -1 otherwise

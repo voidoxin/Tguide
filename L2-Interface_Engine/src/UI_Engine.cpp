@@ -116,6 +116,7 @@ int UIEngine::renderMenu(
 void UIEngine::start(ConfigManager& cfg) {
 
     while (true) {
+        try {
 
         // ── pending update notification ────────────────────────────────
         if (DBCacheManager::instance().hasPendingUpdate()) {
@@ -149,6 +150,11 @@ void UIEngine::start(ConfigManager& cfg) {
             cout << Color::CYAN << Color::BOLD
                  << "\n  goodbye.\n\n"
                  << Color::RESET;
+            break;
+        }
+
+        } catch (const QuitSignal&) {
+            // handleQuit() already printed goodbye message
             break;
         }
     }

@@ -24,7 +24,11 @@ TEST_CASE("handleQuit — prints goodbye") {
     stringstream buffer;
     streambuf* old = cout.rdbuf(buffer.rdbuf());
 
-    handleQuit();
+    try {
+        handleQuit();
+    } catch (const QuitSignal&) {
+        // expected — handleQuit now throws QuitSignal
+    }
 
     cout.rdbuf(old);
     CHECK(buffer.str().find("goodbye") != string::npos);
@@ -45,12 +49,15 @@ TEST_CASE("UIDisclaimer::show — quit exits cleanly") {
     stringstream output;
     streambuf* oldCout = cout.rdbuf(output.rdbuf());
 
-    bool result = UIDisclaimer::show(cfg);
+    try {
+        UIDisclaimer::show(cfg);
+    } catch (const QuitSignal&) {
+        // expected — handleQuit now throws QuitSignal
+    }
 
     cout.rdbuf(oldCout);
     cin.rdbuf(oldCin);
 
-    CHECK(result == false);
     CHECK(output.str().find("goodbye") != string::npos);
 }
 
@@ -103,11 +110,14 @@ TEST_CASE("UI_attention — quit returns 0 and prints goodbye") {
     stringstream output;
     streambuf* oldCout = cout.rdbuf(output.rdbuf());
 
-    char result = UI_attention("test message");
+    try {
+        UI_attention("test message");
+    } catch (const QuitSignal&) {
+        // expected — handleQuit now throws QuitSignal
+    }
 
     cout.rdbuf(oldCout);
     cin.rdbuf(oldCin);
 
-    CHECK(result == 0);
     CHECK(output.str().find("goodbye") != string::npos);
 }
