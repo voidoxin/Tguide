@@ -900,6 +900,39 @@ L0-core → L1-services → L2-Interface_Engine
 | Depends    | STEP-32 |
 | Done when  | Tests cover YamlParser (all sections, malformed entries, empty file); ExtensionLoader (all directory states, error aggregation); SvcExtension (all three priority modes with collision scenarios, display strings); ConfigManager keys (get/set/merge with new defaults); all 80+ existing tests still pass |
 
+### STEP-34 — Saved Scripts: Edit Script submenu
+| Field      | Value |
+|------------|-------|
+| Layer      | L2 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L2-Interface_Engine/src/UI_savedScripts.cpp |
+| Goal       | Replace single "Edit Note" option in script detail with a fully-featured "Edit Script" submenu containing 8 options: Add Template Command, Add Bash Line, Reorder Steps, Preview & Save, Edit Note, Remove Step, Edit Name, Edit Path. Each opens its own flow reusing existing UI_generator components. |
+| Depends    | STEP-28 |
+| Done when  | Script detail shows "[s] Edit Script" instead of "[e] Edit Note"; Edit Script opens submenu with all 8 options; each option persists correctly; all existing tests pass |
+
+### STEP-35 — Save prompt: directory/filename/type flow + default script format
+| Field      | Value |
+|------------|-------|
+| Layer      | L0 / L1 / L2 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L0-core/src/config_manager.cpp, L1-services/includes/svc_settings.h, L1-services/src/svc_settings.cpp, L2-Interface_Engine/src/UI_settings.cpp, L2-Interface_Engine/src/UI_generator.cpp, CoreRunner.cpp |
+| Goal       | Change script save prompt to 3-step flow: (1) ask directory path, (2) ask filename without extension, (3) ask file type (.sh/.bash) with default from config. Add `export.script_format` config key (default `.sh`). First-boot prompts user to configure default format. |
+| Depends    | STEP-34, STEP-28 |
+| Done when  | Save prompt flows in 3 steps (dir → name → type); default type from config setting; first-boot wizard prompts for script format; all existing tests pass |
+
+### STEP-36 — Saved Commands: Edit Variables submenu
+| Field      | Value |
+|------------|-------|
+| Layer      | L2 |
+| Priority   | HIGH |
+| Status     | [ ] TODO |
+| Files      | L2-Interface_Engine/src/UI_savedCommands.cpp, L1-services/includes/svc_savedCommands.h, L1-services/src/svc_savedCommands.cpp |
+| Goal       | Add "Edit Variables" option in command detail screen. Opens submenu to view/edit command variables: hostname, port, target, and others. Each variable shows current value and is editable. Changes persist to the saved command. |
+| Depends    | STEP-28 |
+| Done when  | Command detail shows "[v] Edit Variables"; submenu displays all variables for the command; each field is editable; changes persist; all existing tests pass |
+
 ## Release Phase R4 — Pre-Release, Packaging & Install Intelligence (16 steps)
 ### STEP-61a — CMake release build configuration
 | Field      | Value |
@@ -1415,6 +1448,9 @@ These features are explicitly cut from v1.0 scope and moved to a future v2.0 rel
 | STEP-31 | Release R3c | L0 / BOOTSTRAP | Extension data loader |
 | STEP-32 | Release R3c | L1 / L2 | Extension data merge/priority engine & display integration |
 | STEP-33 | Release R3c | QA | Tests for extension data system |
+| STEP-34 | Release R3c | L2 | Saved Scripts: Edit Script submenu with 8 options |
+| STEP-35 | Release R3c | L0 / L1 / L2 | Save prompt: directory/filename/type flow + default script format + first-boot config |
+| STEP-36 | Release R3c | L2 | Saved Commands: Edit Variables submenu |
 | STEP-61a | Release R4 | BUILD | CMake release build configuration | [x] DONE |
 | STEP-61b | Release R4 | BOOTSTRAP | Clean dev-only bootstrap code from CoreRunner |
 | STEP-62a | Release R4 | QA | Regression testing |
