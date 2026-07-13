@@ -4,7 +4,7 @@ project(tguide VERSION 1.0.1 LANGUAGES C CXX)
 # ==============================================================
 # Language Standards
 # C++17 required for std::filesystem, std::optional
-# C11  required for sqlite3.c (pure C library)
+# C11  required for sqlite3 amalgamation (if bundled)
 # ==============================================================
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -63,7 +63,7 @@ endif()
 # MSVC-specific definitions — prevent Windows header conflicts
 # NOMINMAX avoids min/max macro collision with std::min/std::max
 # _CRT_SECURE_NO_WARNINGS suppresses deprecation warnings for
-# standard C functions (used by sqlite3.c)
+# standard C functions (used by SQLite3)
 # ==============================================================
 if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC" OR CMAKE_CXX_SIMULATE_ID MATCHES "MSVC")
     add_compile_definitions(NOMINMAX _CRT_SECURE_NO_WARNINGS)
@@ -161,21 +161,15 @@ set(L3_INC     ${CMAKE_SOURCE_DIR}/L2-Interface_Engine/includes)
 set(OBJECT_DIR ${CMAKE_SOURCE_DIR}/object)
 
 # ==============================================================
-# sqlite3 — pure C, compiled separately
-# Always recompile from source for reliability
+# sqlite3 — system library via find_package
+#   Debian/Kali : apt install libsqlite3-dev
+#   Termux      : pkg install sqlite
+#   Arch        : pacman -S sqlite
+#   Windows     : vcpkg install sqlite3
+#   macOS       : included with Xcode Command Line Tools
 # ==============================================================
-set(SQLITE3_SRC ${LIBS_DIR}/sqlite3.c)
-
-add_library(sqlite3_obj OBJECT ${SQLITE3_SRC})
-set_target_properties(sqlite3_obj PROPERTIES
-    LINKER_LANGUAGE C
-    C_STANDARD 11
-)
-target_include_directories(sqlite3_obj PRIVATE ${LIBS_DIR})
-target_compile_options(sqlite3_obj PRIVATE
-    $<$<C_COMPILER_ID:GNU,Clang,AppleClang>:-O0>
-    $<$<C_COMPILER_ID:MSVC>:/Od>
-)
+find_package(SQLite3 REQUIRED)
+message(STATUS "SQLite3: ${SQLite3_VERSION}")
 
 # ==============================================================
 # json.hpp — header-only (nlohmann/json)
@@ -226,7 +220,7 @@ target_include_directories(L0_core PUBLIC
 )
 
 target_link_libraries(L0_core
-    PRIVATE sqlite3_obj
+    PRIVATE SQLite::SQLite3
     PUBLIC  CURL::libcurl
 )
 
@@ -375,7 +369,7 @@ if(IS_LINUX)
         "tguide — security tools reference for penetration testers"
     )
     set(CPACK_DEBIAN_PACKAGE_DEPENDS
-        "libcurl4 (>= 7.0)"
+        "libcurl4 (>= 7.0), libsqlite3-0 (>= 3.0)"
     )
     set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
     set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
